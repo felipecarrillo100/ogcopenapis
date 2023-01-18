@@ -10,10 +10,12 @@ In future versions
 * Open API Tiles will be implemented
 * Open API Maps will be implemented
 
-The Main React Components are:
+The Main Components are:
 
 * OgcOpenApiFeatureStore  a ready to use store capable to retrieve features from an OGC API Service   
 * OgcOpenApiGetCapabilities a helper to retrieve the capabilities of a server such as available Collections and Formats
+
+Additional components will be added in future versions for Maps and Tiles
 
 
 ## To build
@@ -37,7 +39,7 @@ The server is reliable ans stable,  but take in t account that changes at the se
 Simply import the NPM package in to your project
 
 ```
-npm install openapifeature
+npm install ogcopenapis
 ``` 
 
 If you require the GetCapabilities functionality then also import: 
