@@ -195,7 +195,7 @@ export class OgcOpenApiGetCapabilities {
     });
   }
 
-  protected static getHostURL(fullUrl: string) {
+  public static getHostURL(fullUrl: string) {
     if (!fullUrl.startsWith("http")) return "";
       const pathArray = fullUrl.split( '/' );
       const protocol = pathArray[0];
