@@ -12,15 +12,13 @@ import {createTransformation} from "@luciad/ria/transformation/TransformationFac
 
 interface OAPIFeatureStoreConstructorOptions {
   dataUrl: string;
-  featureUrl: string;
-  dataFormat: string;
+  featureUrl?: string;
   outputFormat: string;
   useCrs84Bounds: boolean;
   codec: Codec;
-  requestHeaders: { [key: string]: string };
-  tmp_reference: string;
+  requestHeaders?: { [key: string]: string };
   customCrs: string;
-  extent: { spatial: { bbox: any[] } };
+  extent?: { spatial: { bbox: any[] } };
   reference: CoordinateReference;
 }
 
