@@ -4,4 +4,5 @@ module.exports = {
     transformIgnorePatterns: [
         "node_modules/(?!(@luciad)/)"
     ],
+    setupFilesAfterEnv: ['./jest.setup.js']
 }

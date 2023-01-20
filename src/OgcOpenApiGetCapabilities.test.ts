@@ -4,27 +4,68 @@ import "isomorphic-fetch";
 import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapabilities";
 
         describe('OgcOpenApiGetCapabilities',  () => {
+
+            it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by Map', async () => {
+                return OgcOpenApiGetCapabilities.fromURL("https://maps.gnosis.earth/ogcapi/",{filterCollectionsByLinkType: CollectionLinkType.Map}).then(data=>{
+                  //  if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
+                    expect(data.collections.length).toBe(742);
+                }, (err)=>{
+                    expect(false).toBe(true);
+                })
+            });
+
+
+            it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by TileSets', async () => {
+                return OgcOpenApiGetCapabilities.fromURL("https://maps.gnosis.earth/ogcapi/",{filterCollectionsByLinkType: CollectionLinkType.Tiles}).then(data=>{
+                    expect(data.collections.length).toBe(742);
+                }, (err)=>{
+                    expect(false).toBe(true);
+                })
+            });
+
+            it('OgcOpenApiGetCapabilities.fromURL cubewerx links filtered by Styles', async () => {
+                return OgcOpenApiGetCapabilities.fromURL("https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/",{filterCollectionsByLinkType: CollectionLinkType.Styles}).then(data=>{
+                  //  if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
+                    expect(data.collections.length).toBe(1);
+                }, (err)=>{
+                    expect(false).toBe(true);
+                })
+            });
+
+            it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by Styles', async () => {
+                return OgcOpenApiGetCapabilities.fromURL("https://maps.gnosis.earth/ogcapi/",{filterCollectionsByLinkType: CollectionLinkType.Styles}).then(data=>{
+                    // if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
+                    expect(data.collections.length).toBe(633);
+                }, (err)=>{
+                    expect(false).toBe(true);
+                })
+            });
+
             it('OgcOpenApiGetCapabilities.fromURL success', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/",{}).then(data=>{
                     expect(data.version).toBe("3.0.2");
                 }, (err)=>{
-                    expect(2).toBe(3);
+                    expect(false).toBe(true);
                 })
             });
-            it('OgcOpenApiGetCapabilities.fromURL success all links', async () => {
+            it('OgcOpenApiGetCapabilities.fromURL pygeoapi all links', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/",{}).then(data=>{
-                    expect(data.featureTypes.length).toBe(16);
+                    // if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
+                    expect(data.collections.length).toBe(16);
                 }, (err)=>{
-                    expect(2).toBe(3);
+                    expect(false).toBe(true);
                 })
             });
+
+
             it('OgcOpenApiGetCapabilities.fromURL success links filtered', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/",{filterCollectionsByLinkType: CollectionLinkType.Items}).then(data=>{
-                    expect(data.featureTypes.length).toBe(14);
+                    expect(data.collections.length).toBe(14);
                 }, (err)=>{
-                    expect(2).toBe(3);
+                    expect(false).toEqual(true);
                 })
             });
+
             it('OgcOpenApiGetCapabilities.fromURL 404', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master2/",{}).then(data=>{
                     expect(data.version).toBe("3.0.1");
@@ -36,14 +77,14 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
                 return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/",{}).then(data=>{
                     expect(data.version).toBe("3.0.1");
                 }, (err)=>{
-                    expect(err).toBe("Not JSON");
+                    expect(err).toEqual("Not JSON");
                 })
             });
             it('OgcOpenApiGetCapabilities.fromURL Not valid API', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://jsonplaceholder.typicode.com/todos/",{}).then(data=>{
                     expect(data.version).toBe("3.0.1");
                 }, (err)=>{
-                    expect(err).toBe("Invalid format: (property 'links' is missing)");
+                    expect(err).toEqual("Invalid format: (property 'links' is missing)");
                 })
             });
 
@@ -58,6 +99,23 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
             it('OgcOpenApiGetCapabilities.getHostURL localhost', async () => {
                 expect(OgcOpenApiGetCapabilities.getHostURL("http://localhost:8080/api/user/proxy/auto_1674072985294_1")).toEqual("http://localhost:8080")
             });
+
+            it('OgcOpenApiGetCapabilities.cleanUrl with api/?f=json', async () => {
+                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/api/?f=json")).toEqual("http://localhost:8080/api/")
+            });
+            it('OgcOpenApiGetCapabilities.cleanUrl with api?f=json', async () => {
+                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/api?f=json")).toEqual("http://localhost:8080/api/")
+            });
+            it('OgcOpenApiGetCapabilities.cleanUrl with api/', async () => {
+                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/api/")).toEqual("http://localhost:8080/api/")
+            });
+            it('OgcOpenApiGetCapabilities.cleanUrl with /api', async () => {
+                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/api")).toEqual("http://localhost:8080/api/")
+            });
+            it('OgcOpenApiGetCapabilities.cleanUrl with some/api/?f=json', async () => {
+                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/some/api/?f=json")).toEqual("http://localhost:8080/some/api/")
+            });
+
         });
 
 

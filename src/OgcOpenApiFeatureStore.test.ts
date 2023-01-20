@@ -52,7 +52,8 @@ jest.useFakeTimers();
 
             it('OgcOpenApiFeatureStore.get feature', async () => {
                 return store.get(1).then(feature => {
-                    console.log(JSON.stringify(feature.properties, null, 2))
+                    // One feature
+                    // console.log(JSON.stringify(feature.properties, null, 2))
                     expect(feature.id).toBe(1);
                 }, (err) => {
                     expect(2).toBe(3);

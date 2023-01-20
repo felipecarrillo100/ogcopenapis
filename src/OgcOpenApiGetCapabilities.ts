@@ -1,11 +1,12 @@
 export interface OgcOpenApiCapabilitiesObject {
   name: string;
-  featureTypes: OgcOpenApiCapabilitiesCollection[];
+  collections: OgcOpenApiCapabilitiesCollection[];
   version: string;
   service: string;
   info: any;
   crs?: any[];
   hostUrl: string;
+  baseUrl: string;
 }
 
 export interface OgcOpenApiCapabilitiesCollection {
@@ -31,6 +32,16 @@ export interface OgcOpenApiCapabilitiesCollectionServiceLinkType {
 
 export enum CollectionLinkType {
   Items = 'items',
+  Styles = 'styles',
+  Map = 'map',
+  Tiles = 'tiles',
+}
+
+const CollectionLinkTypeAlternatives = {
+  [CollectionLinkType.Items]: ["items", "item"],
+  [CollectionLinkType.Styles]: ["http://www.opengis.net/def/rel/ogc/1.0/styles", "styles"],
+  [CollectionLinkType.Map]: ["http://www.opengis.net/def/rel/ogc/1.0/map", "map"],
+  [CollectionLinkType.Tiles]: ["http://www.opengis.net/def/rel/ogc/1.0/tilesets-map", "tilesets-map"],
 }
 
 interface FetchLinkContentOptions {
@@ -81,11 +92,13 @@ export class OgcOpenApiGetCapabilities {
   public static hasProxy() {
     return typeof OgcOpenApiGetCapabilities.proxify === 'function';
   }
+
   public static fromURL(inputRequest: string, options?: OgcOpenApiGetCapabilitiesFromURL) {
     return new Promise<OgcOpenApiCapabilitiesObject>((resolve, reject) => {
       const hostUrl = OgcOpenApiGetCapabilities.getHostURL(inputRequest);
+      const baseUrl = OgcOpenApiGetCapabilities.cleanUrl(inputRequest);
       const MyProxy = OgcOpenApiGetCapabilities.Proxify({
-        indexes: { getcapabilities: inputRequest },
+        indexes: { getcapabilities: baseUrl },
         useProxy: OgcOpenApiGetCapabilities.hasProxy(),
         requestHeaders: options.requestHeaders
       });
@@ -135,7 +148,11 @@ export class OgcOpenApiGetCapabilities {
                   const responseOpenApi =
                     responses.length >= 1 ? responses[1] : undefined;
                   const crsArray = typeof responseDataLink.crs !== "undefined" ? { crs: responseDataLink.crs } : {};
-                  const featureTypes = responseDataLink.collections.filter(c=> options && options.filterCollectionsByLinkType ? OgcOpenApiGetCapabilities.filterCollectionLinks(c.links,options.filterCollectionsByLinkType).length>0 : true).map(
+                  const foundCollections = responseDataLink.collections.filter( c =>
+                          options && options.filterCollectionsByLinkType ?
+                              OgcOpenApiGetCapabilities.filterCollectionLinks(c.links,options.filterCollectionsByLinkType).length > 0 : true
+                  )
+                      .map(
                     (collection: any) => {
                       const name =
                         typeof collection.id !== 'undefined'
@@ -154,12 +171,10 @@ export class OgcOpenApiGetCapabilities {
                           : [],
                         defaultReference: 'CRS:84',
                         links: collection.links,
-                        outputFormats: collection.links
-                          .filter(
-                            (link: any) =>
-                              link.rel === 'items' || link.rel === 'item'
-                          )
-                          .map((link: any) => link.type),
+                        outputFormats: options.filterCollectionsByLinkType ?
+                            this.filterCollectionLinks(collection.links, options.filterCollectionsByLinkType).map(link => this.detectTypeFormat(link)) :
+                            collection.links.map(link => this.detectTypeFormat(link))
+                        ,
                         extent: collection.extent,
                         ...collectionCrsObject
                       };
@@ -169,12 +184,13 @@ export class OgcOpenApiGetCapabilities {
                   // console.log(featureTypes);
                   const o: OgcOpenApiCapabilitiesObject = {
                     name: '',
-                    featureTypes: featureTypes,
+                    collections: foundCollections,
                     version: responseOpenApi ? responseOpenApi.openapi : '',
                     service: '',
                     info: responseOpenApi ? responseOpenApi.info : {},
                     ...crsArray,
                     hostUrl,
+                    baseUrl
                   };
                   resolve(o);
                 });
@@ -193,6 +209,11 @@ export class OgcOpenApiGetCapabilities {
         }
       );
     });
+  }
+
+  public static cleanUrl(inputUrl:string) {
+    const url = inputUrl.split("?")[0].replace(/\/?$/, '/');
+    return url;
   }
 
   public static getHostURL(fullUrl: string) {
@@ -245,9 +266,12 @@ export class OgcOpenApiGetCapabilities {
   ) {
     switch (linkType) {
       case CollectionLinkType.Items:
-        return links.filter(
-          (link: any) => link.rel === 'items' || link.rel === 'item'
-        );
+      case CollectionLinkType.Map:
+      case CollectionLinkType.Styles:
+      case CollectionLinkType.Tiles:
+        return links.filter((link: any) => CollectionLinkTypeAlternatives[linkType].some(e=>e===link.rel));
+      default:
+        return [];
     }
   }
 
@@ -260,5 +284,21 @@ export class OgcOpenApiGetCapabilities {
       CollectionLinkType.Items
     ).find((link) => link.type === preferedFormat);
     return dataLink ? dataLink.href : '';
+  }
+
+  private static detectTypeFormat(link: OgcOpenApiCapabilitiesCollectionServiceLinkType) {
+    if (link.type) return link.type;
+    let rel = null;
+    for (let key in CollectionLinkTypeAlternatives) {
+      if (CollectionLinkTypeAlternatives.hasOwnProperty(key)) {
+        CollectionLinkTypeAlternatives[key].some(e=>e===link.rel);
+        rel = key;
+        break;
+      }
+    }
+    if (rel) {
+      if (CollectionLinkType.Map) return "image/png";
+    }
+    return "application/json"
   }
 }
