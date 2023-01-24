@@ -138,7 +138,7 @@ class OgcOpenApiGetCollectionTiles {
                     result.json().then((data) => {
                           if (data.links.length > 0) {
                               const links = data.links.filter(l=>l.rel === "item" || l.rel === "items").map(a=>({...a, href: OgcOpenApiGetCapabilities.addHostURL(a.href, this.capabilities.hostUrl)}));
-                              if (link) {
+                              if (links) {
                                   resolve(links);
                               } else {
                                   reject({error: true, message: "Invalid"});
