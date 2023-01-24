@@ -21,22 +21,22 @@ interface TileMatrix {
     matrixHeight: number;
     tileWidth: number;
     tileHeight: number;
-    "variableMatrixWidths": {
-        "coalesce": number;
-        "minTileRow": number;
-        "maxTileRow": number;
+    variableMatrixWidths: {
+        coalesce: number;
+        minTileRow: number;
+        maxTileRow: number;
     }[]
 }
-interface TileSetData {
-    "id": string;
-    "title": string;
-    "uri": string;
-    "crs": string;
-    "orderedAxes": string[];
-    "tileMatrices": TileMatrix[];
+export interface TileSetData {
+    id: string;
+    title: string;
+    uri: string;
+    crs: string;
+    orderedAxes: string[];
+    tileMatrices: TileMatrix[];
 }
 
-interface TileSetMeta {
+export interface TileSetMeta {
     id: string;
     title: string;
     links: LinkType[];
@@ -114,7 +114,18 @@ class OgcOpenApiGetCollectionTiles {
                 reject({error: true, message: err.message});
             })
         })
+    }
 
+    public getTilesLink(
+        currentCollection: OgcOpenApiCapabilitiesCollection,
+    ) {
+        const dataLink = OgcOpenApiGetCapabilities.filterCollectionLinks(
+            currentCollection.links,
+            CollectionLinkType.Tiles
+        ).find((link) => link.type === "application/json");
+        const href = dataLink ? dataLink.href : '';
+        const url = OgcOpenApiGetCapabilities.addHostURL(href, this.capabilities.hostUrl);
+        return OgcOpenApiGetCapabilities.cleanUrl(url);
     }
 }
 
