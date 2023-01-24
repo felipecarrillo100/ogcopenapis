@@ -239,7 +239,7 @@ export class OgcOpenApiGetCapabilities {
       const MyProxy = OgcOpenApiGetCapabilities.Proxify({
         requestHeaders: options.requestHeaders,
         useProxy: OgcOpenApiGetCapabilities.hasProxy(),
-        indexes: { link: OgcOpenApiGetCapabilities.addHostURL(link.href, options?.hostUrl) },
+        indexes: { link: OgcOpenApiGetCapabilities.cleanUrl(OgcOpenApiGetCapabilities.addHostURL(link.href, options?.hostUrl)) },
       });
       fetch(MyProxy.urls.link, {
         method: 'GET',

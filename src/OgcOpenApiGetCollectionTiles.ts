@@ -122,15 +122,41 @@ class OgcOpenApiGetCollectionTiles {
 
     public getTilesLink(
         currentCollection: OgcOpenApiCapabilitiesCollection,
+        tileMatrixId: string
     ) {
-        const dataLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(
-            currentCollection.links,
-            CollectionLinkType.Tiles
-        )
-        const link = dataLinks.find((link) => link.type === "application/json");
-        const href = link ? link.href : dataLinks.length > 0 ? dataLinks[0].href : '';
-        const url = OgcOpenApiGetCapabilities.addHostURL(href, this.capabilities.hostUrl);
-        return OgcOpenApiGetCapabilities.cleanUrl(url);
+        return new Promise<LinkType[]>((resolve, reject)=>{
+            const dataLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(
+                currentCollection.links,
+                CollectionLinkType.Tiles
+            )
+            const link = dataLinks.find((link) => link.type === "application/json");
+            const href = link ? link.href : dataLinks.length > 0 ? dataLinks[0].href : '';
+            const url = OgcOpenApiGetCapabilities.addHostURL(href, this.capabilities.hostUrl);
+            const tileInfoUrl = OgcOpenApiGetCapabilities.cleanUrl(url) + tileMatrixId;
+            fetch(tileInfoUrl).then( result => {
+                if (result.status === 200) {
+                    result.json().then((data) => {
+                          if (data.links.length > 0) {
+                              const links = data.links.filter(l=>l.rel === "item" || l.rel === "items").map(a=>({...a, href: OgcOpenApiGetCapabilities.addHostURL(a.href, this.capabilities.hostUrl)}));
+                              if (link) {
+                                  resolve(links);
+                              } else {
+                                  reject({error: true, message: "Invalid"});
+                              }
+                          } else {
+                              reject({error: true, message: "Invalid"});
+                          }
+                        },
+                        ()=>{
+                            reject({error: true, message: "Not JSON data"});
+                        });
+                } else {
+                    reject({error: true, message: "Invalid response: " + result.status});
+                }
+            }, (err)=>{
+                reject({error: true, message: err.message});
+            })
+        })
     }
 }
 
