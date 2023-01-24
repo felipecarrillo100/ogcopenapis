@@ -34,6 +34,10 @@ export interface TileSetData {
     crs: string;
     orderedAxes: string[];
     tileMatrices: TileMatrix[];
+    boundingBox: {
+        lowerLeft: number[],
+        upperRight: number[],
+    }
 }
 
 export interface TileSetMeta {
@@ -119,11 +123,12 @@ class OgcOpenApiGetCollectionTiles {
     public getTilesLink(
         currentCollection: OgcOpenApiCapabilitiesCollection,
     ) {
-        const dataLink = OgcOpenApiGetCapabilities.filterCollectionLinks(
+        const dataLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(
             currentCollection.links,
             CollectionLinkType.Tiles
-        ).find((link) => link.type === "application/json");
-        const href = dataLink ? dataLink.href : '';
+        )
+        const link = dataLinks.find((link) => link.type === "application/json");
+        const href = link ? link.href : dataLinks.length > 0 ? dataLinks[0].href : '';
         const url = OgcOpenApiGetCapabilities.addHostURL(href, this.capabilities.hostUrl);
         return OgcOpenApiGetCapabilities.cleanUrl(url);
     }
