@@ -10,17 +10,21 @@ import {TileSetData} from "./OgcOpenApiGetCollectionTiles";
 
 
 export interface OgcOpenApiTilesModelOptions {
+    requestHeaders: { [p: string]: string };
     tileMatrix: TileSetData;
     baseURL: string;
     collection: string;
-    samplingMode?: RasterSamplingMode;
+    format?: string;
     dataType?: RasterDataType;
-    imageFormat?: string;
+    samplingMode?: RasterSamplingMode;
+   // requestParameters?: { [parameterName: string]: string | number | boolean | null | undefined } | null;
 }
 
 export class OgcOpenApiTilesModel extends UrlTileSetModel {
     private tileMatrix: TileSetData;
     private invertY: boolean;
+    private format: string;
+    private requestParameters: { [p: string]: string | number | boolean | null | undefined };
 
     constructor(options: OgcOpenApiTilesModelOptions) {
         const crsName = OgcOpenApiCrsTools.getReferenceName(options.tileMatrix.crs);
@@ -30,6 +34,7 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
 
         let axisX = 0;
         let axisY = 1;
+
         const orderedAxes0 = options.tileMatrix.orderedAxes[0].toUpperCase();
         if (orderedAxes0 === "LAT" || orderedAxes0 === "N" || orderedAxes0 === "S") {
             axisX = 1;
@@ -87,9 +92,12 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
             level0Rows,
             dataType: options.dataType,
             samplingMode: options.samplingMode,
+            requestHeaders: options.requestHeaders ? options.requestHeaders : {},
         }
         super(o);
-        this.invertY = invertY;
+        this.format = options.format ? options.format : "image/png"
+
+            this.invertY = invertY;
         this.tileMatrix = options.tileMatrix;
         this.modelDescriptor = {
             source: options.baseURL,
