@@ -1,3 +1,45 @@
+export interface LinkType {
+  rel: string;
+  type: string;
+  title: string;
+  href: string;
+}
+
+interface TileMatrix {
+  id: string,
+  scaleDenominator: number;
+  cellSize: number;
+  cornerOfOrigin: string;
+  pointOfOrigin: number[];
+  matrixWidth: number;
+  matrixHeight: number;
+  tileWidth: number;
+  tileHeight: number;
+  variableMatrixWidths: {
+    coalesce: number;
+    minTileRow: number;
+    maxTileRow: number;
+  }[]
+}
+export interface TileSetData {
+  id: string;
+  title: string;
+  uri: string;
+  crs: string;
+  orderedAxes: string[];
+  tileMatrices: TileMatrix[];
+  boundingBox: {
+    lowerLeft: number[],
+    upperRight: number[],
+  }
+}
+
+export interface TileSetMeta {
+  id: string;
+  title: string;
+  links: LinkType[];
+}
+
 export interface OgcOpenApiCapabilitiesObject {
   name: string;
   collections: OgcOpenApiCapabilitiesCollection[];
@@ -69,6 +111,7 @@ type ProxifierFunction = (options: {
 
 export class OgcOpenApiGetCapabilities {
   private static proxify: ProxifierFunction | undefined;
+
   public static setProxifier(f: ProxifierFunction) {
     this.proxify = f;
   }
@@ -300,5 +343,114 @@ export class OgcOpenApiGetCapabilities {
       if (CollectionLinkType.Map) return "image/png";
     }
     return "application/json"
+  }
+
+  public static fetchTileSets(capabilities: OgcOpenApiCapabilitiesObject | null) {
+    return new Promise<TileSetMeta[]>((resolve, reject)=> {
+      if (capabilities===null) reject();
+      const url = capabilities.baseUrl + "tileMatrixSets";
+
+      fetch(url, {
+        method:"GET",
+        credentials: "omit",
+        headers: {}
+      }).then( result => {
+        if (result.status === 200) {
+          result.json().then((data) => {
+                if (data.tileMatrixSets) {
+                  resolve(data.tileMatrixSets)
+                } else {
+                  reject({error: true, message: "tileMatrixSets not defined"  });
+                }
+              },
+              ()=>{
+                reject({error: true, message: "Not JSON data"});
+              });
+        } else {
+          reject({error: true, message: "Invalid response: " + result.status});
+        }
+      }, (err)=>{
+        reject({error: true, message: err.message});
+      })
+    })
+  }
+
+  public static getTilesLink (
+      capabilities: OgcOpenApiCapabilitiesObject | null,
+      currentCollection: OgcOpenApiCapabilitiesCollection,
+      tileMatrixId: string
+  ) {
+    return new Promise<LinkType[]>((resolve, reject)=>{
+      if (capabilities===null) reject();
+        const dataLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(
+          currentCollection.links,
+          CollectionLinkType.Tiles
+      )
+      const link = dataLinks.find((link) => link.type === "application/json");
+      const href = link ? link.href : dataLinks.length > 0 ? dataLinks[0].href : '';
+      const url = OgcOpenApiGetCapabilities.addHostURL(href, capabilities.hostUrl);
+      const tileInfoUrl = OgcOpenApiGetCapabilities.cleanUrl(url) + tileMatrixId;
+      fetch(tileInfoUrl).then( result => {
+        if (result.status === 200) {
+          result.json().then((data) => {
+                if (data.links.length > 0) {
+                  const links = data.links.filter(l=>l.rel === "item" || l.rel === "items").map(a=>({...a, href: OgcOpenApiGetCapabilities.addHostURL(a.href, capabilities.hostUrl)}));
+                  if (links) {
+                    resolve(links);
+                  } else {
+                    reject({error: true, message: "Invalid"});
+                  }
+                } else {
+                  reject({error: true, message: "Invalid"});
+                }
+              },
+              ()=>{
+                reject({error: true, message: "Not JSON data"});
+              });
+        } else {
+          reject({error: true, message: "Invalid response: " + result.status});
+        }
+      }, (err)=>{
+        reject({error: true, message: err.message});
+      })
+    })
+  }
+
+  public static fetchTileset(
+      capabilities: OgcOpenApiCapabilitiesObject | null,
+      tileset: TileSetMeta
+  ) {
+    return new Promise<TileSetData>((resolve, reject) =>{
+      if (capabilities===null) {
+        reject();
+        return;
+      }
+      let jsonLink = tileset.links.find(l=>l.type ? l.type==="application/json" : false) ;
+      jsonLink = jsonLink ? jsonLink : tileset.links[0];
+      const href = OgcOpenApiGetCapabilities.cleanUrl(jsonLink.href);
+      const url = OgcOpenApiGetCapabilities.addHostURL(href, capabilities.hostUrl);
+      fetch(url, {
+        method:"GET",
+        credentials: "omit",
+        headers: {}
+      }).then( result => {
+        if (result.status === 200) {
+          result.json().then((data: TileSetData) => {
+                if (typeof data.id !== "undefined" && data.tileMatrices && data.crs) {
+                  resolve(data)
+                } else {
+                  reject({error: true, message: "TileSet has invalid data"  });
+                }
+              },
+              ()=>{
+                reject({error: true, message: "Not JSON data"});
+              });
+        } else {
+          reject({error: true, message: "Invalid response: " + result.status});
+        }
+      }, (err)=>{
+        reject({error: true, message: err.message});
+      })
+    })
   }
 }

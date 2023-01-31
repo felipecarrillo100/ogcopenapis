@@ -8,7 +8,7 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
             it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by Map', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://maps.gnosis.earth/ogcapi/",{filterCollectionsByLinkType: CollectionLinkType.Map}).then(data=>{
                   //  if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
-                    expect(data.collections.length).toBe(742);
+                    expect(data.collections.length).toBe(735);
                 }, (err)=>{
                     expect(false).toBe(true);
                 })
@@ -17,7 +17,7 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
 
             it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by TileSets', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://maps.gnosis.earth/ogcapi/",{filterCollectionsByLinkType: CollectionLinkType.Tiles}).then(data=>{
-                    expect(data.collections.length).toBe(742);
+                    expect(data.collections.length).toBe(735);
                 }, (err)=>{
                     expect(false).toBe(true);
                 })
@@ -35,7 +35,7 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
             it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by Styles', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://maps.gnosis.earth/ogcapi/",{filterCollectionsByLinkType: CollectionLinkType.Styles}).then(data=>{
                     // if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
-                    expect(data.collections.length).toBe(633);
+                    expect(data.collections.length).toBe(632);
                 }, (err)=>{
                     expect(false).toBe(true);
                 })

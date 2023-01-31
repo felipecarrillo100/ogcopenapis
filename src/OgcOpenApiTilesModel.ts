@@ -6,18 +6,18 @@ import {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
 import {createBounds} from "@luciad/ria/shape/ShapeFactory";
 import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
-import {TileSetData} from "./OgcOpenApiGetCollectionTiles";
+import {TileSetData} from "./OgcOpenApiGetCapabilities";
 
 
 export interface OgcOpenApiTilesModelOptions {
-    requestHeaders: { [p: string]: string };
     tileMatrix: TileSetData;
     baseURL: string;
     collection: string;
     format?: string;
     dataType?: RasterDataType;
     samplingMode?: RasterSamplingMode;
-   // requestParameters?: { [parameterName: string]: string | number | boolean | null | undefined } | null;
+    requestHeaders?: { [p: string]: string };
+    // requestParameters?: { [parameterName: string]: string | number | boolean | null | undefined } | null;
 }
 
 export class OgcOpenApiTilesModel extends UrlTileSetModel {
