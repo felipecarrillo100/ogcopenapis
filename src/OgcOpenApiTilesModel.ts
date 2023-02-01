@@ -13,7 +13,6 @@ export interface OgcOpenApiTilesModelOptions {
     tileMatrix: TileSetData;
     baseURL: string;
     collection: string;
-    format?: string;
     dataType?: RasterDataType;
     samplingMode?: RasterSamplingMode;
     requestHeaders?: { [p: string]: string };
@@ -24,7 +23,7 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
     private tileMatrix: TileSetData;
     private invertY: boolean;
     private format: string;
-    private requestParameters: { [p: string]: string | number | boolean | null | undefined };
+    private plevel0Rows: number;
 
     constructor(options: OgcOpenApiTilesModelOptions) {
         const crsName = OgcOpenApiCrsTools.getReferenceName(options.tileMatrix.crs);
@@ -73,7 +72,7 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
             bounds =  bounds ? bounds : (reference as any).bounds;
             if (cornerOfOrigin.toUpperCase() === "TOPLEFT"){
                 invertY = true
-               // bounds = bounds ? bounds : createBounds(reference, [tm0.pointOfOrigin[axisX],tm0.matrixWidth, tm0.pointOfOrigin[axisY]-tm0.matrixHeight, tm0.matrixHeight])
+                // bounds = bounds ? bounds : createBounds(reference, [tm0.pointOfOrigin[axisX],tm0.matrixWidth, tm0.pointOfOrigin[axisY]-tm0.matrixHeight, tm0.matrixHeight])
             }
             else {
                 invertY = false
@@ -95,9 +94,9 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
             requestHeaders: options.requestHeaders ? options.requestHeaders : {},
         }
         super(o);
-        this.format = options.format ? options.format : "image/png"
+        this.plevel0Rows = level0Rows;
 
-            this.invertY = invertY;
+        this.invertY = invertY;
         this.tileMatrix = options.tileMatrix;
         this.modelDescriptor = {
             source: options.baseURL,
@@ -109,7 +108,8 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
 
     getTileURL(baseURL: string, tile: TileCoordinate): string | null {
         const tileCorrected = {...tile};
-        const maxY = Math.pow(2, tile.level) - 1;
+        //  return this.debugAsImage(tileCorrected)
+        const maxY = this.plevel0Rows * Math.pow(2, tile.level) - 1;
         tileCorrected.y = this.invertY ? maxY - tile.y : tile.y;
         const zoomLevel = this.tileMatrix.tileMatrices.find(t=>Number(t.id) === tile.level);
         const level = zoomLevel ? zoomLevel.id : tile.level.toString();
