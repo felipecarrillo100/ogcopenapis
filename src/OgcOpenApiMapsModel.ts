@@ -13,7 +13,6 @@ interface OgcOpenApiMapsModelConstructorOptions {
     samplingMode?: RasterSamplingMode;
     requestHeaders?: { [p: string]: string };
     format?: string;
-    // To be implemented
     reverseAxis?: boolean;
     datetime?: string;
     subset?: string[];
@@ -22,11 +21,14 @@ interface OgcOpenApiMapsModelConstructorOptions {
 }
 
 class OgcOpenApiMapsModel extends WMSTileSetModel {
-    public static REVERSED_PPROJECTIONS = ["EPSG:4269", "EPSG:4326", "EPSG:4267"];
+    public static REVERSED_PPROJECTIONS = ["EPSG:4269"];
 
     private format: string | undefined;
     private crs: string;
     private reverseAxis: boolean | undefined;
+    private datetime: string | undefined;
+    private subset: string[] | undefined;
+    private bgcolor: string | undefined;
 
     constructor(o: OgcOpenApiMapsModelConstructorOptions) {
         const referenceName = OgcOpenApiCrsTools.getReferenceName(o.crs)
@@ -42,21 +44,18 @@ class OgcOpenApiMapsModel extends WMSTileSetModel {
         this.crs = o.crs;
         this.format = o.format;
         this.reverseAxis = o.reverseAxis;
+
+        this.datetime = o.datetime;
+        this.subset = o.subset;
+        this.transparent = typeof o.transparent !== "undefined" ? o.transparent : true;
+        this.bgcolor = o.bgcolor;
+
         this.modelDescriptor = {
             source: o.baseURL,
             name: o.collection,
             description: "OGC Open API Maps",
             type: super.dataType
         };
-    }
-
-    public static isReversedProjection(projection:string) {
-        return OgcOpenApiMapsModel.REVERSED_PPROJECTIONS.includes(projection)
-    }
-
-
-    public swapAxes(match: any, x1: any, y1:any, x2:any, y2:any) {
-        return "BBOX=" + y1 + "," + x1 + "," + y2 + "," + x2;
     }
 
     getTileURL(baseURL: string, tile: TileCoordinate): string | null {
@@ -67,14 +66,35 @@ class OgcOpenApiMapsModel extends WMSTileSetModel {
             const url = parts[0];
             const urlParams = new URLSearchParams(queryString);
             const bbox = urlParams.get('BBOX');
-
-            // let transformedUrl =  bbox ? url + `?bbox=${newBbox}&crs=${this.crs}` : url;
-            let transformedUrl =  bbox ? url + `?bbox=${bbox}&crs=${this.crs}&bbox-crs=${this.crs}` : url;
-            if (this.format) transformedUrl += "&f="+this.format;
+            const urlParameters = {
+                bbox:bbox,
+                "bbox-crs":this.crs,
+                crs:this.crs,
+                f: this.format,
+                datetime: this.datetime,
+                subset: this.subset,
+                transparent: this.transparent,
+                bgcolor: this.transparent ? undefined : this.bgcolor
+            }
+            const query = OgcOpenApiMapsModel.createURLParameters(urlParameters);
+            const transformedUrl = url + "?" + query;
             return transformedUrl;
         } else {
             return aURL
         }
+    }
+
+    private static createURLParameters(obj:{[key:string]: any}) {
+        let str = Object.keys(obj).filter(k=>obj[k]!==undefined).map(function(key) {
+            if(Array.isArray(obj[key])) {
+                return key + '=' + obj[key].join(",")
+            }
+            if (typeof obj[key] == "boolean") {
+                return key + '=' + (obj[key]?"true":"false")
+            }
+            return key + '=' + obj[key];
+        }).join('&');
+        return str
     }
 
 }
