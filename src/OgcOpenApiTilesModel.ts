@@ -16,12 +16,8 @@ export interface OgcOpenApiTilesModelOptions {
     dataType?: RasterDataType;
     samplingMode?: RasterSamplingMode;
     requestHeaders?: { [p: string]: string };
-    // requestParameters?: { [parameterName: string]: string | number | boolean | null | undefined } | null;
-
-    // To be implemented
     transparent?: boolean;
     bgcolor?: string;
-
 }
 
 export class OgcOpenApiTilesModel extends UrlTileSetModel {
@@ -45,8 +41,6 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
             axisX = 1;
             axisY = 0;
         }
-
-        console.log(reference.axisInformation)
 
         //const tm0 = options.tileMatrix.tileMatrices.find(t=>Number(t.id)===0);
         const tm0 = options.tileMatrix.tileMatrices[0];

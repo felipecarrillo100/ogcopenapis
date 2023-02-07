@@ -21,8 +21,6 @@ interface OgcOpenApiMapsModelConstructorOptions {
 }
 
 class OgcOpenApiMapsModel extends WMSTileSetModel {
-    public static REVERSED_PPROJECTIONS = ["EPSG:4269"];
-
     private format: string | undefined;
     private crs: string;
     private reverseAxis: boolean | undefined;
@@ -71,8 +69,8 @@ class OgcOpenApiMapsModel extends WMSTileSetModel {
                 "bbox-crs":this.crs,
                 crs:this.crs,
                 f: this.format,
-                datetime: this.datetime,
-                subset: this.subset,
+                datetime: this.datetime ,
+                subset: this.subset ,
                 transparent: this.transparent,
                 bgcolor: this.transparent ? undefined : this.bgcolor
             }
