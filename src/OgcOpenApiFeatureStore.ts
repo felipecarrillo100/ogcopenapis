@@ -9,12 +9,15 @@ import { createBounds } from '@luciad/ria/shape/ShapeFactory';
 import { CoordinateReference } from '@luciad/ria/reference/CoordinateReference';
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
 import {createTransformation} from "@luciad/ria/transformation/TransformationFactory";
+import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
+import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec";
+import {GMLCodec} from "@luciad/ria/model/codec/GMLCodec";
 
-interface OAPIFeatureStoreConstructorOptions {
+export interface OgcOpenApiFeatureStoreConstructorOptions {
   dataUrl: string;
   featureUrl?: string;
   outputFormat: string;
-  useCrs84Bounds: boolean;
+  useCrs84Bounds?: boolean;
   codec: Codec;
   requestHeaders?: { [key: string]: string };
   customCrs: string;
@@ -22,7 +25,7 @@ interface OAPIFeatureStoreConstructorOptions {
   reference: CoordinateReference;
 }
 
-interface OAPIFeatureStoreQueryOptions {
+export interface OgcOpenApiFeatureStoreQueryOptions {
   f?:string;
   limit?: number;
   offset?: number;
@@ -58,7 +61,7 @@ interface OAPIFeatureStoreQueryOptions {
   wkhrRemark?: string;
 }
 
-interface OgcOpenApiCodecDecodeOptions extends CodecDecodeOptions {
+interface OgcOpenApiFeaturesCodecDecodeOptions extends CodecDecodeOptions {
   contentCrs?: string;
   contentLength?: number;
 }
@@ -77,7 +80,7 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
   private useCrs84Bounds: boolean;
   private featureUrl: string;
 
-  constructor(options: OAPIFeatureStoreConstructorOptions) {
+  constructor(options: OgcOpenApiFeatureStoreConstructorOptions) {
     // console.log(options);
     this.useCrs84Bounds = typeof options.useCrs84Bounds !== "undefined" ? options.useCrs84Bounds : false;
     this.dataUrl = options.dataUrl;
@@ -117,7 +120,7 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
   get(id: number | string, optionsInput?: any): Promise<Feature> {
     return new Promise((resolve) => {
       const options = optionsInput ? { ...optionsInput } : {};
-      options.query = (options.query ? options.query : {}) as OAPIFeatureStoreQueryOptions;
+      options.query = (options.query ? options.query : {}) as OgcOpenApiFeatureStoreQueryOptions;
       options.query.f = options.query.f ? options.query.f : this.dataFormat;
       options.query.crs = options.query.crs ? options.query.crs : this.customCrs;
       // Mod starta
@@ -147,14 +150,14 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
         if (response.status === 200) {
           response.text().then((content) => {
             let contentType = response.headers.get('Content-Type');
-            const contentCrs = response.headers.get('content-crs');
+            const contentCrs = response.headers.get('content-crs') ? response.headers.get('content-crs') : this.customCrs;
             const contentLengthStr = response.headers.get('Content-Length');
             const contentLength = Number(contentLengthStr);
             contentType = contentType ? contentType : 'text/plain';
             content = content
               .split('http://www.opengis.net/def/crs/OGC/1.3/CRS84')
               .join('urn:ogc:def:crs:OGC:1.3:CRS84');
-            const codecOptions: OgcOpenApiCodecDecodeOptions = {
+            const codecOptions: OgcOpenApiFeaturesCodecDecodeOptions = {
               content, contentType, contentCrs, contentLength
             };
             const cursor = this.codec.decode(codecOptions);
@@ -171,7 +174,7 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  query(receivedQuery?: OAPIFeatureStoreQueryOptions, options?: any): Cursor | Promise<Cursor> {
+  query(receivedQuery?: OgcOpenApiFeatureStoreQueryOptions, options?: any): Cursor | Promise<Cursor> {
     return new Promise((resolve) => {
       const query = receivedQuery ? { ...receivedQuery } : {};
       query.f = query.f ? query.f : this.dataFormat;
@@ -210,18 +213,23 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
         if (response.status === 200) {
           response.text().then((content) => {
             let contentType = response.headers.get('Content-Type');
-            const contentCrs = response.headers.get('content-crs');
+            const contentCrs = response.headers.get('content-crs') ? response.headers.get('content-crs') : this.customCrs;
             const contentLengthStr = response.headers.get('Content-Length');
             const contentLength = Number(contentLengthStr);
             contentType = contentType ? contentType : 'text/plain';
             content = content
               .split('srsName="http://www.opengis.net/def/crs/OGC/1.3/CRS84"')
               .join('srsName="urn:ogc:def:crs:OGC:1.3:CRS84"');
-            const codecOptions: OgcOpenApiCodecDecodeOptions = {
+            const codecOptions: OgcOpenApiFeaturesCodecDecodeOptions = {
               content, contentType, contentCrs, contentLength
             };
-            const cursor = this.codec.decode(codecOptions);
-            resolve(cursor);
+            if (this.codec instanceof GeoJsonCodec || this.codec instanceof GMLCodec) {
+              const cursor = this.codec.decode({...codecOptions, reference: getReference(OgcOpenApiCrsTools.getReferenceName(contentCrs))});
+              resolve(cursor);
+            } else {
+              const cursor = this.codec.decode(codecOptions);
+              resolve(cursor);
+            }
           });
         }
       });
@@ -230,10 +238,10 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
 
   spatialQuery(
     bounds?: Bounds,
-    receivedQuery?: OAPIFeatureStoreQueryOptions,
+    receivedQuery?: OgcOpenApiFeatureStoreQueryOptions,
     options?: any
   ): Promise<Cursor> | Cursor {
-    const query = (receivedQuery ? { ...receivedQuery } : {}) as OAPIFeatureStoreQueryOptions;
+    const query = (receivedQuery ? { ...receivedQuery } : {}) as OgcOpenApiFeatureStoreQueryOptions;
     delete query.bbox;
     query.limit = query.limit ? query.limit : undefined;
     if (bounds) {
@@ -296,5 +304,5 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
 }
 
 export {
-  OgcOpenApiCodecDecodeOptions
+  OgcOpenApiFeaturesCodecDecodeOptions
 }

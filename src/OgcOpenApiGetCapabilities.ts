@@ -148,14 +148,14 @@ export class OgcOpenApiGetCapabilities {
               const promiseArray = [];
               if (linkToData) {
                 const collectionsPromise = OgcOpenApiGetCapabilities.fetchLinkContentAsJSON(
-                  linkToData,
+                    linkToData,
                     {credentials: options.credentials, requestHeaders: options.requestHeaders},
                     serverOptions
                 );
                 promiseArray.push(collectionsPromise);
                 if (linkToApi) {
                   const apiPromise = OgcOpenApiGetCapabilities.fetchLinkContentAsJSON(
-                    linkToApi,
+                      linkToApi,
                       {credentials: options.credentials, requestHeaders: options.requestHeaders},
                       serverOptions
                   );
@@ -190,7 +190,8 @@ export class OgcOpenApiGetCapabilities {
                         defaultReference: 'CRS:84',
                         links: collection.links,
                         outputFormats: options.filterCollectionsByLinkType ?
-                            this.filterCollectionLinks(collection.links, options.filterCollectionsByLinkType).map(link => this.detectTypeFormat(link)) :
+                            this.filterCollectionLinks(collection.links, options.filterCollectionsByLinkType).map(link => this.detectTypeFormat(link))
+                            :
                             collection.links.map(link => this.detectTypeFormat(link))
                         ,
                         extent: collection.extent,
@@ -202,7 +203,7 @@ export class OgcOpenApiGetCapabilities {
                   // console.log(featureTypes);
                   const o: OgcOpenApiCapabilitiesObject = {
                     name: '',
-                    collections: foundCollections,
+                    collections: foundCollections.map(col=>({...col, crs: col.crs ? col.crs : [], links: col.links.map(l=>({...l, href: serverOptions.complete(l.href)}))})),
                     version: responseOpenApi ? responseOpenApi.openapi : '',
                     service: '',
                     info: responseOpenApi ? responseOpenApi.info : {},
@@ -333,7 +334,7 @@ export class OgcOpenApiGetCapabilities {
     return 0;
   }
 
-  public static fetchTileSets(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}) {
+  private static fetchTileSets(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}) {
     return new Promise<TileSetMeta[]>((resolve, reject)=> {
       if (capabilities===null) reject();
       const url = capabilities.baseUrl + "tileMatrixSets";
@@ -346,7 +347,7 @@ export class OgcOpenApiGetCapabilities {
         if (result.status === 200) {
           result.json().then((data) => {
                 if (data.tileMatrixSets) {
-                  resolve(data.tileMatrixSets)
+                  resolve(data.tileMatrixSets.map(tml=>({...tml, href: capabilities.serverOptions.complete(tml.href)})))
                 } else {
                   reject({error: true, message: "tileMatrixSets not defined"  });
                 }

@@ -35,6 +35,7 @@ class OgcOpenApiFetchTools {
     }
 
     public static addHostURL(url: string, HostUrl?: string) {
+        if (typeof url === "undefined") return url;
         const hostUrl = HostUrl ? HostUrl : "";
         if (url.startsWith("http://") ||  url.startsWith("https://")) {
             return url;
