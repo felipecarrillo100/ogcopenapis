@@ -1,3 +1,7 @@
+import {FetchServerOptions, OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
+const SCALE_DENOMINATOR_TOLERANCE = 1e-8;
+
+type RequestHeaders = {[headerName: string]: string;} | null
 export interface LinkType {
   rel: string;
   type: string;
@@ -47,8 +51,8 @@ export interface OgcOpenApiCapabilitiesObject {
   service: string;
   info: any;
   crs?: any[];
-  hostUrl: string;
   baseUrl: string;
+  serverOptions: FetchServerOptions;
 }
 
 export interface OgcOpenApiCapabilitiesCollection {
@@ -100,56 +104,25 @@ export interface OgcOpenApiGetCapabilitiesFromURL {
   requestHeaders?: {
     [headerName: string]: string;
   } | null;
+  proxify?: (url: string) => {
+    url: string;
+    fetchOptions: RequestInit;
+  }
 }
 
-// type ProxifierFunction = (s: string) => string;
-type ProxifierFunction = (options: {
-  indexes: { [key: string]: string };
-  useProxy: boolean;
-  requestHeaders?: { [key: string]: string };
-}) => { urls: { [key: string]: string }; headers: { [key: string]: string } };
-
 export class OgcOpenApiGetCapabilities {
-  private static proxify: ProxifierFunction | undefined;
-
-  public static setProxifier(f: ProxifierFunction) {
-    this.proxify = f;
-  }
-
-  public static resetProxifier() {
-    this.proxify = undefined;
-  }
-
-  public static Proxify(options: {
-    indexes: { [key: string]: string };
-    useProxy: boolean;
-    requestHeaders?: { [key: string]: string };
-  }) {
-    if (typeof this.proxify === 'function') {
-      return this.proxify(options);
-    } else {
-      return { urls: options.indexes, headers: options.requestHeaders ? options.requestHeaders : {} };
-    }
-  }
-
-  public static hasProxy() {
-    return typeof OgcOpenApiGetCapabilities.proxify === 'function';
-  }
 
   public static fromURL(inputRequest: string, options?: OgcOpenApiGetCapabilitiesFromURL) {
     return new Promise<OgcOpenApiCapabilitiesObject>((resolve, reject) => {
-      const hostUrl = OgcOpenApiGetCapabilities.getHostURL(inputRequest);
-      const baseUrl = OgcOpenApiGetCapabilities.cleanUrl(inputRequest);
-      const MyProxy = OgcOpenApiGetCapabilities.Proxify({
-        indexes: { getcapabilities: baseUrl },
-        useProxy: OgcOpenApiGetCapabilities.hasProxy(),
-        requestHeaders: options.requestHeaders
-      });
-      fetch(MyProxy.urls.getcapabilities, {
+      const baseUrl = OgcOpenApiFetchTools.cleanUrl(inputRequest);
+      const requestUrl = OgcOpenApiFetchTools.cleanUrl(inputRequest);
+      const serverOptions = OgcOpenApiFetchTools.createFetchOptions({originalUrl: requestUrl, proxify: options?.proxify});
+
+      OgcOpenApiFetchTools.fetch(requestUrl, {
         method: 'GET',
-        credentials: options.credentials ? "same-origin" : "omit",
-        headers: MyProxy.headers,
-      }).then(
+        credentials: options?.credentials ? "same-origin" : "omit",
+        headers: options? options.requestHeaders: {},
+      }, serverOptions).then(
         (response) => {
           if (response.status === 200) {
             response.json().then((jsonObject) => {
@@ -176,13 +149,15 @@ export class OgcOpenApiGetCapabilities {
               if (linkToData) {
                 const collectionsPromise = OgcOpenApiGetCapabilities.fetchLinkContentAsJSON(
                   linkToData,
-                    {hostUrl}
+                    {credentials: options.credentials, requestHeaders: options.requestHeaders},
+                    serverOptions
                 );
                 promiseArray.push(collectionsPromise);
                 if (linkToApi) {
                   const apiPromise = OgcOpenApiGetCapabilities.fetchLinkContentAsJSON(
                     linkToApi,
-                      {hostUrl}
+                      {credentials: options.credentials, requestHeaders: options.requestHeaders},
+                      serverOptions
                   );
                   promiseArray.push(apiPromise);
                 }
@@ -232,7 +207,7 @@ export class OgcOpenApiGetCapabilities {
                     service: '',
                     info: responseOpenApi ? responseOpenApi.info : {},
                     ...crsArray,
-                    hostUrl,
+                    serverOptions: serverOptions,
                     baseUrl
                   };
                   resolve(o);
@@ -254,41 +229,9 @@ export class OgcOpenApiGetCapabilities {
     });
   }
 
-  public static cleanUrl(inputUrl:string) {
-    const url = inputUrl.split("?")[0].replace(/\/?$/, '/');
-    return url;
-  }
-
-  public static getHostURL(fullUrl: string) {
-    if (!fullUrl.startsWith("http")) return "";
-      const pathArray = fullUrl.split( '/' );
-      const protocol = pathArray[0];
-      const host = pathArray[2];
-      return protocol + '//' + host;
-  }
-
-  public static addHostURL(url: string, HostUrl?: string) {
-    const hostUrl = HostUrl ? HostUrl : "";
-    if (url.startsWith("http://") ||  url.startsWith("https://")) {
-      return url;
-    } else {
-      if (url.startsWith("/")) return hostUrl + url;
-    }
-    return hostUrl + "/" + url;
-  }
-
-  private static fetchLinkContentAsJSON(link: OgcOpenApiCapabilitiesCollectionServiceLinkType, options?: FetchLinkContentOptions) {
+  private static fetchLinkContentAsJSON(link: OgcOpenApiCapabilitiesCollectionServiceLinkType, options: {credentials: boolean, requestHeaders: RequestHeaders}, serverOptions?: FetchServerOptions) {
     return new Promise((resolve) => {
-      const MyProxy = OgcOpenApiGetCapabilities.Proxify({
-        requestHeaders: options.requestHeaders,
-        useProxy: OgcOpenApiGetCapabilities.hasProxy(),
-        indexes: { link: OgcOpenApiGetCapabilities.cleanUrl(OgcOpenApiGetCapabilities.addHostURL(link.href, options?.hostUrl)) },
-      });
-      fetch(MyProxy.urls.link, {
-        method: 'GET',
-        credentials: options.credentials ? "same-origin" : "omit",
-        headers: MyProxy.headers,
-      }).then(
+      OgcOpenApiFetchTools.fetch(link.href, {method: "GET", credentials: options.credentials ? "same-origin":"omit", headers: options.requestHeaders}, serverOptions).then(
         (result) => {
           if (result.status === 200) {
             result.json().then((json) => resolve(json));
@@ -345,16 +288,61 @@ export class OgcOpenApiGetCapabilities {
     return "application/json"
   }
 
-  public static fetchTileSets(capabilities: OgcOpenApiCapabilitiesObject | null) {
+  public static fetchTileSetsInFull(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}) {
+    return new Promise<TileSetData[]>((resolve, reject)=> {
+      this.fetchTileSets(capabilities, options).then((tileSetMetaArray)=>{
+        const promises = tileSetMetaArray.map(tml=>this.fetchTileset(capabilities,tml,options));
+        Promise.all(promises).then((arr)=>{
+          resolve(arr);
+        })
+      })
+    });
+  }
+
+  public static getQuadTreeCompatibleLevelOffset(tileMatrixSet: TileSetData) {
+    const levels = tileMatrixSet.tileMatrices;
+    const reference = levels[levels.length - 1];
+
+    for (let level = levels.length - 2; level >= 0; level--) {
+      const current = levels[level];
+
+      // tslint:disable-next-line:no-bitwise
+      const multiplier = 1 << (levels.length - level - 1);
+
+      const errorMargin = current.scaleDenominator * SCALE_DENOMINATOR_TOLERANCE;
+      if (Math.abs(current.scaleDenominator - reference.scaleDenominator * multiplier) > errorMargin) {
+        return level + 1;
+      }
+
+      if (current.pointOfOrigin[0] !== reference.pointOfOrigin[0]) {
+        return level + 1;
+      }
+
+      if (current.tileWidth !== reference.tileWidth || current.tileHeight !== reference.tileHeight) {
+        return level + 1;
+      }
+
+      if (typeof current.variableMatrixWidths!=="undefined") {
+        return level + 1;
+      }
+
+      if (current.matrixWidth !== (reference.matrixWidth / multiplier) || current.matrixHeight !== (reference.matrixHeight / multiplier)) {
+        return level + 1;
+      }
+    }
+    return 0;
+  }
+
+  public static fetchTileSets(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}) {
     return new Promise<TileSetMeta[]>((resolve, reject)=> {
       if (capabilities===null) reject();
       const url = capabilities.baseUrl + "tileMatrixSets";
 
-      fetch(url, {
-        method:"GET",
-        credentials: "omit",
-        headers: {}
-      }).then( result => {
+      OgcOpenApiFetchTools.fetch(url, {
+        method: "GET",
+        credentials: options?.credentials ? "same-origin" : "omit",
+        headers: options?.requestHeaders ? options.requestHeaders : {}
+      }, capabilities.serverOptions).then(result => {
         if (result.status === 200) {
           result.json().then((data) => {
                 if (data.tileMatrixSets) {
@@ -378,7 +366,8 @@ export class OgcOpenApiGetCapabilities {
   public static getTilesLink (
       capabilities: OgcOpenApiCapabilitiesObject | null,
       currentCollection: OgcOpenApiCapabilitiesCollection,
-      tileMatrixId: string
+      tileMatrixId: string,
+      options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
   ) {
     return new Promise<LinkType[]>((resolve, reject)=>{
       if (capabilities===null) reject();
@@ -388,13 +377,16 @@ export class OgcOpenApiGetCapabilities {
       )
       const link = dataLinks.find((link) => link.type === "application/json");
       const href = link ? link.href : dataLinks.length > 0 ? dataLinks[0].href : '';
-      const url = OgcOpenApiGetCapabilities.addHostURL(href, capabilities.hostUrl);
-      const tileInfoUrl = OgcOpenApiGetCapabilities.cleanUrl(url) + tileMatrixId;
-      fetch(tileInfoUrl).then( result => {
+      const tileInfoUrl = OgcOpenApiFetchTools.cleanUrl(href) + tileMatrixId;
+      OgcOpenApiFetchTools.fetch(tileInfoUrl, {
+        method:"GET",
+        credentials: options?.credentials ? "same-origin" : "omit",
+        headers: options?.requestHeaders ? options?.requestHeaders : {}
+      }, capabilities.serverOptions).then(result => {
         if (result.status === 200) {
           result.json().then((data) => {
                 if (data.links.length > 0) {
-                  const links = data.links.filter(l=>l.rel === "item" || l.rel === "items").map(a=>({...a, href: OgcOpenApiGetCapabilities.addHostURL(a.href, capabilities.hostUrl)}));
+                  const links = data.links.filter(l=>l.rel === "item" || l.rel === "items").map(a=>({...a, href: capabilities.serverOptions.complete(a.href)}));
                   if (links) {
                     resolve(links);
                   } else {
@@ -418,7 +410,8 @@ export class OgcOpenApiGetCapabilities {
 
   public static fetchTileset(
       capabilities: OgcOpenApiCapabilitiesObject | null,
-      tileset: TileSetMeta
+      tileset: TileSetMeta,
+      options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
   ) {
     return new Promise<TileSetData>((resolve, reject) =>{
       if (capabilities===null) {
@@ -427,13 +420,12 @@ export class OgcOpenApiGetCapabilities {
       }
       let jsonLink = tileset.links.find(l=>l.type ? l.type==="application/json" : false) ;
       jsonLink = jsonLink ? jsonLink : tileset.links[0];
-      const href = OgcOpenApiGetCapabilities.cleanUrl(jsonLink.href);
-      const url = OgcOpenApiGetCapabilities.addHostURL(href, capabilities.hostUrl);
-      fetch(url, {
-        method:"GET",
-        credentials: "omit",
-        headers: {}
-      }).then( result => {
+      const href = OgcOpenApiFetchTools.cleanUrl(jsonLink.href);
+      OgcOpenApiFetchTools.fetch(href, {
+        method: "GET",
+        credentials: options?.credentials ? "same-origin" : "omit",
+        headers: options? options.requestHeaders : {}
+      }, capabilities.serverOptions).then(result => {
         if (result.status === 200) {
           result.json().then((data: TileSetData) => {
                 if (typeof data.id !== "undefined" && data.tileMatrices && data.crs) {

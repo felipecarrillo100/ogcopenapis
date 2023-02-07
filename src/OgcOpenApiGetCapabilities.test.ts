@@ -2,6 +2,7 @@ import {describe, expect, it} from '@jest/globals';
 import "isomorphic-fetch";
 
 import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapabilities";
+import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
 
         describe('OgcOpenApiGetCapabilities',  () => {
 
@@ -88,32 +89,32 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
                 })
             });
 
-            it('OgcOpenApiGetCapabilities.getHostURL relative url', async () => {
-                expect(OgcOpenApiGetCapabilities.getHostURL("../api/user/proxy/auto_1674068062840")).toEqual("")
+            it('OgcOpenApiFetchTools.getHostURL relative url', async () => {
+                expect(OgcOpenApiFetchTools.getHostURL("../api/user/proxy/auto_1674068062840")).toEqual("")
             });
 
-            it('OgcOpenApiGetCapabilities.getHostURL full url', async () => {
-                expect(OgcOpenApiGetCapabilities.getHostURL("https://demo.pygeoapi.io/master2/")).toEqual("https://demo.pygeoapi.io")
+            it('OgcOpenApiFetchTools.getHostURL full url', async () => {
+                expect(OgcOpenApiFetchTools.getHostURL("https://demo.pygeoapi.io/master2/")).toEqual("https://demo.pygeoapi.io")
             });
 
-            it('OgcOpenApiGetCapabilities.getHostURL localhost', async () => {
-                expect(OgcOpenApiGetCapabilities.getHostURL("http://localhost:8080/api/user/proxy/auto_1674072985294_1")).toEqual("http://localhost:8080")
+            it('OgcOpenApiFetchTools.getHostURL localhost', async () => {
+                expect(OgcOpenApiFetchTools.getHostURL("http://localhost:8080/api/user/proxy/auto_1674072985294_1")).toEqual("http://localhost:8080")
             });
 
             it('OgcOpenApiGetCapabilities.cleanUrl with api/?f=json', async () => {
-                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/api/?f=json")).toEqual("http://localhost:8080/api/")
+                expect(OgcOpenApiFetchTools.cleanUrl("http://localhost:8080/api/?f=json")).toEqual("http://localhost:8080/api/")
             });
             it('OgcOpenApiGetCapabilities.cleanUrl with api?f=json', async () => {
-                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/api?f=json")).toEqual("http://localhost:8080/api/")
+                expect(OgcOpenApiFetchTools.cleanUrl("http://localhost:8080/api?f=json")).toEqual("http://localhost:8080/api/")
             });
             it('OgcOpenApiGetCapabilities.cleanUrl with api/', async () => {
-                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/api/")).toEqual("http://localhost:8080/api/")
+                expect(OgcOpenApiFetchTools.cleanUrl("http://localhost:8080/api/")).toEqual("http://localhost:8080/api/")
             });
             it('OgcOpenApiGetCapabilities.cleanUrl with /api', async () => {
-                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/api")).toEqual("http://localhost:8080/api/")
+                expect(OgcOpenApiFetchTools.cleanUrl("http://localhost:8080/api")).toEqual("http://localhost:8080/api/")
             });
             it('OgcOpenApiGetCapabilities.cleanUrl with some/api/?f=json', async () => {
-                expect(OgcOpenApiGetCapabilities.cleanUrl("http://localhost:8080/some/api/?f=json")).toEqual("http://localhost:8080/some/api/")
+                expect(OgcOpenApiFetchTools.cleanUrl("http://localhost:8080/some/api/?f=json")).toEqual("http://localhost:8080/some/api/")
             });
 
         });
