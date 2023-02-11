@@ -1,10 +1,9 @@
+import {ProxifyFunction} from "./OgcOpenApiGetCapabilities";
+
 interface ExtFetchOptions {
     originalUrl: string;
     complete?: (url: string) => string;
-    proxify?: (url: string) => {
-        url: string;
-        fetchOptions: RequestInit;
-    }
+    proxify?: ProxifyFunction
 }
 export interface FetchServerOptions {
     proxy: (url: string, fetchOptions) => { fetchOptions: any; url: string };

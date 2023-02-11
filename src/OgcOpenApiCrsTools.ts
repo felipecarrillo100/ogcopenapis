@@ -4,7 +4,10 @@ class OgcOpenApiCrsTools {
      * @param uriOrName
      * @private
      */
-    public static getReferenceName(uriOrName: string) {
+    public static getReferenceName(uriOrNameI: string) {
+        if (typeof uriOrNameI === "undefined") return uriOrNameI;
+        const uriOrName = uriOrNameI.replace(/[<>]/g, '');
+
         if (!uriOrName.startsWith('http')) {
             return uriOrName;
         }

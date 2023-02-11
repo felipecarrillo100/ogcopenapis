@@ -12,6 +12,8 @@ import {createTransformation} from "@luciad/ria/transformation/TransformationFac
 import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec";
 import {GMLCodec} from "@luciad/ria/model/codec/GMLCodec";
+import {ProxifyFunction} from "./OgcOpenApiGetCapabilities";
+import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
 
 export interface OgcOpenApiFeatureStoreConstructorOptions {
   dataUrl: string;
@@ -19,10 +21,12 @@ export interface OgcOpenApiFeatureStoreConstructorOptions {
   outputFormat: string;
   useCrs84Bounds?: boolean;
   codec: Codec;
+  credentials?: boolean;
   requestHeaders?: { [key: string]: string };
   customCrs: string;
   extent?: { spatial: { bbox: any[] } };
   reference: CoordinateReference;
+  proxify?: ProxifyFunction
 }
 
 export interface OgcOpenApiFeatureStoreQueryOptions {
@@ -79,6 +83,9 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
   private outputFormat: string;
   private useCrs84Bounds: boolean;
   private featureUrl: string;
+  private proxy: ProxifyFunction;
+  private credentials: boolean;
+  private serverOptions: { proxy: (url: string, fetchOptions) => { fetchOptions: any; url: string }; hostname: string; complete: (url: string) => string };
 
   constructor(options: OgcOpenApiFeatureStoreConstructorOptions) {
     // console.log(options);
@@ -96,6 +103,11 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
     this.eventedSupport = new EventedSupport();
     this.requestHeaders = options.requestHeaders ? options.requestHeaders : {};
     this.reference = options.reference;
+    this.proxy = options.proxify;
+    this.credentials = options.credentials;
+
+    this.serverOptions = OgcOpenApiFetchTools.createFetchOptions({originalUrl: this.dataUrl, proxify: options.proxify});
+
     if (
       options.extent &&
       options.extent.spatial &&
@@ -143,10 +155,12 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
       }
 
       const headers = { ...this.requestHeaders, Accept: accept };
-      fetch(request, {
+
+      OgcOpenApiFetchTools.fetch(request, {
         method: 'GET',
+        credentials: this.credentials ? "same-origin" : "omit",
         headers,
-      }).then((response) => {
+      }, this.serverOptions).then((response) => {
         if (response.status === 200) {
           response.text().then((content) => {
             let contentType = response.headers.get('Content-Type');
@@ -206,10 +220,11 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
 
       const headers = { ...this.requestHeaders, Accept: accept };
       // const headers = { ...this.requestHeaders };
-      fetch(request, {
+      OgcOpenApiFetchTools.fetch(request, {
         method: 'GET',
+        credentials: this.credentials ? "same-origin": "omit",
         headers,
-      }).then((response) => {
+      }, this.serverOptions).then((response) => {
         if (response.status === 200) {
           response.text().then((content) => {
             let contentType = response.headers.get('Content-Type');

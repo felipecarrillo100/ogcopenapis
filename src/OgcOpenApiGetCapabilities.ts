@@ -98,16 +98,18 @@ interface FetchLinkContentOptions {
   } | null;
 }
 
+export type ProxifyFunction = (url: string, fetchOptions: RequestInit) => {
+  url: string;
+  fetchOptions: RequestInit;
+}
+
 export interface OgcOpenApiGetCapabilitiesFromURL {
   filterCollectionsByLinkType?: CollectionLinkType
   credentials?: boolean;
   requestHeaders?: {
     [headerName: string]: string;
   } | null;
-  proxify?: (url: string) => {
-    url: string;
-    fetchOptions: RequestInit;
-  }
+  proxify?: ProxifyFunction
 }
 
 export class OgcOpenApiGetCapabilities {

@@ -4,6 +4,7 @@ import {WMSTileSetModel} from "@luciad/ria/model/tileset/WMSTileSetModel";
 import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
 import {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate";
+import {ProxifyFunction} from "./OgcOpenApiGetCapabilities";
 
 interface OgcOpenApiMapsModelConstructorOptions {
     crs: string;
@@ -11,6 +12,7 @@ interface OgcOpenApiMapsModelConstructorOptions {
     collection: string;
     dataType?: RasterDataType;
     samplingMode?: RasterSamplingMode;
+    credentials?: boolean;
     requestHeaders?: { [p: string]: string };
     format?: string;
     reverseAxis?: boolean;
@@ -18,6 +20,8 @@ interface OgcOpenApiMapsModelConstructorOptions {
     subset?: string[];
     transparent?: boolean;
     bgcolor?: string;
+
+    proxify?: ProxifyFunction
 }
 
 class OgcOpenApiMapsModel extends WMSTileSetModel {
@@ -27,6 +31,7 @@ class OgcOpenApiMapsModel extends WMSTileSetModel {
     private datetime: string | undefined;
     private subset: string[] | undefined;
     private bgcolor: string | undefined;
+    private proxy: ProxifyFunction;
 
     constructor(o: OgcOpenApiMapsModelConstructorOptions) {
         const referenceName = OgcOpenApiCrsTools.getReferenceName(o.crs)
@@ -37,6 +42,7 @@ class OgcOpenApiMapsModel extends WMSTileSetModel {
             layers: [o.collection],
             dataType: o.dataType,
             samplingMode: o.samplingMode,
+            credentials: o.credentials,
             requestHeaders: o.requestHeaders
         });
         this.crs = o.crs;
@@ -47,6 +53,8 @@ class OgcOpenApiMapsModel extends WMSTileSetModel {
         this.subset = o.subset;
         this.transparent = typeof o.transparent !== "undefined" ? o.transparent : true;
         this.bgcolor = o.bgcolor;
+
+        this.proxy = o.proxify;
 
         this.modelDescriptor = {
             source: o.baseURL,
@@ -75,7 +83,11 @@ class OgcOpenApiMapsModel extends WMSTileSetModel {
                 bgcolor: this.transparent ? undefined : this.bgcolor
             }
             const query = OgcOpenApiMapsModel.createURLParameters(urlParameters);
-            const transformedUrl = url + "?" + query;
+            let transformedUrl = url + "?" + query;
+            if (typeof this.proxy === "function") {
+                const proxyfied = this.proxy(transformedUrl, {});
+                transformedUrl = proxyfied.url;
+            }
             return transformedUrl;
         } else {
             return aURL

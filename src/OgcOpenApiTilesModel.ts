@@ -6,7 +6,7 @@ import {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
 import {createBounds} from "@luciad/ria/shape/ShapeFactory";
 import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
-import {TileSetData} from "./OgcOpenApiGetCapabilities";
+import {ProxifyFunction, TileSetData} from "./OgcOpenApiGetCapabilities";
 
 
 export interface OgcOpenApiTilesModelOptions {
@@ -15,9 +15,12 @@ export interface OgcOpenApiTilesModelOptions {
     collection: string;
     dataType?: RasterDataType;
     samplingMode?: RasterSamplingMode;
+    credentials?: boolean;
     requestHeaders?: { [p: string]: string };
     transparent?: boolean;
     bgcolor?: string;
+
+    proxify?: ProxifyFunction
 }
 
 export class OgcOpenApiTilesModel extends UrlTileSetModel {
@@ -26,6 +29,7 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
     private plevel0Rows: number;
     private transparent: boolean;
     private bgcolor: string | undefined;
+    private proxy: ProxifyFunction;
 
     constructor(options: OgcOpenApiTilesModelOptions) {
         const crsName = OgcOpenApiCrsTools.getReferenceName(options.tileMatrix.crs);
@@ -91,6 +95,7 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
             level0Rows,
             dataType: options.dataType,
             samplingMode: options.samplingMode,
+            credentials: options.credentials,
             requestHeaders: options.requestHeaders ? options.requestHeaders : {},
         }
         super(o);
@@ -99,6 +104,9 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
         this.bgcolor = options.bgcolor;
         this.invertY = invertY;
         this.tileMatrix = options.tileMatrix;
+
+        this.proxy = options.proxify;
+
         this.modelDescriptor = {
             source: options.baseURL,
             name: options.collection,
@@ -121,7 +129,12 @@ export class OgcOpenApiTilesModel extends UrlTileSetModel {
         }
         const query = OgcOpenApiTilesModel.createURLParameters(urlParameters);
         const targetUrl = baseURL.replace("{tileMatrix}",level).replace("{tileRow}", tileCorrected.y.toString()).replace("{tileCol}", tileCorrected.x.toString());
-        return targetUrl + (query && query!=="" ) ? targetUrl + "?"+query : targetUrl;
+        let tileUrl =  targetUrl + (query && query!=="" ) ? targetUrl + "?"+query : targetUrl;
+        if (typeof this.proxy === "function") {
+            const proxyfied = this.proxy(tileUrl, {});
+            tileUrl = proxyfied.url;
+        }
+        return tileUrl
     }
 
     debugAsImage(tileCorrected: TileCoordinate) {
