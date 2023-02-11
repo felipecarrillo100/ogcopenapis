@@ -5,8 +5,12 @@ class OgcOpenApiCrsTools {
      * @private
      */
     public static getReferenceName(uriOrNameI: string) {
-        if (typeof uriOrNameI === "undefined") return uriOrNameI;
-        const uriOrName = uriOrNameI.replace(/[<>]/g, '');
+        let uriOrName;
+        if (typeof uriOrNameI === "undefined") {
+            uriOrName = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+        } else {
+            uriOrName = uriOrNameI.replace(/[<>]/g, '');
+        }
 
         if (!uriOrName.startsWith('http')) {
             return uriOrName;
