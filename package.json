@@ -1,6 +1,6 @@
 {
   "name": "ogcopenapis",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Implements OGC OPEN API Features/Maps/Tiles capabilities and models for LuciadRIA",
   "files": [
     "lib/"
