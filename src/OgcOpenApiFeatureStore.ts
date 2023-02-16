@@ -16,6 +16,7 @@ import {ProxifyFunction} from "./OgcOpenApiGetCapabilities";
 import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
 
 export interface OgcOpenApiFeatureStoreConstructorOptions {
+  swapAxes?: string[];
   dataUrl: string;
   featureUrl?: string;
   outputFormat: string;
@@ -23,9 +24,9 @@ export interface OgcOpenApiFeatureStoreConstructorOptions {
   codec: Codec;
   credentials?: boolean;
   requestHeaders?: { [key: string]: string };
-  customCrs: string;
   extent?: { spatial: { bbox: any[] } };
   reference: CoordinateReference;
+  crs: string;
   proxify?: ProxifyFunction
 }
 
@@ -86,9 +87,11 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
   private proxy: ProxifyFunction;
   private credentials: boolean;
   private serverOptions: { proxy: (url: string, fetchOptions) => { fetchOptions: any; url: string }; hostname: string; complete: (url: string) => string };
+  private swapAxes: string[] | undefined;
 
   constructor(options: OgcOpenApiFeatureStoreConstructorOptions) {
     // console.log(options);
+    this.swapAxes = options.swapAxes;
     this.useCrs84Bounds = typeof options.useCrs84Bounds !== "undefined" ? options.useCrs84Bounds : false;
     this.dataUrl = options.dataUrl;
     this.outputFormat = options.outputFormat;
@@ -98,7 +101,7 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
 
     this.baseUrl = OgcOpenApiFeatureStore.cleanUrl(this.dataUrl);
     this.dataFormat = OgcOpenApiFeatureStore.dataFormatInQuery(this.dataUrl);
-    this.customCrs = options.customCrs;
+    this.customCrs = options.crs === "http://www.opengis.net/def/crs/OGC/1.3/CRS84" ? undefined : options.crs;
     this.codec = options.codec;
     this.eventedSupport = new EventedSupport();
     this.requestHeaders = options.requestHeaders ? options.requestHeaders : {};
@@ -115,13 +118,14 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
       options.extent.spatial.bbox.length > 0
     ) {
       const bbox = options.extent.spatial.bbox[0];
-      // console.log(options.extent.spatial);
-      this.bounds = createBounds(this.reference, [
+      const WGS84 = getReference("CRS:84");
+      const tmpBounds = createBounds(WGS84, [
         bbox[0],
         bbox[2] - bbox[0],
         bbox[1],
         bbox[3] - bbox[1],
       ]);
+      this.bounds = OgcOpenApiFeatureStore.targetBounds(tmpBounds, this.reference);
     }
   }
 
@@ -174,8 +178,13 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
             const codecOptions: OgcOpenApiFeaturesCodecDecodeOptions = {
               content, contentType, contentCrs, contentLength
             };
-            const cursor = this.codec.decode(codecOptions);
-            if (cursor.hasNext()) {
+            let cursor = null;
+            if (this.codec instanceof GeoJsonCodec || this.codec instanceof GMLCodec) {
+              cursor = this.codec.decode({...codecOptions, reference: getReference(OgcOpenApiCrsTools.getReferenceName(contentCrs))});
+            } else {
+              cursor = this.codec.decode(codecOptions);
+            }
+            if (cursor && cursor.hasNext()) {
               const feaure = cursor.next();
               resolve(feaure);
             } else {
@@ -282,6 +291,10 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
         if (this.customCrs) {
           query["bbox-crs"] = this.customCrs;
         }
+        const referenceName = OgcOpenApiCrsTools.getReferenceName(this.customCrs);
+        if (this.swapAxes && this.swapAxes.findIndex(f=>f===referenceName)>-1) {
+          query.bbox = [query.bbox[1], query.bbox[0],query.bbox[3], query.bbox[2]]
+        }
       }
     }
     return this.query(query, options);
@@ -292,6 +305,13 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
     const bounds = shape.bounds;
     const toWgs84 = createTransformation(bounds.reference, WGS84);
     const newBounds = toWgs84.transformBounds(bounds);
+    return newBounds;
+  }
+
+  private static targetBounds(bounds: Bounds, targetReferenceBounds: CoordinateReference) {
+    const WGS84 = getReference("CRS:84");
+    const toTargetReference = createTransformation(WGS84, targetReferenceBounds);
+    const newBounds = toTargetReference.transformBounds(bounds);
     return newBounds;
   }
 
