@@ -25,7 +25,6 @@ export interface OgcOpenApiFeatureStoreConstructorOptions {
   credentials?: boolean;
   requestHeaders?: { [key: string]: string };
   extent?: { spatial: { bbox: any[] } };
-  reference: CoordinateReference;
   crs: string;
   proxify?: ProxifyFunction
 }
@@ -105,7 +104,8 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
     this.codec = options.codec;
     this.eventedSupport = new EventedSupport();
     this.requestHeaders = options.requestHeaders ? options.requestHeaders : {};
-    this.reference = options.reference;
+    const referenceName = OgcOpenApiCrsTools.getReferenceName(options.crs)
+    this.reference = getReference(referenceName);
     this.proxy = options.proxify;
     this.credentials = options.credentials;
 
