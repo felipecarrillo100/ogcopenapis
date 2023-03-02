@@ -10,10 +10,10 @@ Implements
 
 The Main Components are:
 
-* __OgcOpenApiFeatureStore__: a ready to use LuciadRIA Feature store capable to retrieve features from an OGC API Service
-* __OgcOpenApiMapsModel__:  a ready to use store capable to retrieve features from an OGC API Service
-* __OgcOpenApiTilesModel__:  a ready to use store capable to retrieve features from an OGC API Service
-* __OgcOpenApiGetCapabilities__: a helper to retrieve the capabilities of a server such as available Collections and Formats
+* __OgcOpenApiFeatureStore__: a ready to use LuciadRIA Feature store capable to retrieve features from an OGC API Feature Service
+* __OgcOpenApiMapsModel__:  a ready to use model capable to retrieve images from from an OGC API Maps Service
+* __OgcOpenApiTilesModel__:  a ready to use model capable to retrieve tiles from an OGC API Tiles Service
+* __OgcOpenApiGetCapabilities__: a helper to retrieve the capabilities of a server such as available Collections and available Formats
 
 
 
