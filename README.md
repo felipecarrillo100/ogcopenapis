@@ -3,58 +3,70 @@
 ## Description
 The ogcopenapis package provides OGC API functionalities to LuciadRIA Application.
 
-In this version:
-* Only Open API Features is implemented
-
-In future versions
-* Open API Tiles will be implemented
-* Open API Maps will be implemented
+Implements
+* __Open API Features__ 
+* __Open API Tiles__ 
+* __Open API Maps__ 
 
 The Main Components are:
 
-* OgcOpenApiFeatureStore  a ready to use store capable to retrieve features from an OGC API Service   
-* OgcOpenApiGetCapabilities a helper to retrieve the capabilities of a server such as available Collections and Formats
+* __OgcOpenApiFeatureStore__: a ready to use LuciadRIA Feature store capable to retrieve features from an OGC API Service
+* __OgcOpenApiMapsModel__:  a ready to use store capable to retrieve features from an OGC API Service
+* __OgcOpenApiTilesModel__:  a ready to use store capable to retrieve features from an OGC API Service
+* __OgcOpenApiGetCapabilities__: a helper to retrieve the capabilities of a server such as available Collections and Formats
 
-Additional components will be added in future versions for Maps and Tiles
 
 
 ## To build
-This is the source code of an npm package. To build install and build the library. This will create a lib folder with the transpiled library.
+This is the source code that produces a library delivered as a npm package. 
+To build the source code use the npm scripts:
 ```
 npm install
 npm run build
 ```
+Then you can publish the package to npm or other repository
 
 ## To test
-Some test have been added that run in nodejs. No browser test is available at the moment.
-Run uses isomorphic-fetch to provide fetch in node testing with jest.
+Some test have been added that runs using nodejs using Jest. No browser test is available at the moment.
+The test uses isomorphic-fetch to provide fetch in node testing with jest.
 ```
 npm run test
 ```
-Test use the sever-side implementation of OGC Open API Features at "https://demo.pygeoapi.io/master/"
-The server is reliable ans stable,  but take in t account that changes at the server may brake some tests.
+Test use the sever-side implementations of OGC Open API from "https://demo.pygeoapi.io/master/" and "https://maps.gnosis.earth/ogcapi/"
+The servers are reliable and stable,  but take in t account that changes at the server may brake some tests of this client.
 
-## To use
+## To use in your project
 
-Simply import the NPM package in to your project
+Simply import the NPM package into your project
 
 ```
 npm install ogcopenapis
 ``` 
 
-If you require the GetCapabilities functionality then also import: 
-```
+If you require the GetCapabilities functionality then import: 
+```typescript
 import {
- CollectionLinkType, OgcOpenApiGetCapabilities
-} from 'ogcopenapis/OgcOpenApiGetCapabilities';
-
+    CollectionLinkType, OgcOpenApiCapabilitiesCollection,
+    OgcOpenApiCapabilitiesCollectionServiceLinkType,
+    OgcOpenApiGetCapabilities
+} from "ogcopenapis/lib/OgcOpenApiGetCapabilities";
+```
+For Open Api Feature you can use the OgcOpenApiFeatureStore, this implements a store that can be used with LuciadRIA FeatureModel and FeatureLayer
+```typescript
 import {
- OgcOpenApiFeatureStore.ts, OgcOpenApiGetCapabilities
-} from 'ogcopenapis/OgcOpenApiFeatureStore.ts';
+    OgcOpenApiFeatureStore
+} from "ogcopenapis/lib/OgcOpenApiFeatureStore";
 ```
 
-At this moment you should be ready to use the functionality.
+For Maps and Tiles use OgcOpenApiMapsModel and OgcOpenApiTilesModel:
+```typescript
+import {OgcOpenApiMapsModel} from "ogcopenapis/lib/OgcOpenApiMapsModel";
+import {OgcOpenApiTilesModel} from "ogcopenapis/lib/OgcOpenApiTilesModel";
+```
+Both models extend from UrlTileSetModel so you can use them in combination with RasterTileSetLayer. 
+Look at the LuciadRIA documentation if you need further information on using RasterTileSetLayer. 
 
-## Requirements.
+
+## Requirements
 * LuciadRIA 2020.0 or higher (place it on a local npm repository for instance verdaccio )
 * A ES6 or Typescript capable transpiler. 
