@@ -1,6 +1,6 @@
 {
   "name": "ogcopenapis",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Implements OGC OPEN API Features/Maps/Tiles capabilities and models for LuciadRIA",
   "files": [
     "lib/"
@@ -31,5 +31,9 @@
   },
   "dependencies": {
     "@luciad/ria": ">=2020.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felipecarrillo100/ogcopenapis"
   }
 }
