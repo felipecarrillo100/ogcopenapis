@@ -297,7 +297,7 @@ export class OgcOpenApiGetCapabilities {
         const promises = tileSetMetaArray.map(tml=>this.fetchTileset(capabilities,tml,options));
         Promise.all(promises).then((arr)=>{
           resolve(arr);
-        })
+        }).catch(()=>{reject()})
       })
     });
   }
@@ -423,7 +423,7 @@ export class OgcOpenApiGetCapabilities {
       }
       let jsonLink = tileset.links.find(l=>l.type ? l.type==="application/json" : false) ;
       jsonLink = jsonLink ? jsonLink : tileset.links[0];
-      const href = OgcOpenApiFetchTools.cleanUrl(jsonLink.href);
+      const href = OgcOpenApiFetchTools.cleanUrlToAsset(jsonLink.href);
       OgcOpenApiFetchTools.fetch(href, {
         method: "GET",
         credentials: options?.credentials ? "same-origin" : "omit",

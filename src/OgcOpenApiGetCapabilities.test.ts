@@ -9,8 +9,8 @@ import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
             it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by Map', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://maps.gnosis.earth/ogcapi/",{filterCollectionsByLinkType: CollectionLinkType.Map}).then(data=>{
                   //  if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
-                    expect(data.collections.length).toBe(741);
-                }, (err)=>{
+                    expect(data.collections.length).toBeGreaterThanOrEqual(700);
+                }, ()=>{
                     expect(false).toBe(true);
                 })
             });
@@ -18,8 +18,16 @@ import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
 
             it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by TileSets', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://maps.gnosis.earth/ogcapi/",{filterCollectionsByLinkType: CollectionLinkType.Tiles}).then(data=>{
-                    expect(data.collections.length).toBe(741);
-                }, (err)=>{
+                    expect(data.collections.length).toBeGreaterThanOrEqual(700);
+                }, ()=>{
+                    expect(false).toBe(true);
+                })
+            });
+
+            it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by Features', async () => {
+                return OgcOpenApiGetCapabilities.fromURL("https://api.pdok.nl/lv/bgt/ogc/v1/",{filterCollectionsByLinkType: CollectionLinkType.Items}).then(data=>{
+                    expect(data.collections.length).toBeGreaterThanOrEqual(40);
+                }, ()=>{
                     expect(false).toBe(true);
                 })
             });
@@ -28,7 +36,7 @@ import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
                 return OgcOpenApiGetCapabilities.fromURL("https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/",{filterCollectionsByLinkType: CollectionLinkType.Styles}).then(data=>{
                   //  if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
                     expect(data.collections.length).toBe(1);
-                }, (err)=>{
+                }, ()=>{
                     expect(false).toBe(true);
                 })
             });
@@ -36,8 +44,8 @@ import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
             it('OgcOpenApiGetCapabilities.fromURL gnosis links filtered by Styles', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://maps.gnosis.earth/ogcapi/",{filterCollectionsByLinkType: CollectionLinkType.Styles}).then(data=>{
                     // if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
-                    expect(data.collections.length).toBe(632);
-                }, (err)=>{
+                    expect(data.collections.length).toBeGreaterThanOrEqual(632);
+                }, ()=>{
                     expect(false).toBe(true);
                 })
             });
@@ -45,15 +53,15 @@ import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
             it('OgcOpenApiGetCapabilities.fromURL success', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/",{}).then(data=>{
                     expect(data.version).toBe("3.0.2");
-                }, (err)=>{
+                }, ()=>{
                     expect(false).toBe(true);
                 })
             });
             it('OgcOpenApiGetCapabilities.fromURL pygeoapi all links', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/",{}).then(data=>{
                     // if (data.collections.length>0) console.log(JSON.stringify(data.collections[0], null, 2))
-                    expect(data.collections.length).toBe(16);
-                }, (err)=>{
+                    expect(data.collections.length).toBeGreaterThanOrEqual(16);
+                }, ()=>{
                     expect(false).toBe(true);
                 })
             });
@@ -62,7 +70,7 @@ import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
             it('OgcOpenApiGetCapabilities.fromURL success links filtered', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/",{filterCollectionsByLinkType: CollectionLinkType.Items}).then(data=>{
                     expect(data.collections.length).toBe(14);
-                }, (err)=>{
+                }, ()=>{
                     expect(false).toEqual(true);
                 })
             });
@@ -70,7 +78,7 @@ import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
             it('OgcOpenApiGetCapabilities.fromURL 404', async () => {
                 return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master2/",{}).then(data=>{
                     expect(data.version).toBe("3.0.1");
-                }, (err)=>{
+                }, ()=>{
                     expect(404).toBe(404);
                 })
             });

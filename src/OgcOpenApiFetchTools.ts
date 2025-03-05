@@ -46,8 +46,11 @@ class OgcOpenApiFetchTools {
     }
 
     public static cleanUrl(inputUrl:string) {
-        const url = inputUrl.split("?")[0].replace(/\/?$/, '/');
-        return url;
+        return inputUrl.split("?")[0].replace(/\/?$/, '/');
+    }
+
+    public static cleanUrlToAsset(inputUrl:string) {
+        return inputUrl.split("?")[0].replace(/\/?$/, '');
     }
 
     public static getHostURL(fullUrl: string) {

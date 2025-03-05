@@ -1,12 +1,12 @@
-import { Store } from '@luciad/ria/model/store/Store';
-import { Cursor } from '@luciad/ria/model/Cursor';
-import { Feature } from '@luciad/ria/model/feature/Feature';
-import { Evented, Handle } from '@luciad/ria/util/Evented';
-import { Bounds } from '@luciad/ria/shape/Bounds';
+import {Store} from '@luciad/ria/model/store/Store';
+import {Cursor} from '@luciad/ria/model/Cursor';
+import {Feature} from '@luciad/ria/model/feature/Feature';
+import {Evented, Handle} from '@luciad/ria/util/Evented';
+import {Bounds} from '@luciad/ria/shape/Bounds';
 import {Codec, CodecDecodeOptions} from '@luciad/ria/model/codec/Codec';
-import { EventedSupport } from '@luciad/ria/util/EventedSupport';
-import { createBounds } from '@luciad/ria/shape/ShapeFactory';
-import { CoordinateReference } from '@luciad/ria/reference/CoordinateReference';
+import {EventedSupport} from '@luciad/ria/util/EventedSupport';
+import {createBounds} from '@luciad/ria/shape/ShapeFactory';
+import {CoordinateReference} from '@luciad/ria/reference/CoordinateReference';
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
 import {createTransformation} from "@luciad/ria/transformation/TransformationFactory";
 import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
@@ -96,7 +96,7 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
     this.outputFormat = options.outputFormat;
     const predictedFeatureUrl =  this.dataUrl.replace(/\.[^/.]+$/, "");
 
-    this.featureUrl = options.featureUrl ? OgcOpenApiFeatureStore.cleanUrl(options.featureUrl) : OgcOpenApiFeatureStore.cleanUrl(predictedFeatureUrl);
+    this.featureUrl = options.featureUrl ? OgcOpenApiFeatureStore.cleanUrl(options.featureUrl, true) : OgcOpenApiFeatureStore.cleanUrl(predictedFeatureUrl, true);
 
     this.baseUrl = OgcOpenApiFeatureStore.cleanUrl(this.dataUrl);
     this.dataFormat = OgcOpenApiFeatureStore.dataFormatInQuery(this.dataUrl);
@@ -178,7 +178,7 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
             const codecOptions: OgcOpenApiFeaturesCodecDecodeOptions = {
               content, contentType, contentCrs, contentLength
             };
-            let cursor = null;
+            let cursor;
             if (this.codec instanceof GeoJsonCodec || this.codec instanceof GMLCodec) {
               cursor = this.codec.decode({...codecOptions, reference: getReference(OgcOpenApiCrsTools.getReferenceName(contentCrs))});
             } else {
@@ -198,7 +198,7 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   query(receivedQuery?: OgcOpenApiFeatureStoreQueryOptions, options?: any): Cursor | Promise<Cursor> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const query = receivedQuery ? { ...receivedQuery } : {};
       query.f = query.f ? query.f : this.dataFormat;
       query.crs = query.crs ? query.crs : this.customCrs;
@@ -255,7 +255,11 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
               resolve(cursor);
             }
           });
+        } else {
+          reject()
         }
+      }).catch(()=>{
+        reject();
       });
     });
   }
@@ -304,21 +308,18 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
     const WGS84 = getReference("CRS:84");
     const bounds = shape.bounds;
     const toWgs84 = createTransformation(bounds.reference, WGS84);
-    const newBounds = toWgs84.transformBounds(bounds);
-    return newBounds;
+    return toWgs84.transformBounds(bounds);
   }
 
   private static targetBounds(bounds: Bounds, targetReferenceBounds: CoordinateReference) {
     const WGS84 = getReference("CRS:84");
     const toTargetReference = createTransformation(WGS84, targetReferenceBounds);
-    const newBounds = toTargetReference.transformBounds(bounds);
-    return newBounds;
+    return toTargetReference.transformBounds(bounds);
   }
 
-  private static cleanUrl(dataUrl: string) {
+  private static cleanUrl(dataUrl: string, addSlash=false) {
     const parts = dataUrl.split('?');
-    const cleanUrl = parts[0].endsWith('/') ? parts[0] : parts[0] + '/';
-    return cleanUrl;
+    return parts[0].endsWith('/') ? parts[0] : (addSlash ? parts[0] + '/' : parts[0]);
   }
 
   private static dataFormatInQuery(dataUrl: string) {
@@ -329,7 +330,7 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
       const qs = query.split('&');
       for (const q of qs) {
         if (q.startsWith('f=')) {
-          format = q.substr(2);
+          format = q.slice(2);
           return format;
         }
       }
