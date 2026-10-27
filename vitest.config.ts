@@ -1,11 +1,16 @@
-import {defineConfig} from "vitest/config";
+import {configDefaults, defineConfig} from "vitest/config";
 
+// Shared by vitest.live.config.ts
+export const environmentOptions = {
+    environment: "jsdom" as const,
+    setupFiles: ["vitest-canvas-mock"],
+};
+
+// npm run test: offline tests only. Tests that call public servers are *.live.test.ts, see vitest.live.config.ts
 export default defineConfig({
     test: {
-        environment: "jsdom",
-        setupFiles: ["vitest-canvas-mock"],
+        ...environmentOptions,
         include: ["src/**/*.test.ts"],
-        // Some tests call public servers
-        testTimeout: 20000,
+        exclude: [...configDefaults.exclude, "src/**/*.live.test.ts"],
     },
 });

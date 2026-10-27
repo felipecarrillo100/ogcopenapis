@@ -1,106 +1,113 @@
-import {describe, expect, it} from 'vitest';
-
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {OgcOpenApiFeatureStore} from "./OgcOpenApiFeatureStore";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
 import {createBounds} from "@luciad/ria/shape/ShapeFactory";
 import {Cursor} from "@luciad/ria/model/Cursor";
-import {FeatureModel} from "@luciad/ria/model/feature/FeatureModel";
 
+// Offline tests: fetch is mocked, so every failure can be reproduced
+const DATA_URL = "https://example.com/collections/c/items?f=json";
+const CRS84 = "http://www.opengis.net/def/crs/OGC/1.3/CRS84";
 
-        describe('OgcOpenApiFeatureStore ',  () => {
-            const model = {
-                "generateIDs":false,"outputFormat":"application/geo+json",
-                "dataUrl":"https://demo.pygeoapi.io/master/collections/lakes/items",
-                "extent":{"spatial":{"bbox":[[-180,-90,180,90]],
-                        "crs":"http://www.opengis.net/def/crs/OGC/1.3/CRS84"},
-                    "temporal":{"interval":[["2011-11-11T00:00:00+00:00",null]]}},
-                "tmp_reference":"CRS:84",
-                "typeName":"lakes",
-                "versions":["3.0.2"],
-                "methods":["POST"],
-                "useProxy":false,
-                "beforeProxy":"https://demo.pygeoapi.io/master/collections/lakes/items",
-                "credentials":false,
-                "requestHeaders":{}
-            }
+const FEATURE = {type: "Feature", id: 1, geometry: {type: "Point", coordinates: [5, 52]}, properties: {name: "a"}};
+const COLLECTION = {type: "FeatureCollection", features: [FEATURE]};
 
-            const store = new OgcOpenApiFeatureStore({
-                dataUrl: model.dataUrl,
-                outputFormat: model.outputFormat,
-                codec: new GeoJsonCodec({generateIDs: false}),
-                reference: getReference(model.tmp_reference),
-                requestHeaders:{},
-                featureUrl: model.dataUrl,
-                useCrs84Bounds: true,
-                customCrs: model.tmp_reference,
-            })
+function createStore() {
+    return new OgcOpenApiFeatureStore({
+        dataUrl: DATA_URL,
+        outputFormat: "application/geo+json",
+        codec: new GeoJsonCodec({generateIDs: false}),
+        crs: CRS84,
+        useCrs84Bounds: true,
+    });
+}
 
-            const storeWindmills = new OgcOpenApiFeatureStore({
-                dataUrl: "https://demo.pygeoapi.io/master/collections/dutch_windmills/items",
-                outputFormat: model.outputFormat,
-                codec: new GeoJsonCodec({generateIDs: false}),
-                reference: getReference(model.tmp_reference),
-                requestHeaders:{},
-                featureUrl: model.dataUrl,
-                useCrs84Bounds: true,
-                customCrs: model.tmp_reference,
-            })
+function respond(status: number, body: string, headers: { [key: string]: string } = {}) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+        Promise.resolve(new Response(body, {status, headers: {"Content-Type": "application/geo+json", ...headers}})));
+}
 
-            it('OgcOpenApiFeatureStore.get feature', async () => {
-                return store.get(1).then(feature => {
-                    // One feature
-                    // console.log(JSON.stringify(feature.properties, null, 2))
-                    expect(feature.id).toBe(1);
-                }, () => {
-                    expect(2).toBe(3);
-                })
-            });
+function countFeatures(cursor: Cursor) {
+    let count = 0;
+    while (cursor.hasNext()) {
+        cursor.next();
+        count++;
+    }
+    return count;
+}
 
-            it('OgcOpenApiFeatureStore.spatialQuery', async () => {
-                const query = {"filter":null,"limit":1000};
-                const bounds = createBounds(getReference(model.tmp_reference), [ 3.40, 0.6, 51.15, 0.15])
+const bounds = () => createBounds(getReference("CRS:84"), [4, 2, 51, 2]);
 
-                const promiseToCursor = storeWindmills.spatialQuery(bounds, query) as Promise<Cursor>;
-                return promiseToCursor.then(cursor => {
-                    let counter = 0
-                    while (cursor.hasNext()) {
-                        cursor.next();
-                        counter++;
-                    }
-                    expect(counter).toBeGreaterThanOrEqual(5);
-                }, () => {
-                    expect(true).toBe(false);
-                })
-            });
+describe('OgcOpenApiFeatureStore errors', () => {
 
-            it('OgcOpenApiFeatureStore.spatialQuery with limit 2', async () => {
-                const query = {"filter":null,"limit":2};
-                const bounds = createBounds(getReference(model.tmp_reference), [ 3.40, 0.6, 51.15, 0.15])
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
 
-                const promiseToCursor = storeWindmills.spatialQuery(bounds, query) as Promise<Cursor>;
-                return promiseToCursor.then(cursor => {
-                    let counter = 0
-                    while (cursor.hasNext()) {
-                        cursor.next();
-                        counter++;
-                    }
-                    expect(counter).toBeGreaterThanOrEqual(2);
-                }, () => {
-                    expect(true).toBe(false);
-                })
-            });
+    it('get rejects when the server answers 404', async () => {
+        respond(404, '{"code":"NotFound"}');
+        await expect(createStore().get(7)).rejects.toThrow("Invalid response: 404");
+    });
 
-            it('OgcOpenApiFeatureStore reports its operations to a FeatureModel', async () => {
-                const featureModel = new FeatureModel(storeWindmills, {reference: getReference(model.tmp_reference)});
-                expect(featureModel.isOperationSupported("get")).toBe(true);
-                expect(featureModel.isOperationSupported("spatialQuery")).toBe(true);
-                expect(featureModel.isOperationSupported("add")).toBe(false);
+    it('query rejects when the server answers 500', async () => {
+        respond(500, "Internal Server Error");
+        await expect(createStore().spatialQuery(bounds()) as Promise<Cursor>).rejects.toThrow("Invalid response: 500");
+    });
 
-                const bounds = createBounds(getReference(model.tmp_reference), [ 3.40, 0.6, 51.15, 0.15])
-                const cursor = await featureModel.spatialQuery(bounds, {"filter":null,"limit":2});
-                expect(cursor.hasNext()).toBe(true);
-            });
-        })
+    it('query rejects when the request fails', async () => {
+        vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.reject(new TypeError("Failed to fetch")));
+        await expect(createStore().spatialQuery(bounds()) as Promise<Cursor>).rejects.toThrow("Failed to fetch");
+    });
 
+    it('get rejects when the response cannot be decoded', async () => {
+        respond(200, "this is not GeoJSON");
+        await expect(createStore().get(1)).rejects.toBeDefined();
+    });
 
+    it('query rejects when the Content-Crs is not a known reference', async () => {
+        respond(200, JSON.stringify(COLLECTION), {"Content-Crs": "<http://www.opengis.net/def/crs/EPSG/0/999999>"});
+        await expect(createStore().spatialQuery(bounds()) as Promise<Cursor>).rejects.toBeDefined();
+    });
+
+    it('query passes the abortSignal of LuciadRIA to fetch, and rejects when it is aborted', async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => new Promise((resolve, reject) => {
+            init.signal.addEventListener("abort", () => reject(new DOMException("The operation was aborted.", "AbortError")));
+        }));
+        const controller = new AbortController();
+        const result = createStore().spatialQuery(bounds(), undefined, {abortSignal: controller.signal}) as Promise<Cursor>;
+        controller.abort();
+        await expect(result).rejects.toThrow("aborted");
+        expect(fetchSpy.mock.calls[0][1].signal).toBe(controller.signal);
+    });
+});
+
+describe('OgcOpenApiFeatureStore decoding', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('get decodes a feature', async () => {
+        respond(200, JSON.stringify(FEATURE));
+        const feature = await createStore().get(1);
+        expect(feature.id).toBe(1);
+        expect(feature.properties.name).toBe("a");
+    });
+
+    it('get decodes GeoJSON that names the CRS84 URI, without rewriting it', async () => {
+        respond(200, JSON.stringify({...FEATURE, crs: {type: "name", properties: {name: CRS84}}}));
+        const feature = await createStore().get(1);
+        expect(feature.shape.reference.identifier).toBe("CRS:84");
+        expect([(feature.shape as any).x, (feature.shape as any).y]).toEqual([5, 52]);
+    });
+
+    it('get resolves null when the response has no feature', async () => {
+        respond(200, JSON.stringify({type: "FeatureCollection", features: []}));
+        expect(await createStore().get(1)).toBeNull();
+    });
+
+    it('query decodes a feature collection', async () => {
+        respond(200, JSON.stringify(COLLECTION));
+        expect(countFeatures(await (createStore().spatialQuery(bounds()) as Promise<Cursor>))).toBe(1);
+    });
+});

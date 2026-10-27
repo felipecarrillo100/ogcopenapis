@@ -32,13 +32,18 @@ Then you can publish the package to npm or other repository
 
 ## To test
 The tests run in nodejs using Vitest, with jsdom as environment.
+
+The default tests run offline, on fixtures in `src/fixtures` and with a mocked `fetch`:
 ```
 npm run test
 ```
-Most tests use the sever-side implementations of OGC Open API from "https://demo.pygeoapi.io/master/", "https://demo.ldproxy.net/",
-"https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/", "https://maps.gnosis.earth/ogcapi/" and "https://api.pdok.nl/".
-The servers are reliable and stable,  but take in t account that changes at the server may brake some tests of this client.
-The tests of OgcOpenApiTileMatrixTools run offline, on the tile matrix sets in `src/fixtures`.
+
+The live tests (`*.live.test.ts`) use the sever-side implementations of OGC Open API from "https://demo.pygeoapi.io/master/", "https://demo.ldproxy.net/",
+"https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/", "https://maps.gnosis.earth/ogcapi/" and "https://api.pdok.nl/":
+```
+npm run test:live
+```
+The servers are reliable and stable,  but take in t account that changes at the server may brake some of these tests.
 
 ## Demo
 The `demo` folder contains a minimal page to open Features, Maps, Tiles and Vector Tiles collections in a LuciadRIA map.
