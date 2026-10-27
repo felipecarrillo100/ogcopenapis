@@ -1,12 +1,17 @@
-import {describe, expect, it} from '@jest/globals';
+import {describe, expect, it} from 'vitest';
 import {OgcOpenApiTileMatrixTools} from "./OgcOpenApiTileMatrixTools";
 import {TileSetData} from "./OgcOpenApiGetCapabilities";
 
 // TileMatrixSet definitions as served by demo.ldproxy.net and maps.gnosis.earth
-const WebMercatorQuad: TileSetData = require("./fixtures/tms-WebMercatorQuad.json");
-const WorldMercatorWGS84Quad: TileSetData = require("./fixtures/tms-WorldMercatorWGS84Quad.json");
-const WorldCRS84Quad: TileSetData = require("./fixtures/tms-WorldCRS84Quad.json");
-const CDB1GlobalGrid: TileSetData = require("./fixtures/tms-CDB1GlobalGrid.json");
+import WebMercatorQuadJson from "./fixtures/tms-WebMercatorQuad.json";
+import WorldMercatorWGS84QuadJson from "./fixtures/tms-WorldMercatorWGS84Quad.json";
+import WorldCRS84QuadJson from "./fixtures/tms-WorldCRS84Quad.json";
+import CDB1GlobalGridJson from "./fixtures/tms-CDB1GlobalGrid.json";
+
+const WebMercatorQuad = WebMercatorQuadJson as unknown as TileSetData;
+const WorldMercatorWGS84Quad = WorldMercatorWGS84QuadJson as unknown as TileSetData;
+const WorldCRS84Quad = WorldCRS84QuadJson as unknown as TileSetData;
+const CDB1GlobalGrid = CDB1GlobalGridJson as unknown as TileSetData;
 
 const TEMPLATE = "https://example.com/collections/c/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}";
 

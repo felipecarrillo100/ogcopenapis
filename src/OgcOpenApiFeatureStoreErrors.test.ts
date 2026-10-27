@@ -1,6 +1,4 @@
-import {afterEach, describe, expect, it, jest} from '@jest/globals';
-// Provides fetch and Response in jsdom, fetch is mocked below
-import "isomorphic-fetch";
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {OgcOpenApiFeatureStore} from "./OgcOpenApiFeatureStore";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
@@ -25,7 +23,7 @@ function createStore() {
 }
 
 function respond(status: number, body: string, headers: { [key: string]: string } = {}) {
-    return jest.spyOn(globalThis, "fetch").mockImplementation(() =>
+    return vi.spyOn(globalThis, "fetch").mockImplementation(() =>
         Promise.resolve(new Response(body, {status, headers: {"Content-Type": "application/geo+json", ...headers}})));
 }
 
@@ -43,7 +41,7 @@ const bounds = () => createBounds(getReference("CRS:84"), [4, 2, 51, 2]);
 describe('OgcOpenApiFeatureStore errors', () => {
 
     afterEach(() => {
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     it('get rejects when the server answers 404', async () => {
@@ -57,7 +55,7 @@ describe('OgcOpenApiFeatureStore errors', () => {
     });
 
     it('query rejects when the request fails', async () => {
-        jest.spyOn(globalThis, "fetch").mockImplementation(() => Promise.reject(new TypeError("Failed to fetch")));
+        vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.reject(new TypeError("Failed to fetch")));
         await expect(createStore().spatialQuery(bounds()) as Promise<Cursor>).rejects.toThrow("Failed to fetch");
     });
 
@@ -72,7 +70,7 @@ describe('OgcOpenApiFeatureStore errors', () => {
     });
 
     it('query passes the abortSignal of LuciadRIA to fetch, and rejects when it is aborted', async () => {
-        const fetchSpy = jest.spyOn(globalThis, "fetch").mockImplementation((input, init) => new Promise((resolve, reject) => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => new Promise((resolve, reject) => {
             init.signal.addEventListener("abort", () => reject(new DOMException("The operation was aborted.", "AbortError")));
         }));
         const controller = new AbortController();
@@ -86,7 +84,7 @@ describe('OgcOpenApiFeatureStore errors', () => {
 describe('OgcOpenApiFeatureStore decoding', () => {
 
     afterEach(() => {
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     it('get decodes a feature', async () => {

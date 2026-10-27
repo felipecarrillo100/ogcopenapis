@@ -1,6 +1,4 @@
-import {describe, expect, it} from '@jest/globals';
-import {jest} from '@jest/globals';
-import "isomorphic-fetch";
+import {describe, expect, it} from 'vitest';
 
 import {OgcOpenApiFeatureStore} from "./OgcOpenApiFeatureStore";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec";
@@ -9,7 +7,6 @@ import {createBounds} from "@luciad/ria/shape/ShapeFactory";
 import {Cursor} from "@luciad/ria/model/Cursor";
 import {FeatureModel} from "@luciad/ria/model/feature/FeatureModel";
 
-jest.useFakeTimers();
 
         describe('OgcOpenApiFeatureStore ',  () => {
             const model = {

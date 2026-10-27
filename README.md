@@ -31,8 +31,7 @@ npm run build
 Then you can publish the package to npm or other repository
 
 ## To test
-Some test have been added that runs using nodejs using Jest.
-The test uses isomorphic-fetch to provide fetch in node testing with jest.
+The tests run in nodejs using Vitest, with jsdom as environment.
 ```
 npm run test
 ```
