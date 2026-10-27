@@ -10,7 +10,8 @@ export interface TestServer {
     features?: { collection: string };
     maps?: { collection: string };
     mapTiles?: { collection: string, tileMatrixSet: string };
-    vectorTiles?: { collection: string, tileMatrixSet: string, style?: string };
+    // knownIssue: why the layer is not painted in the demo yet, the browser test expects it to fail
+    vectorTiles?: { collection: string, tileMatrixSet: string, style?: string, knownIssue?: string };
     // Why the server is not recorded, its responses are only tested live
     notRecorded?: string;
 }
@@ -50,7 +51,7 @@ export const TEST_SERVERS: TestServer[] = [
         features: {collection: "TransportationGroundCrv"},
         maps: {collection: "Daraa_mosaic_2019"},
         mapTiles: {collection: "Daraa_mosaic_2019", tileMatrixSet: "smerc"},
-        vectorTiles: {collection: "TransportationGroundCrv", tileMatrixSet: "smerc"},
+        vectorTiles: {collection: "TransportationGroundCrv", tileMatrixSet: "smerc", knownIssue: "The tileset lists no layers, so the generated style is empty"},
     },
     {
         id: "cubewerx-euroregionalmap",
@@ -65,7 +66,7 @@ export const TEST_SERVERS: TestServer[] = [
         url: "https://demo.pygeoapi.io/master/",
         features: {collection: "lakes"},
         maps: {collection: "mapserver_world_map"},
-        vectorTiles: {collection: "lakes", tileMatrixSet: "WebMercatorQuad"},
+        vectorTiles: {collection: "lakes", tileMatrixSet: "WebMercatorQuad", knownIssue: "The tileset lists no layers, so the generated style is empty"},
     },
     {
         id: "pdok-bgt",

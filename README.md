@@ -52,6 +52,15 @@ map tiles, vector tiles and styles). `npm run test` replays their recorded respo
 npm run test:record
 ```
 
+The browser tests run the demo in Chrome: for each test server and each kind of data, they add a layer and check that the
+map paints it, without failed requests or page errors. They need the LuciadRIA license in `demo/license` (see
+[demo/README.md](demo/README.md)) and Google Chrome, or another Chrome set with `CHROME_PATH`. `HEADED=1` shows the browser,
+and screenshots are saved in `test/browser/screenshots`.
+```
+npm run test:browser
+```
+Layers that are not painted yet are marked with `knownIssue` in `test/servers.ts`, the browser tests expect them to fail.
+
 ## Demo
 The `demo` folder contains a minimal page to open Features, Maps, Tiles and Vector Tiles collections in a LuciadRIA map.
 It needs a LuciadRIA development license in `demo/license/luciadria_development.txt`, see [demo/README.md](demo/README.md).

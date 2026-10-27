@@ -11,6 +11,6 @@ export default defineConfig({
     test: {
         ...environmentOptions,
         include: ["src/**/*.test.ts", "test/**/*.test.ts"],
-        exclude: [...configDefaults.exclude, "**/*.live.test.ts"],
+        exclude: [...configDefaults.exclude, "**/*.live.test.ts", "**/*.browser.test.ts"],
     },
 });
