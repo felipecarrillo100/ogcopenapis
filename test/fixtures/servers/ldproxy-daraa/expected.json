@@ -30,5 +30,30 @@
       "stylesheet": "https://demo.ldproxy.net/daraa/collections/TransportationGroundCrv/styles/topographic?f=mbs",
       "layers": 13
     }
+  },
+  "datasetVectorTiles": {
+    "tileMatrixSets": [
+      "WebMercatorQuad",
+      "WorldMercatorWGS84Quad"
+    ],
+    "template": "https://demo.ldproxy.net/daraa/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}?f=mvt",
+    "layers": 33,
+    "limits": 13,
+    "maxLevel": 18,
+    "tile": {
+      "level": 12,
+      "x": 2458,
+      "y": 2441
+    },
+    "tileLayers": 27,
+    "styles": {
+      "ids": [
+        "night",
+        "topographic",
+        "topographic-with-basemap"
+      ],
+      "stylesheet": "https://demo.ldproxy.net/daraa/styles/topographic?f=mbs",
+      "layers": 26
+    }
   }
 }

@@ -7,11 +7,14 @@ import WebMercatorQuadJson from "./fixtures/tms-WebMercatorQuad.json";
 import WorldMercatorWGS84QuadJson from "./fixtures/tms-WorldMercatorWGS84Quad.json";
 import WorldCRS84QuadJson from "./fixtures/tms-WorldCRS84Quad.json";
 import CDB1GlobalGridJson from "./fixtures/tms-CDB1GlobalGrid.json";
+import EuropeanETRS89LAEAQuadJson from "./fixtures/tms-pdok-EuropeanETRS89_LAEAQuad.json";
+import {registerReferences} from "../demo/src/references";
 
 const WebMercatorQuad = WebMercatorQuadJson as unknown as TileSetData;
 const WorldMercatorWGS84Quad = WorldMercatorWGS84QuadJson as unknown as TileSetData;
 const WorldCRS84Quad = WorldCRS84QuadJson as unknown as TileSetData;
 const CDB1GlobalGrid = CDB1GlobalGridJson as unknown as TileSetData;
+const EuropeanETRS89_LAEAQuad = EuropeanETRS89LAEAQuadJson as unknown as TileSetData;
 
 const TEMPLATE = "https://example.com/collections/c/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}";
 
@@ -109,5 +112,17 @@ describe('OgcOpenApiTileMatrixTools.appendQueryParameters', () => {
     it('Skips undefined values', () => {
         expect(OgcOpenApiTileMatrixTools.appendQueryParameters("https://a/0/0/0", {bgcolor: undefined}))
             .toBe("https://a/0/0/0");
+    });
+});
+
+describe('OgcOpenApiTileMatrixTools.createTileGrid, a tile matrix set with northing first', () => {
+
+    it('EuropeanETRS89_LAEAQuad (PDOK): orderedAxes Y, X, so pointOfOrigin is northing, easting', () => {
+        registerReferences();
+        const grid = OgcOpenApiTileMatrixTools.createTileGrid(EuropeanETRS89_LAEAQuad);
+        expect(grid.reference.identifier).toBe("EPSG:3035");
+        // pointOfOrigin [5500000, 2000000] is the top left corner: easting 2000000, northing 5500000
+        expect(grid.bounds.x).toBeCloseTo(2000000, 3);
+        expect(grid.bounds.y + grid.bounds.height).toBeCloseTo(5500000, 3);
     });
 });

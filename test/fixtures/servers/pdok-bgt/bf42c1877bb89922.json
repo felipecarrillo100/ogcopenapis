@@ -1,0 +1,121 @@
+{
+ "links": [
+  {
+   "rel": "self",
+   "type": "application/json",
+   "title": "This document",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles?f=json"
+  },
+  {
+   "rel": "alternate",
+   "type": "text/html",
+   "title": "This document as HTML",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles?f=html"
+  }
+ ],
+ "default": "bgt_standaardvisualisatie",
+ "styles": [
+  {
+   "id": "bgt_standaardvisualisatie__netherlandsrdnewquad",
+   "title": "BGT Standaardvisualisatie (NetherlandsRDNewQuad)",
+   "links": [
+    {
+     "rel": "describedby",
+     "title": "Style Metadata for bgt_standaardvisualisatie",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_standaardvisualisatie__netherlandsrdnewquad/metadata"
+    },
+    {
+     "rel": "stylesheet",
+     "title": "Mapbox Style",
+     "type": "application/vnd.mapbox.style+json",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_standaardvisualisatie__netherlandsrdnewquad?f=mapbox"
+    }
+   ]
+  },
+  {
+   "id": "bgt_standaardvisualisatie__europeanetrs89_laeaquad",
+   "title": "BGT Standaardvisualisatie (EuropeanETRS89_LAEAQuad)",
+   "links": [
+    {
+     "rel": "describedby",
+     "title": "Style Metadata for bgt_standaardvisualisatie",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_standaardvisualisatie__europeanetrs89_laeaquad/metadata"
+    },
+    {
+     "rel": "stylesheet",
+     "title": "Mapbox Style",
+     "type": "application/vnd.mapbox.style+json",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_standaardvisualisatie__europeanetrs89_laeaquad?f=mapbox"
+    }
+   ]
+  },
+  {
+   "id": "bgt_standaardvisualisatie__webmercatorquad",
+   "title": "BGT Standaardvisualisatie (WebMercatorQuad)",
+   "links": [
+    {
+     "rel": "describedby",
+     "title": "Style Metadata for bgt_standaardvisualisatie",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_standaardvisualisatie__webmercatorquad/metadata"
+    },
+    {
+     "rel": "stylesheet",
+     "title": "Mapbox Style",
+     "type": "application/vnd.mapbox.style+json",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_standaardvisualisatie__webmercatorquad?f=mapbox"
+    }
+   ]
+  },
+  {
+   "id": "bgt_achtergrondvisualisatie__netherlandsrdnewquad",
+   "title": "BGT Achtergrondvisualisatie (NetherlandsRDNewQuad)",
+   "links": [
+    {
+     "rel": "describedby",
+     "title": "Style Metadata for bgt_achtergrondvisualisatie",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_achtergrondvisualisatie__netherlandsrdnewquad/metadata"
+    },
+    {
+     "rel": "stylesheet",
+     "title": "Mapbox Style",
+     "type": "application/vnd.mapbox.style+json",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_achtergrondvisualisatie__netherlandsrdnewquad?f=mapbox"
+    }
+   ]
+  },
+  {
+   "id": "bgt_achtergrondvisualisatie__europeanetrs89_laeaquad",
+   "title": "BGT Achtergrondvisualisatie (EuropeanETRS89_LAEAQuad)",
+   "links": [
+    {
+     "rel": "describedby",
+     "title": "Style Metadata for bgt_achtergrondvisualisatie",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_achtergrondvisualisatie__europeanetrs89_laeaquad/metadata"
+    },
+    {
+     "rel": "stylesheet",
+     "title": "Mapbox Style",
+     "type": "application/vnd.mapbox.style+json",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_achtergrondvisualisatie__europeanetrs89_laeaquad?f=mapbox"
+    }
+   ]
+  },
+  {
+   "id": "bgt_achtergrondvisualisatie__webmercatorquad",
+   "title": "BGT Achtergrondvisualisatie (WebMercatorQuad)",
+   "links": [
+    {
+     "rel": "describedby",
+     "title": "Style Metadata for bgt_achtergrondvisualisatie",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_achtergrondvisualisatie__webmercatorquad/metadata"
+    },
+    {
+     "rel": "stylesheet",
+     "title": "Mapbox Style",
+     "type": "application/vnd.mapbox.style+json",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_achtergrondvisualisatie__webmercatorquad?f=mapbox"
+    }
+   ]
+  }
+ ]
+}

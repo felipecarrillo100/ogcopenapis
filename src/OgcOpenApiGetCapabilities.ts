@@ -58,6 +58,8 @@ export interface CollectionTileSetInfo {
   href: string;
   // The definition of the tile matrix set, when the server links it
   tilingSchemeHref?: string;
+  // The definition of the tile matrix set, when the tileset includes it
+  tileMatrixSet?: TileSetData;
 }
 
 export interface CollectionTileSet {
@@ -65,6 +67,8 @@ export interface CollectionTileSet {
   links: LinkType[];
   layers: TileSetLayer[];
   tileMatrixSetLimits?: TileMatrixLimits[];
+  // Where the data is, when the server tells: in the CRS of boundingBox.crs, or of the tile matrix set
+  boundingBox?: {lowerLeft: number[], upperRight: number[], crs?: string};
 }
 
 export interface TileMatrixLimits {
@@ -91,6 +95,8 @@ export interface OgcOpenApiCapabilitiesObject {
   baseUrl: string;
   // The landing page link to the tile matrix sets (rel tiling-schemes)
   tileMatrixSetsUrl?: string;
+  // The links of the landing page, to the tilesets and styles of the dataset among others
+  links?: LinkType[];
   serverOptions: FetchServerOptions;
 }
 
@@ -269,6 +275,7 @@ export class OgcOpenApiGetCapabilities {
                     info: responseOpenApi ? responseOpenApi.info : {},
                     ...crsArray,
                     serverOptions: serverOptions,
+                    links: jsonObject.links.map(l => resolveLink(l, requestUrl)),
                     baseUrl,
                     tileMatrixSetsUrl: linkToTileMatrixSets ? resolveLink(linkToTileMatrixSets, requestUrl).href : undefined
                   };
@@ -452,6 +459,20 @@ export class OgcOpenApiGetCapabilities {
     return link ? link.href : dataLinks.length > 0 ? dataLinks[0].href : '';
   }
 
+  // The tilesets link of the landing page: the tilesets of the dataset, with all its collections in each tile
+  private static getDatasetTileSetsHref(capabilities: OgcOpenApiCapabilitiesObject, linkType: CollectionLinkType) {
+    const dataLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(capabilities.links ? capabilities.links : [], linkType);
+    const link = dataLinks.find((link) => link.type === "application/json") || dataLinks.find((link) => !link.type) || dataLinks[0];
+    return link ? link.href : '';
+  }
+
+  /**
+   * Whether the server tiles the dataset as a whole, all its collections in each tile, for linkType Tiles or VectorTiles
+   */
+  public static hasDatasetTileSets(capabilities: OgcOpenApiCapabilitiesObject | null, linkType: CollectionLinkType) {
+    return capabilities !== null && OgcOpenApiGetCapabilities.getDatasetTileSetsHref(capabilities, linkType) !== '';
+  }
+
   /**
    * Lists the tilesets of a collection: the tile matrix sets the collection is tiled in, which can be fewer than the
    * tile matrix sets of the server.
@@ -465,6 +486,25 @@ export class OgcOpenApiGetCapabilities {
     if (capabilities === null) throw {error: true, message: "No capabilities"};
     const href = OgcOpenApiGetCapabilities.getTileSetsHref(collection, linkType);
     if (href === '') throw {error: true, message: "Collection " + collection.id + " has no " + linkType + " link"};
+    return OgcOpenApiGetCapabilities.fetchTileSetList(capabilities, href, options);
+  }
+
+  /**
+   * Lists the tilesets of the dataset (/tiles of the landing page): each tile has the data of all its collections.
+   * Some servers tile only the dataset (PDOK).
+   */
+  public static async fetchDatasetTileSets(
+      capabilities: OgcOpenApiCapabilitiesObject | null,
+      linkType: CollectionLinkType = CollectionLinkType.Tiles,
+      options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
+  ): Promise<CollectionTileSetInfo[]> {
+    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    const href = OgcOpenApiGetCapabilities.getDatasetTileSetsHref(capabilities, linkType);
+    if (href === '') throw {error: true, message: "The dataset has no " + linkType + " link"};
+    return OgcOpenApiGetCapabilities.fetchTileSetList(capabilities, href, options);
+  }
+
+  private static async fetchTileSetList(capabilities: OgcOpenApiCapabilitiesObject, href: string, options?: {credentials?: boolean, requestHeaders?: RequestHeaders}) {
     const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, href, options);
     if (!Array.isArray(data.tilesets)) throw {error: true, message: "Response has no tilesets"};
     const tileSets: CollectionTileSetInfo[] = [];
@@ -480,6 +520,7 @@ export class OgcOpenApiGetCapabilities {
         crs: typeof tileSet.crs === "string" ? tileSet.crs : undefined,
         href: OgcOpenApiFetchTools.resolveUrl(self.href, href, capabilities.serverOptions),
         tilingSchemeHref: OgcOpenApiGetCapabilities.getTilingSchemeHref(capabilities, links, href),
+        tileMatrixSet: OgcOpenApiGetCapabilities.getInlineTileMatrixSet(tileSet),
       });
     }
     return tileSets;
@@ -518,9 +559,11 @@ export class OgcOpenApiGetCapabilities {
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
   ): Promise<TileSetData> {
     if (capabilities === null) throw {error: true, message: "No capabilities"};
+    if (tileSet.tileMatrixSet) return tileSet.tileMatrixSet;
     let identified = tileSet;
     if (!tileSet.tileMatrixSetURI && !tileSet.tileMatrixSetId && !tileSet.tilingSchemeHref) {
       identified = {...tileSet, ...await OgcOpenApiGetCapabilities.fetchTileSetIdentity(capabilities, tileSet.href, options)};
+      if (identified.tileMatrixSet) return identified.tileMatrixSet;
     }
     const match = OgcOpenApiGetCapabilities.matchTileMatrixSet(identified, tileMatrixSets);
     if (match) return match;
@@ -537,7 +580,15 @@ export class OgcOpenApiGetCapabilities {
       tileMatrixSetURI: data.tileMatrixSetURI as string | undefined,
       tileMatrixSetId: data.tileMatrixSetId as string | undefined,
       tilingSchemeHref: OgcOpenApiGetCapabilities.getTilingSchemeHref(capabilities, data.links ? data.links : [], href),
+      tileMatrixSet: OgcOpenApiGetCapabilities.getInlineTileMatrixSet(data),
     };
+  }
+
+  // A tileset can include the definition of its tile matrix set instead of linking it
+  private static getInlineTileMatrixSet(tileSet: any): TileSetData | undefined {
+    const tileMatrixSet = tileSet ? tileSet.tileMatrixSet : undefined;
+    return tileMatrixSet && typeof tileMatrixSet.id !== "undefined" && Array.isArray(tileMatrixSet.tileMatrices) && tileMatrixSet.crs ?
+        tileMatrixSet : undefined;
   }
 
   /**
@@ -546,16 +597,18 @@ export class OgcOpenApiGetCapabilities {
    */
   public static async fetchCollectionTileSet (
       capabilities: OgcOpenApiCapabilitiesObject | null,
-      currentCollection: OgcOpenApiCapabilitiesCollection,
-      // The id of the tile matrix set, or a tileset from fetchCollectionTileSets
+      // null for a tileset of the dataset
+      currentCollection: OgcOpenApiCapabilitiesCollection | null,
+      // The id of the tile matrix set, or a tileset from fetchCollectionTileSets or fetchDatasetTileSets
       tileMatrix: string | CollectionTileSetInfo,
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders},
       linkType: CollectionLinkType = CollectionLinkType.Tiles
   ): Promise<CollectionTileSet> {
     if (capabilities === null) throw {error: true, message: "No capabilities"};
-    const tileInfoUrl = typeof tileMatrix === "string" ?
-        OgcOpenApiFetchTools.cleanUrl(OgcOpenApiGetCapabilities.getTileSetsHref(currentCollection, linkType)) + tileMatrix :
-        tileMatrix.href;
+    const tileSetsHref = currentCollection ?
+        OgcOpenApiGetCapabilities.getTileSetsHref(currentCollection, linkType) :
+        OgcOpenApiGetCapabilities.getDatasetTileSetsHref(capabilities, linkType);
+    const tileInfoUrl = typeof tileMatrix === "string" ? OgcOpenApiFetchTools.cleanUrl(tileSetsHref) + tileMatrix : tileMatrix.href;
     // pygeoapi answers 500 without f=json or an Accept header
     const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, tileInfoUrl, options);
     const links = data.links ? data.links.filter(l => l.rel === "item" || l.rel === "items").map(a => ({...a, href: OgcOpenApiFetchTools.resolveUrl(a.href, tileInfoUrl, capabilities.serverOptions)})) : [];
@@ -564,7 +617,8 @@ export class OgcOpenApiGetCapabilities {
       dataType: data.dataType,
       links,
       layers: data.layers ? data.layers : [],
-      tileMatrixSetLimits: data.tileMatrixSetLimits
+      tileMatrixSetLimits: data.tileMatrixSetLimits,
+      boundingBox: data.boundingBox && Array.isArray(data.boundingBox.lowerLeft) && Array.isArray(data.boundingBox.upperRight) ? data.boundingBox : undefined,
     };
   }
 

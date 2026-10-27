@@ -19,6 +19,77 @@
     },
     "file": "ef6a0c7a965ede86.json"
   },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_standaardvisualisatie__netherlandsrdnewquad?f=mapbox": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/vnd.mapbox.style+json"
+    },
+    "file": "cfef3d595283b401.json"
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles?f=json": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "526"
+    },
+    "file": "bf42c1877bb89922.json"
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "428"
+    },
+    "file": "403b566f6ff585e7.json"
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets/EuropeanETRS89_LAEAQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "880"
+    },
+    "file": "71cff135262045f1.json"
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets/NetherlandsRDNewQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "764"
+    },
+    "file": "6c2436a4ec8846ba.json"
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets/WebMercatorQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "1294"
+    },
+    "file": "88161e8772ad417d.json"
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/tiles": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "875"
+    },
+    "file": "5c62585d4d13e290.json"
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/tiles/NetherlandsRDNewQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "503"
+    },
+    "file": "65966e9ea9770ac6.json"
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/tiles/NetherlandsRDNewQuad/12/1935/1890?f=mvt": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/vnd.mapbox-vector-tile",
+      "content-length": "111462"
+    },
+    "file": "e9d6e5da1c1decd9.bin"
+  },
   "https://api.pdok.nl/lv/bgt/ogc/v1/": {
     "status": 200,
     "headers": {
