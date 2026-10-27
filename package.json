@@ -1,43 +1,68 @@
 {
   "name": "ogcopenapis",
   "version": "1.0.0",
-  "description": "Implements OGC OPEN API Features/Maps/Tiles capabilities and models for LuciadRIA",
+  "description": "OGC API Features, Maps, Tiles and Styles for LuciadRIA",
+  "type": "module",
+  "exports": {
+    "./lib/*": {
+      "types": "./lib/*.d.ts",
+      "import": "./lib/*.js"
+    },
+    "./*": {
+      "types": "./lib/*.d.ts",
+      "import": "./lib/*.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
-    "lib/"
+    "lib/",
+    "src/",
+    "!src/**/*.test.ts",
+    "!src/fixtures/"
   ],
+  "sideEffects": false,
   "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('lib', {recursive: true, force: true})\"",
+    "build:lib": "tsc -p tsconfig.build.json",
+    "build": "npm run clean && npm run build:lib",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
     "test:record": "vitest run --config vitest.record.config.ts",
     "test:browser": "vitest run --config vitest.browser.config.ts",
-    "transpile": "tsc -p tsconfig.json",
-    "copyjs": "copyfiles -u 1 \"src/**/*.js\" ./lib",
-    "copycss": "copyfiles -u 1 \"src/**/*.css\" ./lib",
-    "copyscss": "copyfiles -u 1 \"src/**/*.scss\" ./lib",
-    "copysvg": "copyfiles -u 1 \"src/**/*.svg\" ./lib",
-    "copyfonts": "copyfiles -u 1 \"src/fonts/**\" ./lib",
-    "build": "npm run transpile && npm run copyjs && npm run copycss && npm run copyscss && npm run copysvg && npm run copyfonts",
+    "test:package": "npm run build && node test/package/checkPackage.mjs",
+    "prepublishOnly": "npm run test && npm run test:package",
     "demo": "vite demo",
     "demo:build": "vite build demo"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "ogc",
+    "ogc-api",
+    "features",
+    "maps",
+    "tiles",
+    "vector-tiles",
+    "styles",
+    "luciadria"
+  ],
+  "author": "felipecarrillo100",
+  "license": "MIT",
+  "peerDependencies": {
+    "@luciad/ria": ">=2026.1.0"
+  },
   "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@luciad/ria": "2026.1.1",
     "@types/node": "^18.11.18",
-    "copyfiles": "^2.3.0",
     "jsdom": "^25.0.1",
     "playwright-core": "1.63.0",
-    "typescript": "^4.6.3",
+    "publint": "0.3.25",
+    "typescript": "5.9.3",
     "vite": "^5.4.21",
     "vitest": "^3.2.4",
     "vitest-canvas-mock": "^1.2.0"
   },
-  "dependencies": {
-    "@luciad/ria": ">=2026.1.0"
-  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/felipecarrillo100/ogcopenapis"
+    "url": "git+https://github.com/felipecarrillo100/ogcopenapis.git"
   }
 }

@@ -1,13 +1,13 @@
-import {MapboxVectorTileSetModel} from "@luciad/ria/model/tileset/mapbox/MapboxVectorTileSetModel";
-import {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate";
-import {Bounds} from "@luciad/ria/shape/Bounds";
-import {getReference} from "@luciad/ria/reference/ReferenceProvider";
-import {createPoint} from "@luciad/ria/shape/ShapeFactory";
-import {createTransformation} from "@luciad/ria/transformation/TransformationFactory";
-import {ProxifyFunction, TileMatrixLimits, TileSetData, TileSetLayer} from "./OgcOpenApiGetCapabilities";
-import {OgcOpenApiMvtTools} from "./OgcOpenApiMvtTools";
-import {FetchServerOptions, OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
-import {OgcOpenApiTileGrid, OgcOpenApiTileMatrixTools} from "./OgcOpenApiTileMatrixTools";
+import {MapboxVectorTileSetModel} from "@luciad/ria/model/tileset/mapbox/MapboxVectorTileSetModel.js";
+import type {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate.js";
+import {Bounds} from "@luciad/ria/shape/Bounds.js";
+import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
+import {createPoint} from "@luciad/ria/shape/ShapeFactory.js";
+import {createTransformation} from "@luciad/ria/transformation/TransformationFactory.js";
+import type {ProxifyFunction, TileMatrixLimits, TileSetData, TileSetLayer} from "./OgcOpenApiGetCapabilities.js";
+import {OgcOpenApiMvtTools} from "./OgcOpenApiMvtTools.js";
+import {type FetchServerOptions, OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
+import {type OgcOpenApiTileGrid, OgcOpenApiTileMatrixTools} from "./OgcOpenApiTileMatrixTools.js";
 
 export interface OgcOpenApiVectorTilesModelOptions {
     tileMatrix: TileSetData;

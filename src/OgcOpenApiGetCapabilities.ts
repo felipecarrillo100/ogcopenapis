@@ -1,4 +1,4 @@
-import {FetchServerOptions, OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
+import {type FetchServerOptions, OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
 const SCALE_DENOMINATOR_TOLERANCE = 1e-8;
 
 type RequestHeaders = {[headerName: string]: string;} | null

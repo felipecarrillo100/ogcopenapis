@@ -27,13 +27,17 @@ And the helpers they share:
 * __OgcOpenApiFetchTools__: the requests of all components, with URL completion and the proxify option
 
 ## To build
-This is the source code that produces a library delivered as a npm package, in the `lib` folder.
-To build the source code use the npm scripts:
+This is the source code that produces a library delivered as a npm package of native ES modules, in the `lib` folder,
+with type declarations and source maps. To build the source code use the npm scripts:
 ```
 npm install
 npm run build
 ```
-Then you can publish the package to npm or other repository.
+`build` runs `build:lib`, which compiles with `tsc` (TypeScript 5, `module: NodeNext`, target ES2020): one module per
+source file, with the `.js` extensions that native ES modules need. LuciadRIA is never bundled: it is a peer dependency,
+and every `@luciad/ria/...` import stays an import of the application's single copy.
+
+Then you can publish the package to npm or other repository. `npm publish` first runs the tests and the package check.
 
 ## To test
 The tests run in Node.js using Vitest, with jsdom as environment.
@@ -58,6 +62,15 @@ npm run test:record
 ```
 GNOSIS (https://maps.gnosis.earth/ogcapi/) is in the list but not tested: its `/collections` response is 9 MB, and its tiles need a login.
 
+The package check builds and packs the package, and checks it as published: only `lib/`, the sources of its source
+maps, README, LICENSE and package.json are in it, nothing of LuciadRIA; `lib/` imports only its own modules and
+`@luciad/ria`; [publint](https://publint.dev) and [Are the Types Wrong](https://arethetypeswrong.github.io) find no
+problems; and every module loads through the package exports, installed in a `node_modules` folder, by Node's own
+ES module loader, as in the tests of an application:
+```
+npm run test:package
+```
+
 The browser tests run the demo in Chrome: for each test server and each kind of data, they add a layer and check that the
 map paints it, without failed requests or page errors. They need the LuciadRIA license in `demo/license` (see
 [demo/README.md](demo/README.md)) and Google Chrome, or another Chrome set with `CHROME_PATH`. `HEADED=1` shows the browser,
@@ -77,16 +90,19 @@ npm run demo
 
 ## To use in your project
 
-Simply import the NPM package into your project
+Simply import the NPM package into your project, with LuciadRIA, its peer dependency:
 
 ```
-npm install ogcopenapis
+npm install ogcopenapis @luciad/ria
 ```
+
+The package is native ES modules. Import each component by its name, `ogcopenapis/OgcOpenApiFeatureStore` for
+instance. The paths of version 0.0.12, `ogcopenapis/lib/OgcOpenApiFeatureStore`, still work.
 
 ### Capabilities
 `fromURL` reads the landing page of a server and its collections, optionally only those with links of one type:
 ```typescript
-import {CollectionLinkType, OgcOpenApiGetCapabilities} from "ogcopenapis/lib/OgcOpenApiGetCapabilities";
+import {CollectionLinkType, OgcOpenApiGetCapabilities} from "ogcopenapis/OgcOpenApiGetCapabilities";
 
 const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/", {filterCollectionsByLinkType: CollectionLinkType.Items});
 const collection = capabilities.collections.find(c => c.id === "lakes");
@@ -108,7 +124,7 @@ import {FeatureLayer} from "@luciad/ria/view/feature/FeatureLayer.js";
 import {LoadSpatially} from "@luciad/ria/view/feature/loadingstrategy/LoadSpatially.js";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec.js";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
-import {OgcOpenApiFeatureStore} from "ogcopenapis/lib/OgcOpenApiFeatureStore";
+import {OgcOpenApiFeatureStore} from "ogcopenapis/OgcOpenApiFeatureStore";
 
 const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Items);
 const store = new OgcOpenApiFeatureStore({
@@ -131,7 +147,7 @@ and OgcOpenApiTilesModel extends WMTSTileSetModel, so you use them in combinatio
 OgcOpenApiMapsModel requests the map as tiles. The map link carries the `f` value the server accepts, such as `f=png`:
 ```typescript
 import {RasterTileSetLayer} from "@luciad/ria/view/tileset/RasterTileSetLayer.js";
-import {OgcOpenApiMapsModel} from "ogcopenapis/lib/OgcOpenApiMapsModel";
+import {OgcOpenApiMapsModel} from "ogcopenapis/OgcOpenApiMapsModel";
 
 const mapLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Map);
 const mapsModel = new OgcOpenApiMapsModel({
@@ -146,7 +162,7 @@ Create OgcOpenApiTilesModel with `createFromTileSet`. It describes the tileset t
 tile matrix sets that are quad-trees and tile matrix sets that are not (such as GlobalCRS84Scale), and it does not request
 tiles outside the `tileMatrixSetLimits`. The tilesets and tile matrix sets are found as for vector tiles, below:
 ```typescript
-import {OgcOpenApiTilesModel} from "ogcopenapis/lib/OgcOpenApiTilesModel";
+import {OgcOpenApiTilesModel} from "ogcopenapis/OgcOpenApiTilesModel";
 
 const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileSetInfo, {}, CollectionLinkType.Tiles);
 const model = await OgcOpenApiTilesModel.createFromTileSet({
@@ -167,9 +183,9 @@ MapboxVectorTileSetLayer and a MapboxStyle:
 ```typescript
 import {MapboxVectorTileSetLayer} from "@luciad/ria/view/mapbox/MapboxVectorTileSetLayer.js";
 import {MapboxStyle} from "@luciad/ria/view/mapbox/MapboxStyle.js";
-import {CollectionLinkType, OgcOpenApiGetCapabilities} from "ogcopenapis/lib/OgcOpenApiGetCapabilities";
-import {OgcOpenApiVectorTilesModel} from "ogcopenapis/lib/OgcOpenApiVectorTilesModel";
-import {OgcOpenApiStyleTools} from "ogcopenapis/lib/OgcOpenApiStyleTools";
+import {CollectionLinkType, OgcOpenApiGetCapabilities} from "ogcopenapis/OgcOpenApiGetCapabilities";
+import {OgcOpenApiVectorTilesModel} from "ogcopenapis/OgcOpenApiVectorTilesModel";
+import {OgcOpenApiStyleTools} from "ogcopenapis/OgcOpenApiStyleTools";
 
 const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://demo.ldproxy.net/daraa/", {filterCollectionsByLinkType: CollectionLinkType.VectorTiles});
 const collection = capabilities.collections.find(c => c.id === "TransportationGroundCrv");
@@ -246,7 +262,7 @@ Applications that load references on demand, such as MapEvolution with `requireR
 need nothing more. When a reference is unknown, the models throw LuciadRIA's own `UnknownIdentifierError` with its
 identifier (`EPSG:3035`), so the reference can be loaded and the model created again:
 ```typescript
-import {OgcOpenApiCrsTools} from "ogcopenapis/lib/OgcOpenApiCrsTools";
+import {OgcOpenApiCrsTools} from "ogcopenapis/OgcOpenApiCrsTools";
 
 // Before listing tile matrix sets: load their references, so that none is left out because its reference is not loaded yet
 await Promise.all(tileMatrixSets.map(t => requireReference(OgcOpenApiCrsTools.getReferenceName(t.crs)).catch(() => undefined)));
@@ -277,7 +293,9 @@ which MapEvolution uses) do. The WKT of epsg.io that the demo uses has no `AXIS`
 
 ## Changes in 1.0.0
 Version 1.0.0 is a breaking change from 0.0.12:
-* It requires LuciadRIA 2026.1 or higher.
+* It requires LuciadRIA 2026.1 or higher, as a peer dependency: the application installs it.
+* The package is native ES modules (`"type": "module"`), with an `exports` map. Import components as
+  `ogcopenapis/OgcOpenApiFeatureStore`, the paths with `lib/` still work.
 * New: vector tiles (OgcOpenApiVectorTilesModel), OGC API Styles (OgcOpenApiStyleTools), the tilesets of a collection
   (`fetchCollectionTileSets`) and of the dataset (`fetchDatasetTileSets`).
 * OgcOpenApiTilesModel uses LuciadRIA's WMTS support, create it with `createFromTileSet`. The constructor is deprecated.
@@ -286,5 +304,7 @@ Version 1.0.0 is a breaking change from 0.0.12:
 * Relative links are resolved against the document that has them, instead of the host of the server.
 
 ## Requirements
-* LuciadRIA 2026.1 or higher (place it on a local npm repository, for instance verdaccio)
-* An ES6 or TypeScript capable transpiler.
+* LuciadRIA 2026.1 or higher, a peer dependency that the application installs (place it on a local npm repository,
+  for instance verdaccio)
+* A bundler or runtime for ES modules and ES2020, such as Vite or webpack. TypeScript projects need
+  `moduleResolution` `bundler`, `node16` or `nodenext`, which read the `exports` of the package.

@@ -10,3 +10,6 @@ demo/dist/
 
 # Screenshots of the browser tests
 test/browser/screenshots/
+
+# npm run test:package: the package as installed
+.package-check/

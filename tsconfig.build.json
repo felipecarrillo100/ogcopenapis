@@ -1,0 +1,5 @@
+{
+  // The library as published in lib/: the sources without tests and fixtures
+  "extends": "./tsconfig.json",
+  "exclude": ["./node_modules", "./src/**/*.test.ts", "./src/fixtures"]
+}

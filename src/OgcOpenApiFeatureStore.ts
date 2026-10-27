@@ -1,17 +1,17 @@
-import {QueryOptions, Store, StoreOperationName} from '@luciad/ria/model/store/Store';
-import {Cursor} from '@luciad/ria/model/Cursor';
-import {Feature} from '@luciad/ria/model/feature/Feature';
-import {Bounds} from '@luciad/ria/shape/Bounds';
-import {Codec, CodecDecodeOptions} from '@luciad/ria/model/codec/Codec';
-import {createBounds} from '@luciad/ria/shape/ShapeFactory';
-import {CoordinateReference} from '@luciad/ria/reference/CoordinateReference';
-import {getReference} from "@luciad/ria/reference/ReferenceProvider";
-import {createTransformation} from "@luciad/ria/transformation/TransformationFactory";
-import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
-import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec";
-import {GMLCodec} from "@luciad/ria/model/codec/GMLCodec";
-import {ProxifyFunction} from "./OgcOpenApiGetCapabilities";
-import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
+import {type QueryOptions, Store, type StoreOperationName} from '@luciad/ria/model/store/Store.js';
+import type {Cursor} from '@luciad/ria/model/Cursor.js';
+import {Feature} from '@luciad/ria/model/feature/Feature.js';
+import {Bounds} from '@luciad/ria/shape/Bounds.js';
+import {Codec, type CodecDecodeOptions} from '@luciad/ria/model/codec/Codec.js';
+import {createBounds} from '@luciad/ria/shape/ShapeFactory.js';
+import {CoordinateReference} from '@luciad/ria/reference/CoordinateReference.js';
+import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
+import {createTransformation} from "@luciad/ria/transformation/TransformationFactory.js";
+import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools.js";
+import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec.js";
+import {GMLCodec} from "@luciad/ria/model/codec/GMLCodec.js";
+import type {ProxifyFunction} from "./OgcOpenApiGetCapabilities.js";
+import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
 
 export interface OgcOpenApiFeatureStoreConstructorOptions {
   swapAxes?: string[];
@@ -291,6 +291,6 @@ export class OgcOpenApiFeatureStore extends Store {
   }
 }
 
-export {
+export type {
   OgcOpenApiFeaturesCodecDecodeOptions
 }

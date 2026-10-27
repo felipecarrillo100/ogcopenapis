@@ -1,4 +1,4 @@
-import {TileSetLayer} from "./OgcOpenApiGetCapabilities";
+import type {TileSetLayer} from "./OgcOpenApiGetCapabilities.js";
 
 /**
  * Reads the layers of a Mapbox Vector Tile: their names, and the geometryDimension of their features (0 points,
@@ -55,10 +55,10 @@ class OgcOpenApiMvtTools {
 
     private static async decompress(bytes: Uint8Array): Promise<Uint8Array> {
         if (bytes.length < 2 || bytes[0] !== 0x1f || bytes[1] !== 0x8b) return bytes;
-        // DecompressionStream is in all current browsers and Node 18, not yet in the TypeScript 4.6 DOM types
-        const DecompressionStreamClass = (globalThis as any).DecompressionStream;
-        if (!DecompressionStreamClass) throw new Error("A gzip compressed vector tile needs DecompressionStream");
-        const stream = new Response(bytes).body.pipeThrough(new DecompressionStreamClass("gzip"));
+        // DecompressionStream is in all current browsers and Node 18
+        if (typeof DecompressionStream === "undefined") throw new Error("A gzip compressed vector tile needs DecompressionStream");
+        // A copy, as Response takes a Uint8Array over an ArrayBuffer only, not over a SharedArrayBuffer
+        const stream = new Response(new Uint8Array(bytes)).body.pipeThrough(new DecompressionStream("gzip"));
         return new Uint8Array(await new Response(stream).arrayBuffer());
     }
 

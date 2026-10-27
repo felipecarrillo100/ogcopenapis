@@ -1,10 +1,10 @@
-import {Bounds} from "@luciad/ria/shape/Bounds";
-import {CoordinateReference} from "@luciad/ria/reference/CoordinateReference";
-import {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate";
-import {getReference} from "@luciad/ria/reference/ReferenceProvider";
-import {createBounds} from "@luciad/ria/shape/ShapeFactory";
-import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
-import {OgcOpenApiGetCapabilities, TileMatrix, TileSetData} from "./OgcOpenApiGetCapabilities";
+import {Bounds} from "@luciad/ria/shape/Bounds.js";
+import {CoordinateReference} from "@luciad/ria/reference/CoordinateReference.js";
+import type {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate.js";
+import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
+import {createBounds} from "@luciad/ria/shape/ShapeFactory.js";
+import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools.js";
+import {OgcOpenApiGetCapabilities, type TileMatrix, type TileSetData} from "./OgcOpenApiGetCapabilities.js";
 
 /**
  * The part of an OGC TileMatrixSet that LuciadRIA can address as a quad-tree:

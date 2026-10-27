@@ -1,4 +1,4 @@
-import {ProxifyFunction} from "./OgcOpenApiGetCapabilities";
+import type {ProxifyFunction} from "./OgcOpenApiGetCapabilities.js";
 
 interface ExtFetchOptions {
     originalUrl: string;
