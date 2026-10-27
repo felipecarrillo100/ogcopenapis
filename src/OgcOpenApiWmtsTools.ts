@@ -1,9 +1,9 @@
-import {WMTSCapabilities} from "@luciad/ria/model/capabilities/WMTSCapabilities";
-import {WMTSRequestEncoding} from "@luciad/ria/model/tileset/WMTSRequestEncoding";
-import {CoordinateType} from "@luciad/ria/reference/CoordinateType";
-import {getReference} from "@luciad/ria/reference/ReferenceProvider";
-import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
-import {TileMatrixLimits, TileSetData} from "./OgcOpenApiGetCapabilities";
+import {WMTSCapabilities} from "@luciad/ria/model/capabilities/WMTSCapabilities.js";
+import {WMTSRequestEncoding} from "@luciad/ria/model/tileset/WMTSRequestEncoding.js";
+import {CoordinateType} from "@luciad/ria/reference/CoordinateType.js";
+import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
+import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools.js";
+import type {TileMatrixLimits, TileSetData} from "./OgcOpenApiGetCapabilities.js";
 
 /**
  * Describes an OGC API tileset as a WMTS 1.0 layer, so that LuciadRIA's WMTS support reads its tile matrix set:

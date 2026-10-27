@@ -1,12 +1,12 @@
 import {
     CollectionLinkType,
-    LinkType,
-    OgcOpenApiCapabilitiesCollection,
-    OgcOpenApiCapabilitiesObject,
+    type LinkType,
+    type OgcOpenApiCapabilitiesCollection,
+    type OgcOpenApiCapabilitiesObject,
     OgcOpenApiGetCapabilities,
-    TileSetLayer
-} from "./OgcOpenApiGetCapabilities";
-import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools";
+    type TileSetLayer
+} from "./OgcOpenApiGetCapabilities.js";
+import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
 
 export const MAPBOX_STYLE_TYPE = "application/vnd.mapbox.style+json";
 

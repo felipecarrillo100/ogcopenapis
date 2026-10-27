@@ -1,12 +1,12 @@
-import {WMTSTileSetModel, WMTSTileSetModelConstructorOptions} from "@luciad/ria/model/tileset/WMTSTileSetModel";
-import {WMTSRequestEncoding} from "@luciad/ria/model/tileset/WMTSRequestEncoding";
-import {QuadTreeRasterTileSetStructure, TileMatrix, TileMatrixSet2DRasterTileSetStructure} from "@luciad/ria/model/tileset/RasterTileSetModel";
-import {RasterDataType} from "@luciad/ria/model/tileset/RasterDataType";
-import {RasterSamplingMode} from "@luciad/ria/model/tileset/RasterSamplingMode";
-import {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate";
-import {ProxifyFunction, TileMatrixLimits, TileSetData} from "./OgcOpenApiGetCapabilities";
-import {OgcOpenApiTileGrid, OgcOpenApiTileMatrixTools} from "./OgcOpenApiTileMatrixTools";
-import {OgcOpenApiWmtsTools} from "./OgcOpenApiWmtsTools";
+import {WMTSTileSetModel, type WMTSTileSetModelConstructorOptions} from "@luciad/ria/model/tileset/WMTSTileSetModel.js";
+import {WMTSRequestEncoding} from "@luciad/ria/model/tileset/WMTSRequestEncoding.js";
+import type {QuadTreeRasterTileSetStructure, TileMatrix, TileMatrixSet2DRasterTileSetStructure} from "@luciad/ria/model/tileset/RasterTileSetModel.js";
+import {RasterDataType} from "@luciad/ria/model/tileset/RasterDataType.js";
+import {RasterSamplingMode} from "@luciad/ria/model/tileset/RasterSamplingMode.js";
+import type {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate.js";
+import type {ProxifyFunction, TileMatrixLimits, TileSetData} from "./OgcOpenApiGetCapabilities.js";
+import {type OgcOpenApiTileGrid, OgcOpenApiTileMatrixTools} from "./OgcOpenApiTileMatrixTools.js";
+import {OgcOpenApiWmtsTools} from "./OgcOpenApiWmtsTools.js";
 
 
 export interface OgcOpenApiTilesModelOptions {

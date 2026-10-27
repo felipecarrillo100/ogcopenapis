@@ -1,14 +1,14 @@
-import {RasterDataType} from "@luciad/ria/model/tileset/RasterDataType";
-import {RasterSamplingMode} from "@luciad/ria/model/tileset/RasterSamplingMode";
-import {WMSTileSetModel} from "@luciad/ria/model/tileset/WMSTileSetModel";
-import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools";
-import {getReference} from "@luciad/ria/reference/ReferenceProvider";
-import {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate";
-import {Bounds} from "@luciad/ria/shape/Bounds";
-import {CoordinateReference} from "@luciad/ria/reference/CoordinateReference";
-import {createBounds} from "@luciad/ria/shape/ShapeFactory";
-import {ProxifyFunction} from "./OgcOpenApiGetCapabilities";
-import {OgcOpenApiTileMatrixTools} from "./OgcOpenApiTileMatrixTools";
+import {RasterDataType} from "@luciad/ria/model/tileset/RasterDataType.js";
+import {RasterSamplingMode} from "@luciad/ria/model/tileset/RasterSamplingMode.js";
+import {WMSTileSetModel} from "@luciad/ria/model/tileset/WMSTileSetModel.js";
+import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools.js";
+import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
+import type {TileCoordinate} from "@luciad/ria/model/tileset/TileCoordinate.js";
+import {Bounds} from "@luciad/ria/shape/Bounds.js";
+import {CoordinateReference} from "@luciad/ria/reference/CoordinateReference.js";
+import {createBounds} from "@luciad/ria/shape/ShapeFactory.js";
+import type {ProxifyFunction} from "./OgcOpenApiGetCapabilities.js";
+import {OgcOpenApiTileMatrixTools} from "./OgcOpenApiTileMatrixTools.js";
 
 // Half the extent of the Web Mercator world, in metres
 const WEB_MERCATOR_HALF_WORLD = 20037508.3427892;
