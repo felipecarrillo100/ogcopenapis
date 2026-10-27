@@ -206,9 +206,9 @@ async function createLayer(collection: OgcOpenApiCapabilitiesCollection): Promis
             const link = maps.find(l => l.type === "image/png") || maps[0];
             const model = new OgcOpenApiMapsModel({
                 crs: "http://www.opengis.net/def/crs/EPSG/0/3857",
+                // The link carries the f value the server accepts, such as f=png
                 baseURL: link.href,
                 collection: collection.id,
-                format: "image/png",
             });
             return new RasterTileSetLayer(model, {label});
         }
