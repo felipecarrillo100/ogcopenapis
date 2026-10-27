@@ -5,15 +5,19 @@ The ogcopenapis package provides OGC API functionalities to LuciadRIA Applicatio
 
 Implements
 * __Open API Features__ 
-* __Open API Tiles__ 
 * __Open API Maps__ 
+* __Open API Tiles__, map (raster) tiles and vector tiles
+* __Open API Styles__, for vector tiles
 
 The Main Components are:
 
 * __OgcOpenApiFeatureStore__: a ready to use LuciadRIA Feature store capable to retrieve features from an OGC API Feature Service
 * __OgcOpenApiMapsModel__:  a ready to use model capable to retrieve images from from an OGC API Maps Service
-* __OgcOpenApiTilesModel__:  a ready to use model capable to retrieve tiles from an OGC API Tiles Service
-* __OgcOpenApiGetCapabilities__: a helper to retrieve the capabilities of a server such as available Collections and available Formats
+* __OgcOpenApiTilesModel__:  a ready to use model capable to retrieve map tiles from an OGC API Tiles Service
+* __OgcOpenApiVectorTilesModel__:  a ready to use model capable to retrieve vector tiles (Mapbox Vector Tiles) from an OGC API Tiles Service
+* __OgcOpenApiStyleTools__: a helper to retrieve the OGC API Styles of a collection as Mapbox GL styles, or to generate a default style
+* __OgcOpenApiGetCapabilities__: a helper to retrieve the capabilities of a server such as available Collections, available Formats, tilesets and tile matrix sets
+* __OgcOpenApiTileMatrixTools__: maps an OGC TileMatrixSet onto a LuciadRIA tile structure, shared by both tiles models
 
 
 
@@ -27,13 +31,22 @@ npm run build
 Then you can publish the package to npm or other repository
 
 ## To test
-Some test have been added that runs using nodejs using Jest. No browser test is available at the moment.
+Some test have been added that runs using nodejs using Jest.
 The test uses isomorphic-fetch to provide fetch in node testing with jest.
 ```
 npm run test
 ```
-Test use the sever-side implementations of OGC Open API from "https://demo.pygeoapi.io/master/" and "https://maps.gnosis.earth/ogcapi/"
+Most tests use the sever-side implementations of OGC Open API from "https://demo.pygeoapi.io/master/", "https://demo.ldproxy.net/",
+"https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/", "https://maps.gnosis.earth/ogcapi/" and "https://api.pdok.nl/".
 The servers are reliable and stable,  but take in t account that changes at the server may brake some tests of this client.
+The tests of OgcOpenApiTileMatrixTools run offline, on the tile matrix sets in `src/fixtures`.
+
+## Demo
+The `demo` folder contains a minimal page to open Features, Maps, Tiles and Vector Tiles collections in a LuciadRIA map.
+It needs a LuciadRIA development license in `demo/license/luciadria_development.txt`, see [demo/README.md](demo/README.md).
+```
+npm run demo
+```
 
 ## To use in your project
 
@@ -63,10 +76,55 @@ For Maps and Tiles use OgcOpenApiMapsModel and OgcOpenApiTilesModel:
 import {OgcOpenApiMapsModel} from "ogcopenapis/lib/OgcOpenApiMapsModel";
 import {OgcOpenApiTilesModel} from "ogcopenapis/lib/OgcOpenApiTilesModel";
 ```
-Both models extend from UrlTileSetModel so you can use them in combination with RasterTileSetLayer. 
+OgcOpenApiMapsModel extends WMSTileSetModel and OgcOpenApiTilesModel extends UrlTileSetModel, so you can use them in combination with RasterTileSetLayer. 
 Look at the LuciadRIA documentation if you need further information on using RasterTileSetLayer. 
+
+### Vector tiles
+For vector tiles use OgcOpenApiVectorTilesModel. It extends LuciadRIA's MapboxVectorTileSetModel, so you use it in combination with
+MapboxVectorTileSetLayer and a MapboxStyle:
+```typescript
+import {MapboxVectorTileSetLayer} from "@luciad/ria/view/mapbox/MapboxVectorTileSetLayer.js";
+import {MapboxStyle} from "@luciad/ria/view/mapbox/MapboxStyle.js";
+import {CollectionLinkType, OgcOpenApiGetCapabilities} from "ogcopenapis/lib/OgcOpenApiGetCapabilities";
+import {OgcOpenApiVectorTilesModel} from "ogcopenapis/lib/OgcOpenApiVectorTilesModel";
+import {OgcOpenApiStyleTools} from "ogcopenapis/lib/OgcOpenApiStyleTools";
+
+const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://demo.ldproxy.net/daraa/", {filterCollectionsByLinkType: CollectionLinkType.VectorTiles});
+const collection = capabilities.collections.find(c => c.id === "TransportationGroundCrv");
+
+// The tile matrix set definition and the tileset of the collection for it
+const tileMatrix = (await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities)).find(t => t.id === "WebMercatorQuad");
+const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileMatrix.id, {}, CollectionLinkType.VectorTiles);
+
+const model = new OgcOpenApiVectorTilesModel({
+    tileMatrix,
+    baseURL: tileSet.links.find(l => l.type === "application/vnd.mapbox-vector-tile").href,
+    collection: collection.id,
+    tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+});
+
+// A style of the server (OGC API Styles), or a default style when the server has none
+const styles = await OgcOpenApiStyleTools.fetchStyles(capabilities, collection);
+const styleJson = styles.length > 0 ?
+    await OgcOpenApiStyleTools.fetchMapboxStyle(capabilities, OgcOpenApiStyleTools.pickStylesheet(styles[0], tileMatrix.id)) :
+    OgcOpenApiStyleTools.createDefaultStyle(tileSet.layers);
+
+map.layerTree.addChild(new MapboxVectorTileSetLayer(model, {label: collection.title, style: MapboxStyle.createFromObject(styleJson)}));
+```
+
+About styles:
+* LuciadRIA reads the Mapbox GL encoding of OGC API Styles only, not SLD or other encodings.
+* A server can publish a stylesheet per tile matrix set, because zoom levels depend on it. `pickStylesheet` picks the one for the tile matrix set in use.
+* `fetchMapboxStyle` removes properties without a value (`"filter" : ,`), so that styles that are not valid JSON can still be used.
+* `createDefaultStyle` paints points, lines and surfaces by the `geometryDimension` of the tileset layers, without labels.
+
+Notes:
+* Only tile matrix sets that LuciadRIA can address as a quad-tree are supported, both for map tiles and vector tiles.
+* LuciadRIA 2026.1.1 paints nothing for a vector tiles model with `minLevel > 0`. OgcOpenApiVectorTilesModel therefore starts at
+  level 0, and does not request tiles outside the `tileMatrixSetLimits` of the tileset.
+* LuciadRIA 2026.1.1 does not paint Mapbox `circle` layers. The default style draws points as a text symbol for that reason.
 
 
 ## Requirements
-* LuciadRIA 2020.0 or higher (place it on a local npm repository for instance verdaccio )
+* LuciadRIA 2026.1 or higher (place it on a local npm repository for instance verdaccio )
 * A ES6 or Typescript capable transpiler. 
