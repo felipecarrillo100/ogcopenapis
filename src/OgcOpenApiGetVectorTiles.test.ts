@@ -1,4 +1,4 @@
-import {describe, expect, it} from '@jest/globals';
+import {describe, expect, it, jest} from '@jest/globals';
 import "isomorphic-fetch";
 
 import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapabilities";
@@ -61,7 +61,8 @@ describe('OgcOpenApiVectorTilesModel', () => {
 
     it('daraa TransportationGroundCrv levels follow the tileMatrixSetLimits', async () => {
         const model = await createDaraaModel("TransportationGroundCrv", "WebMercatorQuad");
-        expect(model.minLevel).toBe(6);
+        // LuciadRIA paints nothing when minLevel > 0, the model skips levels without data itself
+        expect(model.minLevel).toBe(0);
         expect(model.maxLevel).toBe(18);
         expect(model.reference.identifier).toBe("EPSG:3857");
         expect(model.modelDescriptor.name).toBe("TransportationGroundCrv");
@@ -77,5 +78,13 @@ describe('OgcOpenApiVectorTilesModel', () => {
     it('daraa TransportationGroundCrv getVectorTile without data is null', async () => {
         const model = await createDaraaModel("TransportationGroundCrv", "WebMercatorQuad");
         expect(await model.getVectorTile({level: 12, x: 0, y: 4095})).toBeNull();
+    });
+
+    it('daraa TransportationGroundCrv getVectorTile below the limits is null without a request', async () => {
+        const model = await createDaraaModel("TransportationGroundCrv", "WebMercatorQuad");
+        const fetchSpy = jest.spyOn(globalThis, "fetch");
+        expect(await model.getVectorTile({level: 3, x: 4, y: 4})).toBeNull();
+        expect(fetchSpy).not.toHaveBeenCalled();
+        fetchSpy.mockRestore();
     });
 });

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>ogcopenapis demo</title>
+    <link rel="stylesheet" href="/src/style.css"/>
+</head>
+<body>
+<div id="app">
+    <aside id="panel">
+        <h1>OGC API for LuciadRIA</h1>
+
+        <label>Server
+            <select id="preset"></select>
+        </label>
+        <input id="url" type="url" spellcheck="false"/>
+
+        <label>Type
+            <select id="type">
+                <option value="vectorTiles">Vector tiles</option>
+                <option value="tiles">Map tiles</option>
+                <option value="map">Maps</option>
+                <option value="items">Features</option>
+            </select>
+        </label>
+        <button id="connect">Connect</button>
+
+        <label>Collection
+            <select id="collection" disabled></select>
+        </label>
+        <label id="tmsRow">Tile matrix set
+            <select id="tms" disabled></select>
+        </label>
+        <label id="styleRow">Style
+            <select id="style" disabled></select>
+        </label>
+        <button id="add" disabled>Add layer</button>
+
+        <div id="status"></div>
+    </aside>
+    <div id="mapContainer">
+        <div id="map"></div>
+        <div id="layerControl">
+            <h2>Layers</h2>
+            <ul id="layers"></ul>
+        </div>
+        <div id="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div>
+    </div>
+</div>
+<!-- bootstrap.ts sets the license, then loads main.ts -->
+<script type="module" src="/src/bootstrap.ts"></script>
+</body>
+</html>

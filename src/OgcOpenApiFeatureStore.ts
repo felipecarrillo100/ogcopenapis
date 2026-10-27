@@ -74,7 +74,7 @@ export class OgcOpenApiFeatureStore extends Store {
   private baseUrl: string;
   private dataFormat: string | undefined;
   private customCrs: string | undefined;
-  private bounds: Bounds;
+  private dataBounds: Bounds;
   private requestHeaders: { [key: string]: string };
   private reference: CoordinateReference;
   private outputFormat: string;
@@ -122,8 +122,13 @@ export class OgcOpenApiFeatureStore extends Store {
         bbox[1],
         bbox[3] - bbox[1],
       ]);
-      this.bounds = OgcOpenApiFeatureStore.targetBounds(tmpBounds, this.reference);
+      this.dataBounds = OgcOpenApiFeatureStore.targetBounds(tmpBounds, this.reference);
     }
+  }
+
+  // Store defines bounds as a getter, the extent is kept in dataBounds
+  get bounds(): Bounds {
+    return this.dataBounds;
   }
 
   isOperationSupported(methodName: StoreOperationName): boolean {

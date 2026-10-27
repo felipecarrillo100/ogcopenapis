@@ -51,7 +51,15 @@ export interface CollectionTileSet {
   dataType?: string;
   links: LinkType[];
   layers: TileSetLayer[];
-  tileMatrixSetLimits?: { tileMatrix: string }[];
+  tileMatrixSetLimits?: TileMatrixLimits[];
+}
+
+export interface TileMatrixLimits {
+  tileMatrix: string;
+  minTileRow: number;
+  maxTileRow: number;
+  minTileCol: number;
+  maxTileCol: number;
 }
 
 export interface TileSetMeta {
@@ -68,6 +76,8 @@ export interface OgcOpenApiCapabilitiesObject {
   info: any;
   crs?: any[];
   baseUrl: string;
+  // The landing page link to the tile matrix sets (rel tiling-schemes)
+  tileMatrixSetsUrl?: string;
   serverOptions: FetchServerOptions;
 }
 
@@ -171,6 +181,8 @@ export class OgcOpenApiGetCapabilities {
                   );
                 }
               );
+              const tilingSchemes = jsonObject.links.filter((link) => link.rel === 'http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes' || link.rel === 'tiling-schemes');
+              const linkToTileMatrixSets = tilingSchemes.find((link) => link.type === 'application/json') || tilingSchemes.find((link) => !link.type);
               const promiseArray = [];
               if (linkToData) {
                 const collectionsPromise = OgcOpenApiGetCapabilities.fetchLinkContentAsJSON(
@@ -235,7 +247,8 @@ export class OgcOpenApiGetCapabilities {
                     info: responseOpenApi ? responseOpenApi.info : {},
                     ...crsArray,
                     serverOptions: serverOptions,
-                    baseUrl
+                    baseUrl,
+                    tileMatrixSetsUrl: linkToTileMatrixSets ? serverOptions.complete(linkToTileMatrixSets.href) : undefined
                   };
                   resolve(o);
                 });
@@ -318,7 +331,7 @@ export class OgcOpenApiGetCapabilities {
         Promise.all(promises).then((arr)=>{
           resolve(arr);
         }).catch(()=>{reject()})
-      })
+      }, reject)
     });
   }
 
@@ -359,7 +372,7 @@ export class OgcOpenApiGetCapabilities {
   private static fetchTileSets(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}) {
     return new Promise<TileSetMeta[]>((resolve, reject)=> {
       if (capabilities===null) reject();
-      const url = capabilities.baseUrl + "tileMatrixSets";
+      const url = capabilities.tileMatrixSetsUrl ? capabilities.tileMatrixSetsUrl : capabilities.baseUrl + "tileMatrixSets";
 
       OgcOpenApiFetchTools.fetch(url, {
         method: "GET",
@@ -419,7 +432,8 @@ export class OgcOpenApiGetCapabilities {
       OgcOpenApiFetchTools.fetch(tileInfoUrl, {
         method:"GET",
         credentials: options?.credentials ? "same-origin" : "omit",
-        headers: options?.requestHeaders ? options?.requestHeaders : {}
+        // pygeoapi answers 500 without f=json or an Accept header
+        headers: {Accept: "application/json", ...(options?.requestHeaders ? options.requestHeaders : {})}
       }, capabilities.serverOptions).then(result => {
         if (result.status === 200) {
           result.json().then((data) => {

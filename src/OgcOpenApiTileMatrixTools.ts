@@ -50,13 +50,19 @@ class OgcOpenApiTileMatrixTools {
      * bottom-up, OGC counts them from the cornerOfOrigin (topLeft by default).
      */
     public static resolveTileTemplate(template: string, grid: OgcOpenApiTileGrid, tile: TileCoordinate): string | null {
+        const ogcTile = OgcOpenApiTileMatrixTools.getOgcTile(grid, tile);
+        if (ogcTile === null) return null;
+        return template
+            .replace("{tileMatrix}", ogcTile.tileMatrix)
+            .replace("{tileRow}", ogcTile.tileRow.toString())
+            .replace("{tileCol}", ogcTile.tileCol.toString());
+    }
+
+    public static getOgcTile(grid: OgcOpenApiTileGrid, tile: TileCoordinate): { tileMatrix: string, tileRow: number, tileCol: number } | null {
         const tileMatrix = grid.tileMatrices[tile.level];
         if (!tileMatrix) return null;
-        const row = OgcOpenApiTileMatrixTools.isBottomLeft(tileMatrix) ? tile.y : tileMatrix.matrixHeight - 1 - tile.y;
-        return template
-            .replace("{tileMatrix}", tileMatrix.id)
-            .replace("{tileRow}", row.toString())
-            .replace("{tileCol}", tile.x.toString());
+        const tileRow = OgcOpenApiTileMatrixTools.isBottomLeft(tileMatrix) ? tile.y : tileMatrix.matrixHeight - 1 - tile.y;
+        return {tileMatrix: tileMatrix.id, tileRow, tileCol: tile.x};
     }
 
     public static appendQueryParameters(url: string, parameters: { [key: string]: string | number | boolean | undefined }): string {
