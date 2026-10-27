@@ -1,4 +1,4 @@
-import {Store, StoreOperationName} from '@luciad/ria/model/store/Store';
+import {QueryOptions, Store, StoreOperationName} from '@luciad/ria/model/store/Store';
 import {Cursor} from '@luciad/ria/model/Cursor';
 import {Feature} from '@luciad/ria/model/feature/Feature';
 import {Bounds} from '@luciad/ria/shape/Bounds';
@@ -136,132 +136,82 @@ export class OgcOpenApiFeatureStore extends Store {
   }
 
   get(id: number | string, optionsInput?: any): Promise<Feature> {
-    return new Promise((resolve) => {
-      const options = optionsInput ? { ...optionsInput } : {};
-      options.query = (options.query ? options.query : {}) as OgcOpenApiFeatureStoreQueryOptions;
-      options.query.f = options.query.f ? options.query.f : this.dataFormat;
-      options.query.crs = options.query.crs ? options.query.crs : this.customCrs;
-      // Mod starta
-      const itemsAccept =
-        typeof this.requestHeaders.accept !== 'undefined'
-          ? this.requestHeaders.accept.split(';')
-          : typeof this.requestHeaders.Accept !== 'undefined'
-          ? this.requestHeaders.Accept.split(';')
-          : [];
-      itemsAccept.push(this.outputFormat);
-      const accept = itemsAccept.join(';');
-      // Mod end
-      let request = this.featureUrl + id;
-      const simpleQuery = [];
-      if (options.query.f) simpleQuery.push("f");
-      if (options.query.crs) simpleQuery.push("crs");
-      if (simpleQuery.length > 0) {
-        const queryString = simpleQuery.map( k => ""+k+"="+options.query[k]).join("&");
-        request += "?" + queryString;
-      }
-
-      const headers = { ...this.requestHeaders, Accept: accept };
-
-      OgcOpenApiFetchTools.fetch(request, {
-        method: 'GET',
-        credentials: this.credentials ? "same-origin" : "omit",
-        headers,
-      }, this.serverOptions).then((response) => {
-        if (response.status === 200) {
-          response.text().then((content) => {
-            let contentType = response.headers.get('Content-Type');
-            const contentCrs = response.headers.get('content-crs') ? response.headers.get('content-crs') : this.customCrs;
-            const contentLengthStr = response.headers.get('Content-Length');
-            const contentLength = Number(contentLengthStr);
-            contentType = contentType ? contentType : 'text/plain';
-            content = content
-              .split('http://www.opengis.net/def/crs/OGC/1.3/CRS84')
-              .join('urn:ogc:def:crs:OGC:1.3:CRS84');
-            const codecOptions: OgcOpenApiFeaturesCodecDecodeOptions = {
-              content, contentType, contentCrs, contentLength
-            };
-            let cursor;
-            if (this.codec instanceof GeoJsonCodec || this.codec instanceof GMLCodec) {
-              cursor = this.codec.decode({...codecOptions, reference: getReference(OgcOpenApiCrsTools.getReferenceName(contentCrs))});
-            } else {
-              cursor = this.codec.decode(codecOptions);
-            }
-            if (cursor && cursor.hasNext()) {
-              const feaure = cursor.next();
-              resolve(feaure);
-            } else {
-              resolve(null);
-            }
-          });
-        }
-      });
-    });
+    const options = optionsInput ? { ...optionsInput } : {};
+    options.query = (options.query ? options.query : {}) as OgcOpenApiFeatureStoreQueryOptions;
+    options.query.f = options.query.f ? options.query.f : this.dataFormat;
+    options.query.crs = options.query.crs ? options.query.crs : this.customCrs;
+    let request = this.featureUrl + id;
+    const simpleQuery = [];
+    if (options.query.f) simpleQuery.push("f");
+    if (options.query.crs) simpleQuery.push("crs");
+    if (simpleQuery.length > 0) {
+      const queryString = simpleQuery.map( k => ""+k+"="+options.query[k]).join("&");
+      request += "?" + queryString;
+    }
+    return this.fetchFeatures(request, options.abortSignal).then(cursor => cursor && cursor.hasNext() ? cursor.next() : null);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  query(receivedQuery?: OgcOpenApiFeatureStoreQueryOptions, options?: any): Cursor | Promise<Cursor> {
-    return new Promise((resolve, reject) => {
-      const query = receivedQuery ? { ...receivedQuery } : {};
-      query.f = query.f ? query.f : this.dataFormat;
-      query.crs = query.crs ? query.crs : this.customCrs;
-      query.limit = query.limit ? query.limit : undefined;
-      let request = this.baseUrl;
-      // Mod starta
-      const itemsAccept =
-        typeof this.requestHeaders.accept !== 'undefined'
-          ? this.requestHeaders.accept.split(';')
-          : typeof this.requestHeaders.Accept !== 'undefined'
-          ? this.requestHeaders.Accept.split(';')
-          : [];
-      itemsAccept.push(this.outputFormat);
-      const accept = itemsAccept.join(';');
-      // Mod end
+  query(receivedQuery?: OgcOpenApiFeatureStoreQueryOptions, options?: QueryOptions): Cursor | Promise<Cursor> {
+    const query = receivedQuery ? { ...receivedQuery } : {};
+    query.f = query.f ? query.f : this.dataFormat;
+    query.crs = query.crs ? query.crs : this.customCrs;
+    query.limit = query.limit ? query.limit : undefined;
+    let request = this.baseUrl;
 
-      const allKeys = Object.keys(query);
-      if (allKeys.length>0) {
-        const filteredKeys = allKeys.filter(e => (typeof query[e] !== "undefined" && query[e] !== null));
-        const indexOfFormat = filteredKeys.indexOf("f");
-        if (indexOfFormat > -1) {
-          filteredKeys.splice(indexOfFormat, 1);
-          filteredKeys.unshift("f");
-        }
-        const queryString = filteredKeys.map( k => ""+k+"="+query[k]).join("&");
-        request += "?" + queryString;
+    const allKeys = Object.keys(query);
+    if (allKeys.length>0) {
+      const filteredKeys = allKeys.filter(e => (typeof query[e] !== "undefined" && query[e] !== null));
+      const indexOfFormat = filteredKeys.indexOf("f");
+      if (indexOfFormat > -1) {
+        filteredKeys.splice(indexOfFormat, 1);
+        filteredKeys.unshift("f");
       }
+      const queryString = filteredKeys.map( k => ""+k+"="+query[k]).join("&");
+      request += "?" + queryString;
+    }
+    return this.fetchFeatures(request, options?.abortSignal);
+  }
 
-      const headers = { ...this.requestHeaders, Accept: accept };
-      // const headers = { ...this.requestHeaders };
-      OgcOpenApiFetchTools.fetch(request, {
-        method: 'GET',
-        credentials: this.credentials ? "same-origin": "omit",
-        headers,
-      }, this.serverOptions).then((response) => {
-        if (response.status === 200) {
-          response.text().then((content) => {
-            let contentType = response.headers.get('Content-Type');
-            const contentCrs = response.headers.get('content-crs') ? response.headers.get('content-crs') : this.customCrs;
-            const contentLengthStr = response.headers.get('Content-Length');
-            const contentLength = Number(contentLengthStr);
-            contentType = contentType ? contentType : 'text/plain';
-            content = content
-              .split('srsName="http://www.opengis.net/def/crs/OGC/1.3/CRS84"')
-              .join('srsName="urn:ogc:def:crs:OGC:1.3:CRS84"');
-            const codecOptions: OgcOpenApiFeaturesCodecDecodeOptions = {
-              content, contentType, contentCrs, contentLength
-            };
-            if (this.codec instanceof GeoJsonCodec || this.codec instanceof GMLCodec) {
-              const cursor = this.codec.decode({...codecOptions, reference: getReference(OgcOpenApiCrsTools.getReferenceName(contentCrs))});
-              resolve(cursor);
-            } else {
-              const cursor = this.codec.decode(codecOptions);
-              resolve(cursor);
-            }
-          });
-        } else {
-          reject()
+  // Fetches and decodes features. The promise always settles: it rejects with the reason when the request,
+  // the response or the decoding fails, and when LuciadRIA aborts the request through abortSignal.
+  private fetchFeatures(request: string, abortSignal?: AbortSignal): Promise<Cursor> {
+    // Mod starta
+    const itemsAccept =
+      typeof this.requestHeaders.accept !== 'undefined'
+        ? this.requestHeaders.accept.split(';')
+        : typeof this.requestHeaders.Accept !== 'undefined'
+        ? this.requestHeaders.Accept.split(';')
+        : [];
+    itemsAccept.push(this.outputFormat);
+    const accept = itemsAccept.join(';');
+    // Mod end
+    const headers = { ...this.requestHeaders, Accept: accept };
+    return OgcOpenApiFetchTools.fetch(request, {
+      method: 'GET',
+      credentials: this.credentials ? "same-origin": "omit",
+      headers,
+      signal: abortSignal,
+    }, this.serverOptions).then((response) => {
+      if (response.status !== 200) {
+        throw new Error("Invalid response: " + response.status + " for " + request);
+      }
+      return response.text().then((content) => {
+        let contentType = response.headers.get('Content-Type');
+        const contentCrs = response.headers.get('content-crs') ? response.headers.get('content-crs') : this.customCrs;
+        const contentLengthStr = response.headers.get('Content-Length');
+        const contentLength = Number(contentLengthStr);
+        contentType = contentType ? contentType : 'text/plain';
+        // GeoJsonCodec reads the CRS84 URI, GML is given the URN
+        content = content
+          .split('srsName="http://www.opengis.net/def/crs/OGC/1.3/CRS84"')
+          .join('srsName="urn:ogc:def:crs:OGC:1.3:CRS84"');
+        const codecOptions: OgcOpenApiFeaturesCodecDecodeOptions = {
+          content, contentType, contentCrs, contentLength
+        };
+        if (this.codec instanceof GeoJsonCodec || this.codec instanceof GMLCodec) {
+          return this.codec.decode({...codecOptions, reference: getReference(OgcOpenApiCrsTools.getReferenceName(contentCrs))});
         }
-      }).catch(()=>{
-        reject();
+        return this.codec.decode(codecOptions);
       });
     });
   }
@@ -269,7 +219,7 @@ export class OgcOpenApiFeatureStore extends Store {
   spatialQuery(
     bounds?: Bounds,
     receivedQuery?: OgcOpenApiFeatureStoreQueryOptions,
-    options?: any
+    options?: QueryOptions
   ): Promise<Cursor> | Cursor {
     const query = (receivedQuery ? { ...receivedQuery } : {}) as OgcOpenApiFeatureStoreQueryOptions;
     delete query.bbox;
