@@ -9,6 +9,9 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 ## [Unreleased]
 
 ### Added
+- Demo: a feature limit per view, 1000 by default and editable: without it, servers answered their own default page
+  of features, often only 10. Servers cap it at their own maximum. Feature layers use MapEvolution's scale levels, so
+  that zooming in requests the features of the new view again.
 - Demo: a balloon with the id and properties of a clicked feature, a line of details of the selected collection
   (description, extent, keywords, what it offers), and errors in plain words (an HTTP status, a server that cannot be
   reached).

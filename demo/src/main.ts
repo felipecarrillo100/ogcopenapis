@@ -2,6 +2,7 @@ import {WebGLMap} from "@luciad/ria/view/WebGLMap.js";
 import {Layer} from "@luciad/ria/view/Layer.js";
 import {FeatureLayer} from "@luciad/ria/view/feature/FeatureLayer.js";
 import {LoadSpatially} from "@luciad/ria/view/feature/loadingstrategy/LoadSpatially.js";
+import {QueryProvider} from "@luciad/ria/view/feature/QueryProvider.js";
 import {RasterTileSetLayer} from "@luciad/ria/view/tileset/RasterTileSetLayer.js";
 import {MapboxVectorTileSetLayer} from "@luciad/ria/view/mapbox/MapboxVectorTileSetLayer.js";
 import {MapboxStyle} from "@luciad/ria/view/mapbox/MapboxStyle.js";
@@ -62,6 +63,7 @@ const connectButton = $<HTMLButtonElement>("connect");
 const collectionSelect = $<HTMLSelectElement>("collection");
 const tmsSelect = $<HTMLSelectElement>("tms");
 const formatSelect = $<HTMLSelectElement>("format");
+const featureLimitInput = $<HTMLInputElement>("featureLimit");
 const collectionsSelect = $<HTMLSelectElement>("collections");
 const collectionInfo = $<HTMLDivElement>("collectionInfo");
 const styleSelect = $<HTMLSelectElement>("style");
@@ -178,6 +180,7 @@ function updateCollectionsRow() {
 
 function updateRows() {
     $("formatRow").hidden = linkType() !== CollectionLinkType.Items;
+    $("featureLimitRow").hidden = linkType() !== CollectionLinkType.Items;
     $("collectionsRow").hidden = !canSelectCollections();
     $("tmsRow").hidden = !isTiled();
     $("styleRow").hidden = linkType() !== CollectionLinkType.VectorTiles;
@@ -369,6 +372,42 @@ map.on("SelectionChanged", () => {
     }
 });
 
+// The most features a feature layer requests for a view. Without a limit, servers answer their own default page of
+// features, often only 10. Servers cap it at their own maximum (pygeoapi's demo at 10, PDOK at 1000)
+const DEFAULT_FEATURE_LIMIT = 1000;
+
+function getFeatureLimit() {
+    const limit = Math.floor(Number(featureLimitInput.value));
+    return limit >= 1 ? limit : DEFAULT_FEATURE_LIMIT;
+}
+
+// The scale levels of MapEvolution (DEFAULT_WFS_SCALE_LEVELS), from zoomed out to zoomed in, with its 6th value
+// 1 / 1.5e7 read as 1 / 1.5e5, so that the scales are in order as QueryProvider requires. Crossing a level requests
+// the features of the new view again: without levels, LoadSpatially keeps the features of the first view when
+// zooming in, the first 1000 of a larger view included
+const FEATURE_QUERY_SCALES = [
+    1 / 4.0e6, 1 / 2.0e6, 1 / 1.0e6, 1 / 5.0e5, 1 / 2.5e5, 1 / 1.5e5, 1 / 7.0e4,
+    1 / 3.5e4, 1 / 1.5e4, 1 / 8.0e3, 1 / 4.0e3, 1 / 2.0e3, 1 / 1.0e3, 1 / 5.0e2,
+];
+
+// Passes the feature limit to the store with each query, as limit. Changing it reloads the layers that use it.
+// A new query object each time, as in MapEvolution: LoadSpatially skips a query that is the same object as the last one
+class FeatureLimitQueryProvider extends QueryProvider {
+    getQueryLevelScales(): number[] {
+        return FEATURE_QUERY_SCALES;
+    }
+
+    getQueryForLevel(): object {
+        return {limit: getFeatureLimit()};
+    }
+}
+
+const featureLimitQueryProvider = new FeatureLimitQueryProvider();
+featureLimitInput.onchange = () => {
+    featureLimitInput.value = String(getFeatureLimit());
+    featureLimitQueryProvider.invalidate();
+};
+
 // The tile models report the extent of the tile matrix set, so layers fit to the extent of their collection
 const layerExtents = new Map<Layer, Bounds>();
 const MIN_EXTENT = 0.01;
@@ -467,7 +506,7 @@ async function createCollectionLayer(collection: OgcOpenApiCapabilitiesCollectio
                 useCrs84Bounds: true,
             });
             const model = new FeatureModel(store, {reference: getReference("CRS:84")});
-            const layer = new FeatureLayer(model, {label, selectable: true, loadingStrategy: new LoadSpatially()});
+            const layer = new FeatureLayer(model, {label, selectable: true, loadingStrategy: new LoadSpatially({queryProvider: featureLimitQueryProvider})});
             layer.balloonContentProvider = feature => createFeatureBalloon(feature as Feature, label);
             return layer;
         }
