@@ -12,7 +12,9 @@ import {FeatureModel} from "@luciad/ria/model/feature/FeatureModel.js";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec.js";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
 import {createBounds} from "@luciad/ria/shape/ShapeFactory.js";
+import {createTransformation} from "@luciad/ria/transformation/TransformationFactory.js";
 import {Bounds} from "@luciad/ria/shape/Bounds.js";
+import type {Feature} from "@luciad/ria/model/feature/Feature.js";
 
 import {
     CollectionLinkType,
@@ -61,6 +63,7 @@ const collectionSelect = $<HTMLSelectElement>("collection");
 const tmsSelect = $<HTMLSelectElement>("tms");
 const formatSelect = $<HTMLSelectElement>("format");
 const collectionsSelect = $<HTMLSelectElement>("collections");
+const collectionInfo = $<HTMLDivElement>("collectionInfo");
 const styleSelect = $<HTMLSelectElement>("style");
 const addButton = $<HTMLButtonElement>("add");
 const statusLine = $<HTMLDivElement>("status");
@@ -88,6 +91,8 @@ map.layerTree.addChild(osmLayer, "bottom");
 (window as any).demo = {
     MapboxVectorTileSetModel, MapboxVectorTileSetLayer, MapboxStyle, OgcOpenApiStyleTools, OgcOpenApiGetCapabilities, OgcOpenApiVectorTilesModel,
     // Fits the map to a square of size degrees around a point
+    // A point in CRS:84, in the reference of the map
+    toMapReference: (point: any) => createTransformation(point.reference, map.reference).transform(point),
     zoomTo: (lon: number, lat: number, size: number) => map.mapNavigator.fit({
         bounds: createBounds(getReference("CRS:84"), [lon - size / 2, size, lat - size / 2, size]), animate: false
     }),
@@ -105,8 +110,17 @@ function setStatus(message: string, error = false) {
     if (error) console.error(message);
 }
 
+// An error in plain words where its cause is known: an HTTP status, or a server that cannot be reached
 function errorMessage(e: any) {
-    return e && e.message ? e.message : typeof e === "string" || typeof e === "number" ? String(e) : "Request failed";
+    const message = e && e.message ? String(e.message) : typeof e === "string" || typeof e === "number" ? String(e) : "Request failed";
+    const status = /^\d{3}$/.test(message) ? Number(message) : Number((/Invalid response: (\d{3})/.exec(message) || [])[1]);
+    if (status === 401 || status === 403) return "the server refused the request (HTTP " + status + "): it may need a login, or not allow this site";
+    if (status === 404) return "not found on the server (HTTP 404)";
+    if (status >= 500) return "the server failed to answer (HTTP " + status + ")";
+    if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
+        return "the server cannot be reached: it may be offline, not allow requests from this site (CORS), or be blocked by a network filter";
+    }
+    return message;
 }
 
 function fillSelect(select: HTMLSelectElement, options: { value: string, label: string, data?: Record<string, string>, disabled?: boolean }[], selected?: string) {
@@ -128,6 +142,33 @@ const hasSelection = () => isDatasetSelected() || !!selectedCollection();
 // The tiles of the dataset can hold only some of its collections, when the server supports collections selection
 const canSelectCollections = () => isTiled() && isDatasetSelected() && OgcOpenApiGetCapabilities.supportsCollectionSelection(capabilities);
 const selectedCollections = () => canSelectCollections() ? Array.from(collectionsSelect.selectedOptions).map(o => o.value) : [];
+
+// What the capabilities tell about the selected collection: its description, extent, keywords and what it offers
+const OFFERS: [CollectionLinkType, string][] = [
+    [CollectionLinkType.Items, "features"], [CollectionLinkType.Map, "maps"], [CollectionLinkType.Tiles, "map tiles"],
+    [CollectionLinkType.VectorTiles, "vector tiles"], [CollectionLinkType.Styles, "styles"],
+];
+
+function updateCollectionInfo() {
+    const collection = selectedCollection();
+    const lines: string[] = [];
+    if (isDatasetSelected()) {
+        lines.push("The tiles of the dataset: all its collections in each tile.");
+    } else if (collection) {
+        if (collection.description) lines.push(collection.description);
+        const bbox = collection.extent?.spatial?.bbox?.[0];
+        if (bbox && bbox.length >= 4) lines.push("Extent: " + bbox.slice(0, 4).map((v: number) => Number(v).toFixed(2)).join(", "));
+        if (collection.keywords && collection.keywords.length > 0) lines.push("Keywords: " + collection.keywords.slice(0, 8).join(", "));
+        const offers = OFFERS.filter(([type]) => OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, type).length > 0).map(([, name]) => name);
+        if (offers.length > 0) lines.push("Offers: " + offers.join(", "));
+    }
+    collectionInfo.replaceChildren(...lines.map(line => {
+        const p = document.createElement("p");
+        p.textContent = line;
+        return p;
+    }));
+    collectionInfo.hidden = lines.length === 0;
+}
 
 function updateCollectionsRow() {
     $("collectionsRow").hidden = !canSelectCollections();
@@ -197,6 +238,7 @@ async function updateCollection() {
     addButton.disabled = true;
     updateFormats();
     updateCollectionsRow();
+    updateCollectionInfo();
     await Promise.all([updateTileMatrixSets(request), updateStyles(request)]);
     if (request !== listRequest) return;
     listedRequest = request;
@@ -291,6 +333,41 @@ function fillStyleSelect() {
         {value: GENERATED_STYLE, label: "Generated default style"}
     ]);
 }
+
+// The id and properties of a feature, as names and values. Nested values are shown as JSON, long ones are cut
+function createFeatureBalloon(feature: Feature, title: string): HTMLElement {
+    const root = document.createElement("div");
+    root.className = "featureBalloon";
+    const heading = document.createElement("div");
+    heading.className = "featureTitle";
+    heading.textContent = title;
+    const table = document.createElement("table");
+    // The id of the feature, then its properties. Some servers also have an id property, with the same value
+    const properties = Object.entries(feature.properties || {}).filter(([name, value]) => !(name === "id" && String(value) === String(feature.id)));
+    const rows: [string, unknown][] = [["id", feature.id], ...properties];
+    for (const [name, value] of rows) {
+        const text = value === null || value === undefined ? "–" : typeof value === "object" ? JSON.stringify(value) : String(value);
+        const row = table.insertRow();
+        const key = row.insertCell();
+        key.textContent = name;
+        const cell = row.insertCell();
+        cell.textContent = text.length > 200 ? text.slice(0, 200) + "…" : text;
+        cell.title = text;
+    }
+    root.append(heading, table);
+    return root;
+}
+
+// A balloon with the properties of a selected feature, closed when the selection is cleared
+map.on("SelectionChanged", () => {
+    const selected = map.selectedObjects.flatMap(s => s.selected.map(object => ({layer: s.layer, object})));
+    const one = selected.length === 1 ? selected[0] : null;
+    if (one && one.layer instanceof FeatureLayer && one.layer.balloonContentProvider) {
+        map.showBalloon({layer: one.layer, object: one.object as Feature, panTo: false});
+    } else {
+        map.hideBalloon();
+    }
+});
 
 // The tile models report the extent of the tile matrix set, so layers fit to the extent of their collection
 const layerExtents = new Map<Layer, Bounds>();
@@ -390,7 +467,9 @@ async function createCollectionLayer(collection: OgcOpenApiCapabilitiesCollectio
                 useCrs84Bounds: true,
             });
             const model = new FeatureModel(store, {reference: getReference("CRS:84")});
-            return new FeatureLayer(model, {label, selectable: true, loadingStrategy: new LoadSpatially()});
+            const layer = new FeatureLayer(model, {label, selectable: true, loadingStrategy: new LoadSpatially()});
+            layer.balloonContentProvider = feature => createFeatureBalloon(feature as Feature, label);
+            return layer;
         }
         case CollectionLinkType.Map: {
             const maps = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Map);

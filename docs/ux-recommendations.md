@@ -109,11 +109,40 @@ Most valuable first. Each names where the idea comes from and what the library n
 
 The demo stays basic. Only ideas that are cheap, or that show the library much better, belong there:
 
-| Idea | Value | Cost | Why |
-|---|---|---|---|
-| Click a feature for its properties | High | Low | Feature layers are already selectable; LuciadRIA shows a balloon for a selected feature |
-| A line of collection details under the collection: description, extent, keywords | Medium | Low | All in the capabilities already |
-| Errors in plain words | Medium | Low | A few messages in the status line |
+| Idea | Value | Cost | Why | Status |
+|---|---|---|---|---|
+| Click a feature for its properties | High | Low | Feature layers are already selectable; LuciadRIA shows a balloon for a selected feature | Done |
+| A line of collection details under the collection: description, extent, keywords | Medium | Low | All in the capabilities already | Done |
+| Errors in plain words | Medium | Low | A few messages in the status line | Done |
 
 Not for the demo: the catalog, filters and paging, the feature table, the layer tree from the style, server
 connections. They are application work.
+
+## Features for the application
+
+The features recommended for the application, most valuable first. Value is rated from 1 to 5 stars. Cost is the
+work still to do: **S** is days, **M** is one to three weeks, **L** is more, and it names what the library and the
+application each need.
+
+The application starts from what the library and the demo already do: Features, Maps, raster tiles and vector tiles
+from any server on one map, with server or generated styles, dataset tiles with collections selection, and
+reprojection. No other client does that; the features below build on it.
+
+| # | Feature | Value | What it brings | Cost | Why it is a killer feature |
+|---|---|---|---|---|---|
+| 1 | **Catalog that starts from the collection** | ★★★★★ | A searchable list of servers and collections. Each collection shows what it offers (features, map, map tiles, vector tiles, styles, dataset tiles), and one click adds the best representation for the map. | **M**. Library: ready (`filterCollectionLinks`, `outputFormats`, `hasDatasetTileSets`). Application: the catalog UI and the choice of representation. | Users find data without knowing the parts of OGC API. QGIS and ArcGIS Pro split the same data over different dialogs per type; no client presents every part of a collection in one place. |
+| 2 | **Query builder: filters, sorting, time and paging** | ★★★★★ | Filters built from the queryables of a collection (CQL2), sorting, a datetime range, a page size and paging, applied on the server. | **L**. Library: queryables, paging (`next` links), `numberMatched`, a CQL2 text builder. Application: the editor. | Large datasets become explorable without downloading them: the server does the work. ldproxy offers it only on its own pages and QGIS only for Features; no web map client offers it. |
+| 3 | **Feature inspection and attribute table** | ★★★★★ | Click a feature for its properties under the titles of the collection schema; a table of the features in view, linked to the map: select a row to highlight the feature and the other way round. | **M**. Library: read the schema (`/collections/{id}/schema`), **S**. Application: the table and its link to the selection. | The basic tool of every GIS. The server pages and the desktop clients have it, the web map clients do not. The demo's balloon is the first step. |
+| 4 | **Layer tree and legend from the style** | ★★★★★ | The layers of an OGC API style as a tree, grouped as the style groups them, each with its legend symbol and a checkbox to show or hide it. | **M**. Library: ready (`fetchMapboxStyle`). Application: the tree, legend symbols from the paint properties, and hiding layers by restyling. | It makes server styles understandable and controllable: one checkbox for "Railway" instead of a whole layer. Only ldproxy's own pages do it, and only for its own server. |
+| 5 | **3D view** | ★★★★ | The same layers on a 3D globe, with terrain: features, raster and vector tiles draped on it. | **M**. Library: test the models on a 3D map. Application: a 2D/3D switch. | LuciadRIA's strength. OGC API clients on the web are 2D; QGIS and ArcGIS Pro need a separate 3D view. It also prepares for 3D OGC APIs (3D GeoVolumes). |
+| 6 | **Server inspector** | ★★★★ | For a server: its conformance classes, what it offers, and what it does differently from the standard (such as ldproxy's conformance class name, or a tileset without an identity), in plain words. | **S**. Library: mostly ready (`conformsTo`, the checks in the capabilities); report what was tolerated. Application: a panel. | For integrators, the fastest way to tell why a server does not work: no client explains a server like this. It also builds the reports to server maintainers. |
+| 7 | **Server connections with authentication** | ★★★★ | Saved, named servers with export and import, custom request parameters (an API key), and authentication, OAuth included. | **M**. Library: ready (`requestHeaders`, `credentials`, `proxify`, the query of the server URL). Application: storage, the dialogs and OAuth. | Most production servers need a key or a login. QGIS and ArcGIS Pro have it; web clients rarely do, which keeps them to demo servers. |
+| 8 | **National grids and any map reference** | ★★★★ | A map in the reference of the user (RD, ETRS89-LAEA, UTM), the tileset in that reference picked automatically, and the references loaded on demand. | **S**. Library: ready (`pickTileSet` in the README, `retryOnUnknownReference` as in MapEvolution). Application: a reference choice and a reference loader. | National mapping agencies serve their data in national grids (PDOK). Clients that show Web Mercator only distort it or cannot use it. |
+| 9 | **Time slider** | ★★★★ | For collections with a temporal extent: a slider that filters features and maps by time, and plays them as an animation. | **M**. Library: ready (`datetime` of the features store and the maps model). Application: the slider and the animation. | OGC API collections advertise their temporal extent, but no web client lets users move through it. |
+| 10 | **Dataset tiles with a collection picker** | ★★★ | The tiles of a whole dataset, with the collections to include picked from a list. | **S**. Library: ready (`fetchDatasetTileSets`, `supportsCollectionSelection`, `collections`). Application: the picker, as in the demo. | One layer for a whole national dataset (PDOK) instead of dozens. OpenLayers can request it, but no client offers the choice. |
+| 11 | **Formats and CRSs explained** | ★★★ | Every format and CRS the server offers, a one-line explanation of each, and the ones that cannot be read yet shown disabled (JSON-FG until a codec exists). | **S**. Library: ready (`outputFormats`, `isJsonFgLink`). Application: the texts. | Users see what the server can do and why something is not available, instead of a failure. PDOK explains its formats; no client does. |
+| 12 | **Share and bookmark a view** | ★★★ | The map view, the layers and their options in a link or a bookmark, to reopen or send. | **S** to **M**. Application only. | Turns an exploration into something to share. MapEvolution has bookmarks; OGC API clients do not. |
+| 13 | **Progress, Cancel and plain errors** | ★★★ | Progress per layer with Cancel, and every error in plain words with its cause. | **S**. Library: ready (`abortSignal`, messages). Application: the indicators, as the demo started. | Slow servers and large requests are common; users need to see what is happening and to stop it. |
+| 14 | **Editing** | ★★★ | Create, change and delete features on servers that support OGC API Features Part 4. | **L**. Library: transactions in the features store. Application: the editing tools. | Valuable where servers support it, which few do yet. QGIS has it. |
+| 15 | **Several layers at once, and drag onto the map** | ★★ | Select several collections and add them in one go, or drag them from the catalog onto the map. | **S**. Application only. | Comfort, as in ArcGIS Pro; worth it once the catalog exists. |
+

@@ -8,6 +8,11 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+### Added
+- Demo: a balloon with the id and properties of a clicked feature, a line of details of the selected collection
+  (description, extent, keywords, what it offers), and errors in plain words (an HTTP status, a server that cannot be
+  reached).
+
 ## [1.1.0] - 2026-10-27
 
 ### Added
