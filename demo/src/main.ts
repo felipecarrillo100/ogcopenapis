@@ -16,6 +16,7 @@ import {Bounds} from "@luciad/ria/shape/Bounds.js";
 
 import {
     CollectionLinkType,
+    CollectionTileSet,
     CollectionTileSetInfo,
     OgcOpenApiCapabilitiesCollection,
     OgcOpenApiCapabilitiesObject,
@@ -28,6 +29,7 @@ import {OgcOpenApiTilesModel} from "ogcopenapis/OgcOpenApiTilesModel";
 import {OgcOpenApiVectorTilesModel} from "ogcopenapis/OgcOpenApiVectorTilesModel";
 import {OgcOpenApiStyle, OgcOpenApiStyleTools} from "ogcopenapis/OgcOpenApiStyleTools";
 import {OgcOpenApiTileMatrixTools} from "ogcopenapis/OgcOpenApiTileMatrixTools";
+import {registerReferences} from "./references";
 
 // What each server supports, as tested with this demo
 const PRESETS = [
@@ -37,13 +39,17 @@ const PRESETS = [
     {title: "Vineyards, ldproxy (features, vector tiles)", url: "https://demo.ldproxy.net/vineyards/"},
     {title: "OS Open Zoomstack, ldproxy (features)", url: "https://demo.ldproxy.net/zoomstack/"},
     {title: "pygeoapi demo (features, vector tiles)", url: "https://demo.pygeoapi.io/master/"},
-    {title: "PDOK BGT (features)", url: "https://api.pdok.nl/lv/bgt/ogc/v1/"},
+    {title: "PDOK BGT (features, vector tiles of the dataset in RD)", url: "https://api.pdok.nl/lv/bgt/ogc/v1/"},
 ];
 
 const GEOJSON = "application/geo+json";
 const MVT = "application/vnd.mapbox-vector-tile";
 const CRS84 = "http://www.opengis.net/def/crs/OGC/1.3/CRS84";
 const GENERATED_STYLE = "__generated__";
+// The collection option for the tilesets of the dataset, all collections in each tile
+const DATASET = "__dataset__";
+
+registerReferences();
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const presetSelect = $<HTMLSelectElement>("preset");
@@ -76,7 +82,13 @@ const osmLayer = new RasterTileSetLayer(osmModel, {label: "OpenStreetMap", layer
 map.layerTree.addChild(osmLayer, "bottom");
 // For experiments from the browser console
 (window as any).map = map;
-(window as any).demo = {MapboxVectorTileSetModel, MapboxVectorTileSetLayer, MapboxStyle, OgcOpenApiStyleTools, OgcOpenApiGetCapabilities, OgcOpenApiVectorTilesModel};
+(window as any).demo = {
+    MapboxVectorTileSetModel, MapboxVectorTileSetLayer, MapboxStyle, OgcOpenApiStyleTools, OgcOpenApiGetCapabilities, OgcOpenApiVectorTilesModel,
+    // Fits the map to a square of size degrees around a point
+    zoomTo: (lon: number, lat: number, size: number) => map.mapNavigator.fit({
+        bounds: createBounds(getReference("CRS:84"), [lon - size / 2, size, lat - size / 2, size]), animate: false
+    }),
+};
 
 let capabilities: OgcOpenApiCapabilitiesObject | null = null;
 // All tile matrix sets of the server, and the tilesets of the selected collection with their tile matrix set
@@ -106,6 +118,8 @@ function fillSelect(select: HTMLSelectElement, options: { value: string, label: 
 const linkType = () => typeSelect.value as CollectionLinkType;
 const isTiled = () => linkType() === CollectionLinkType.Tiles || linkType() === CollectionLinkType.VectorTiles;
 const selectedCollection = () => capabilities?.collections.find(c => c.id === collectionSelect.value);
+const isDatasetSelected = () => collectionSelect.value === DATASET;
+const hasSelection = () => isDatasetSelected() || !!selectedCollection();
 
 function updateRows() {
     $("tmsRow").hidden = !isTiled();
@@ -135,9 +149,14 @@ async function connect() {
         capabilities = connected;
         tileMatrixSets = connectedTileMatrixSets;
         const collections = [...capabilities.collections].sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
+        // Some servers tile the dataset as a whole, all collections in each tile, and some only the dataset (PDOK)
+        const dataset = isTiled() && OgcOpenApiGetCapabilities.hasDatasetTileSets(capabilities, linkType());
         // The collections are selectable once the tile matrix sets of the server are known
-        fillSelect(collectionSelect, collections.map(c => ({value: c.id, label: c.title || c.id})));
-        setStatus(collections.length + " collections");
+        fillSelect(collectionSelect, [
+            ...(dataset ? [{value: DATASET, label: "All collections (dataset)"}] : []),
+            ...collections.map(c => ({value: c.id, label: c.title || c.id}))
+        ]);
+        setStatus(collections.length + " collections" + (dataset ? ", and tiles of the dataset" : ""));
         await updateCollection();
     } catch (e) {
         if (request === listRequest) setStatus("Could not connect: " + errorMessage(e), true);
@@ -163,7 +182,8 @@ async function updateCollection() {
     await Promise.all([updateTileMatrixSets(request), updateStyles(request)]);
     if (request !== listRequest) return;
     listedRequest = request;
-    addButton.disabled = !selectedCollection();
+    fillStyleSelect();
+    addButton.disabled = !hasSelection();
 }
 
 // Only the tile matrix sets the collection is tiled in, which can be fewer than the ones of the server.
@@ -172,12 +192,14 @@ async function updateTileMatrixSets(request: number) {
     collectionTileSets = [];
     fillSelect(tmsSelect, []);
     const collection = selectedCollection();
-    if (!isTiled() || !collection) return;
+    if (!isTiled() || !hasSelection()) return;
     let tileSets: CollectionTileSetInfo[] = [];
     try {
-        tileSets = await OgcOpenApiGetCapabilities.fetchCollectionTileSets(capabilities, collection, linkType());
+        tileSets = collection ?
+            await OgcOpenApiGetCapabilities.fetchCollectionTileSets(capabilities, collection, linkType()) :
+            await OgcOpenApiGetCapabilities.fetchDatasetTileSets(capabilities, linkType());
     } catch (e) {
-        if (request === listRequest) setStatus("Could not list the tilesets of " + collection.id + ": " + errorMessage(e), true);
+        if (request === listRequest) setStatus("Could not list the tilesets of " + (collection ? collection.id : "the dataset") + ": " + errorMessage(e), true);
         return;
     }
     const resolved = await Promise.all(tileSets.map(async tileSet => {
@@ -203,21 +225,33 @@ function getSelectedTileSet() {
     return selected;
 }
 
+// The styles of the collection, or of the dataset for its tilesets
 async function updateStyles(request: number) {
     styles = [];
     fillSelect(styleSelect, []);
-    const collection = selectedCollection();
-    if (linkType() !== CollectionLinkType.VectorTiles || !collection) return;
+    if (linkType() !== CollectionLinkType.VectorTiles || !hasSelection()) return;
     let collectionStyles: OgcOpenApiStyle[] = [];
     try {
-        collectionStyles = await OgcOpenApiStyleTools.fetchStyles(capabilities, collection);
+        collectionStyles = await OgcOpenApiStyleTools.fetchStyles(capabilities, isDatasetSelected() ? null : selectedCollection());
     } catch (e) {
         console.warn("No OGC API styles", e);
     }
     if (request !== listRequest) return;
     styles = collectionStyles;
+}
+
+// Only the styles for the selected tile matrix set, a server can have a style per tile matrix set
+function fillStyleSelect() {
+    if (linkType() !== CollectionLinkType.VectorTiles || !hasSelection()) {
+        fillSelect(styleSelect, []);
+        return;
+    }
+    const selected = collectionTileSets.find(t => t.tileSet.href === tmsSelect.value);
+    const forTileMatrixSet = selected ?
+        OgcOpenApiStyleTools.getStylesForTileMatrixSet(styles, selected.tileMatrix.id, collectionTileSets.map(t => t.tileMatrix.id)) :
+        styles;
     fillSelect(styleSelect, [
-        ...styles.map(s => ({value: s.id, label: s.title})),
+        ...forTileMatrixSet.map(s => ({value: s.id, label: s.title})),
         {value: GENERATED_STYLE, label: "Generated default style"}
     ]);
 }
@@ -226,8 +260,8 @@ async function updateStyles(request: number) {
 const layerExtents = new Map<Layer, Bounds>();
 const MIN_EXTENT = 0.01;
 
-function getCollectionBounds(collection: OgcOpenApiCapabilitiesCollection): Bounds | null {
-    const bbox = collection.extent?.spatial?.bbox?.[0];
+// The extent of a collection or tileset, in CRS:84 as [minX, minY, maxX, maxY]
+function getExtentBounds(bbox: number[] | undefined): Bounds | null {
     if (!bbox || bbox.length < 4) return null;
     // A collection with a single point has an empty extent, which cannot be fitted
     const width = Math.max(bbox[2] - bbox[0], MIN_EXTENT);
@@ -253,7 +287,51 @@ async function zoomToLayer(layer: Layer) {
     if (bounds) await map.mapNavigator.fit({bounds, animate: true}).catch(() => undefined);
 }
 
-async function createLayer(collection: OgcOpenApiCapabilitiesCollection): Promise<Layer> {
+// The extent of a tileset in CRS:84, when the server gives it
+function getTileSetExtent(tileSet: CollectionTileSet): number[] | undefined {
+    const box = tileSet.boundingBox;
+    if (!box || (box.crs && !/CRS84$/.test(box.crs))) return undefined;
+    return [box.lowerLeft[0], box.lowerLeft[1], box.upperRight[0], box.upperRight[1]];
+}
+
+// collection is undefined for the tiles of the dataset. Resolves the layer and its extent in CRS:84
+async function createLayer(collection: OgcOpenApiCapabilitiesCollection | undefined): Promise<{ layer: Layer, extent?: number[] }> {
+    const collectionExtent = collection ? collection.extent?.spatial?.bbox?.[0] : undefined;
+    if (collection) return {layer: await createCollectionLayer(collection), extent: collectionExtent};
+    const label = "All collections";
+    const {tileSet: tileSetInfo, tileMatrix} = getSelectedTileSet();
+    const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, null, tileSetInfo, {}, linkType());
+    const extent = getTileSetExtent(tileSet);
+    return {layer: await createTileLayer(tileSet, tileMatrix, "dataset", label, extent), extent};
+}
+
+async function createTileLayer(tileSet: CollectionTileSet, tileMatrix: TileSetData, id: string, label: string, extent?: number[]): Promise<Layer> {
+    if (linkType() === CollectionLinkType.Tiles) {
+        const link = tileSet.links.find(l => l.type === "image/png") || tileSet.links[0];
+        const model = await OgcOpenApiTilesModel.createFromTileSet({
+            tileMatrix,
+            baseURL: link.href,
+            collection: id,
+            format: link.type && link.type.indexOf("image/") === 0 ? link.type : undefined,
+            tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+            extent,
+        });
+        return new RasterTileSetLayer(model, {label});
+    }
+    const link = tileSet.links.find(l => l.type === MVT) || tileSet.links[0];
+    const model = new OgcOpenApiVectorTilesModel({
+        tileMatrix,
+        baseURL: link.href,
+        collection: id,
+        tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+    });
+    // Not all servers list the layers of a tileset, then they are read from the tiles
+    const layers = tileSet.layers.length > 0 ? tileSet.layers : await model.discoverLayers({extent});
+    const style = await createStyle(layers, tileMatrix.id, label);
+    return new MapboxVectorTileSetLayer(model, {label, style});
+}
+
+async function createCollectionLayer(collection: OgcOpenApiCapabilitiesCollection): Promise<Layer> {
     const label = collection.title || collection.id;
     switch (linkType()) {
         case CollectionLinkType.Items: {
@@ -281,34 +359,11 @@ async function createLayer(collection: OgcOpenApiCapabilitiesCollection): Promis
             });
             return new RasterTileSetLayer(model, {label});
         }
-        case CollectionLinkType.Tiles: {
-            const {tileSet: tileSetInfo, tileMatrix} = getSelectedTileSet();
-            const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileSetInfo, {}, CollectionLinkType.Tiles);
-            const link = tileSet.links.find(l => l.type === "image/png") || tileSet.links[0];
-            const model = await OgcOpenApiTilesModel.createFromTileSet({
-                tileMatrix,
-                baseURL: link.href,
-                collection: collection.id,
-                format: link.type && link.type.indexOf("image/") === 0 ? link.type : undefined,
-                tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
-                extent: collection.extent?.spatial?.bbox?.[0],
-            });
-            return new RasterTileSetLayer(model, {label});
-        }
+        case CollectionLinkType.Tiles:
         case CollectionLinkType.VectorTiles: {
             const {tileSet: tileSetInfo, tileMatrix} = getSelectedTileSet();
-            const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileSetInfo, {}, CollectionLinkType.VectorTiles);
-            const link = tileSet.links.find(l => l.type === MVT) || tileSet.links[0];
-            const model = new OgcOpenApiVectorTilesModel({
-                tileMatrix,
-                baseURL: link.href,
-                collection: collection.id,
-                tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
-            });
-            // Not all servers list the layers of a tileset, then they are read from the tiles
-            const layers = tileSet.layers.length > 0 ? tileSet.layers : await model.discoverLayers({extent: collection.extent?.spatial?.bbox?.[0]});
-            const style = await createStyle(layers, tileMatrix.id, label);
-            return new MapboxVectorTileSetLayer(model, {label, style});
+            const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileSetInfo, {}, linkType());
+            return createTileLayer(tileSet, tileMatrix, collection.id, label, collection.extent?.spatial?.bbox?.[0]);
         }
     }
     throw new Error("Unsupported type " + linkType());
@@ -355,14 +410,14 @@ function addToLayerList(layer: Layer) {
 }
 
 async function addLayer() {
+    if (!hasSelection()) return;
     const collection = selectedCollection();
-    if (!collection) return;
     addButton.disabled = true;
-    setStatus("Adding " + (collection.title || collection.id) + "...");
+    setStatus("Adding " + (collection ? collection.title || collection.id : "all collections") + "...");
     try {
-        const layer = await createLayer(collection);
+        const {layer, extent} = await createLayer(collection);
         map.layerTree.addChild(layer);
-        const bounds = getCollectionBounds(collection);
+        const bounds = getExtentBounds(extent);
         if (bounds) layerExtents.set(layer, bounds);
         addToLayerList(layer);
         void zoomToLayer(layer);
@@ -370,7 +425,7 @@ async function addLayer() {
     } catch (e) {
         setStatus("Could not add the layer: " + errorMessage(e), true);
     } finally {
-        addButton.disabled = isListing() || !selectedCollection();
+        addButton.disabled = isListing() || !hasSelection();
     }
 }
 
@@ -383,6 +438,7 @@ typeSelect.onchange = () => {
 };
 connectButton.onclick = () => void connect();
 collectionSelect.onchange = () => void updateCollection();
+tmsSelect.onchange = () => fillStyleSelect();
 addButton.onclick = () => void addLayer();
 updateRows();
 addToLayerList(osmLayer);

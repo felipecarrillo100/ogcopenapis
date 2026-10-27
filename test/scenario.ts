@@ -18,7 +18,12 @@ import {OgcOpenApiTilesModel} from "../src/OgcOpenApiTilesModel";
 import {OgcOpenApiVectorTilesModel} from "../src/OgcOpenApiVectorTilesModel";
 import {OgcOpenApiStyleTools} from "../src/OgcOpenApiStyleTools";
 import {OgcOpenApiTileMatrixTools} from "../src/OgcOpenApiTileMatrixTools";
+import {OgcOpenApiMvtTools} from "../src/OgcOpenApiMvtTools";
 import {TestServer} from "./servers";
+import {registerReferences} from "../demo/src/references";
+
+// The references of the tile matrix sets of the test servers that LuciadRIA does not know by default
+registerReferences();
 
 /**
  * Runs the library against a server the way an application does, for each kind of data in the registry, and
@@ -34,7 +39,7 @@ async function connect(server: TestServer, linkType: CollectionLinkType, collect
     return {capabilities, collection};
 }
 
-function getExtent(collection: OgcOpenApiCapabilitiesCollection) {
+function getExtent(collection: OgcOpenApiCapabilitiesCollection): number[] {
     const bbox = collection.extent?.spatial?.bbox?.[0];
     return bbox && bbox.length >= 4 ? bbox : [-180, -90, 180, 90];
 }
@@ -70,13 +75,13 @@ async function maps(server: TestServer) {
     return {collections: capabilities.collections.length, mapUrl: model.getTileURL(model.getMapRoot, {level: 1, x: 1, y: 1})};
 }
 
-// The tile at the center of the collection extent, at the level nearest to PREFERRED_LEVEL that the limits allow
-function getCenterTile(tileMatrix: TileSetData, collection: OgcOpenApiCapabilitiesCollection, limits?: TileMatrixLimits[]): TileCoordinate {
+// The tile at the center of the extent, at the level nearest to PREFERRED_LEVEL that the limits allow
+function getCenterTile(tileMatrix: TileSetData, extent: number[], limits?: TileMatrixLimits[]): TileCoordinate {
     const grid = OgcOpenApiTileMatrixTools.createTileGrid(tileMatrix);
     const levels = limits ? limits.map(l => grid.tileMatrices.findIndex(m => m.id === l.tileMatrix)).filter(level => level > -1) : [];
     const candidates = levels.length > 0 ? levels : [Math.min(PREFERRED_LEVEL, grid.levelCount - 1)];
     const level = candidates.reduce((best, l) => Math.abs(l - PREFERRED_LEVEL) < Math.abs(best - PREFERRED_LEVEL) ? l : best);
-    const [minX, minY, maxX, maxY] = getExtent(collection);
+    const [minX, minY, maxX, maxY] = extent;
     const toGrid = createTransformation(getReference("CRS:84"), grid.reference);
     const center = toGrid.transform(createPoint(getReference("CRS:84"), [(minX + maxX) / 2, (minY + maxY) / 2]));
     const columns = grid.level0Columns * Math.pow(2, level);
@@ -101,7 +106,7 @@ async function mapTiles(server: TestServer) {
         tileMatrix, baseURL: link.href, collection: collection.id,
         tileMatrixSetLimits: tileSet.tileMatrixSetLimits, extent: getExtent(collection),
     });
-    const tile = getCenterTile(tileMatrix, collection, tileSet.tileMatrixSetLimits);
+    const tile = getCenterTile(tileMatrix, getExtent(collection), tileSet.tileMatrixSetLimits);
     return {collections: capabilities.collections.length, template: link.href, tile, tileUrl: model.getTileURL(model.baseURL, tile)};
 }
 
@@ -113,7 +118,7 @@ async function vectorTiles(server: TestServer) {
     const model = new OgcOpenApiVectorTilesModel({
         tileMatrix, baseURL: link.href, collection: collection.id, tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
     });
-    const tile = getCenterTile(tileMatrix, collection, tileSet.tileMatrixSetLimits);
+    const tile = getCenterTile(tileMatrix, getExtent(collection), tileSet.tileMatrixSetLimits);
     const content = await model.getVectorTile(tile);
     return {
         collections: capabilities.collections.length,
@@ -127,8 +132,42 @@ async function vectorTiles(server: TestServer) {
     };
 }
 
-async function styles(capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection, tileMatrixSetId: string, styleId: string) {
-    const available = await OgcOpenApiStyleTools.fetchStyles(capabilities, collection);
+// The tilesets of the dataset, all collections in each tile, as the demo finds them
+async function datasetVectorTiles(server: TestServer) {
+    const capabilities = await OgcOpenApiGetCapabilities.fromURL(server.url, {filterCollectionsByLinkType: CollectionLinkType.VectorTiles});
+    const tileMatrixSets = await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities);
+    const tileSets = await OgcOpenApiGetCapabilities.fetchDatasetTileSets(capabilities, CollectionLinkType.VectorTiles);
+    const resolved = await Promise.all(tileSets.map(async tileSet =>
+        ({tileSet, tileMatrix: await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(capabilities, tileSet, tileMatrixSets)})));
+    const selected = resolved.find(t => t.tileMatrix.id === server.datasetVectorTiles.tileMatrixSet);
+    if (!selected) throw new Error("No dataset tileset in " + server.datasetVectorTiles.tileMatrixSet);
+    const {tileSet: tileSetInfo, tileMatrix} = selected;
+    const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, null, tileSetInfo, {}, CollectionLinkType.VectorTiles);
+    const link = tileSet.links.find(l => l.type === "application/vnd.mapbox-vector-tile") || tileSet.links[0];
+    const model = new OgcOpenApiVectorTilesModel({
+        tileMatrix, baseURL: link.href, collection: "dataset", tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+    });
+    const [lon, lat] = server.datasetVectorTiles.center;
+    const tile = getCenterTile(tileMatrix, [lon, lat, lon, lat], tileSet.tileMatrixSetLimits);
+    const content = await model.getVectorTile(tile);
+    const tileMatrixSetIds = resolved.map(t => t.tileMatrix.id);
+    return {
+        tileMatrixSets: tileMatrixSetIds.sort(),
+        template: link.href,
+        layers: tileSet.layers.length,
+        limits: tileSet.tileMatrixSetLimits ? tileSet.tileMatrixSetLimits.length : 0,
+        maxLevel: model.maxLevel,
+        tile,
+        tileLayers: content ? (await OgcOpenApiMvtTools.getLayers(content)).length : 0,
+        styles: server.datasetVectorTiles.style ?
+            await styles(capabilities, null, tileMatrix.id, server.datasetVectorTiles.style, tileMatrixSetIds) : undefined,
+    };
+}
+
+async function styles(capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection | null, tileMatrixSetId: string,
+                      styleId: string, tileMatrixSetIds?: string[]) {
+    const all = await OgcOpenApiStyleTools.fetchStyles(capabilities, collection);
+    const available = tileMatrixSetIds ? OgcOpenApiStyleTools.getStylesForTileMatrixSet(all, tileMatrixSetId, tileMatrixSetIds) : all;
     const style = available.find(s => s.id === styleId);
     if (!style) throw new Error("Style " + styleId + " not found");
     const stylesheet = OgcOpenApiStyleTools.pickStylesheet(style, tileMatrixSetId);
@@ -142,5 +181,6 @@ export async function runScenario(server: TestServer) {
         maps: server.maps ? await maps(server) : undefined,
         mapTiles: server.mapTiles ? await mapTiles(server) : undefined,
         vectorTiles: server.vectorTiles ? await vectorTiles(server) : undefined,
+        datasetVectorTiles: server.datasetVectorTiles ? await datasetVectorTiles(server) : undefined,
     };
 }

@@ -1,0 +1,51 @@
+{
+ "links": [
+  {
+   "rel": "self",
+   "type": "application/json",
+   "title": "List of tileMatrixSets implemented by this API in JSON",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets?f=json"
+  },
+  {
+   "rel": "alternate",
+   "type": "text/html",
+   "title": "List of tileMatrixSets implemented by this API in HTML",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets?f=html"
+  }
+ ],
+ "tileMatrixSets": [
+  {
+   "title": "Amersfoort / RD New scheme for the Netherlands",
+   "links": [
+    {
+     "rel": "self",
+     "title": "Tile matrix set 'NetherlandsRDNewQuad'",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets/NetherlandsRDNewQuad"
+    }
+   ],
+   "id": "NetherlandsRDNewQuad"
+  },
+  {
+   "title": "Lambert Azimuthal Equal Area ETRS89 for Europe",
+   "links": [
+    {
+     "rel": "self",
+     "title": "Tile matrix set 'EuropeanETRS89_LAEAQuad'",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets/EuropeanETRS89_LAEAQuad"
+    }
+   ],
+   "id": "EuropeanETRS89_LAEAQuad"
+  },
+  {
+   "title": "Google Maps Compatible for the World",
+   "links": [
+    {
+     "rel": "self",
+     "title": "Tile matrix set 'WebMercatorQuad'",
+     "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets/WebMercatorQuad"
+    }
+   ],
+   "id": "WebMercatorQuad"
+  }
+ ]
+}

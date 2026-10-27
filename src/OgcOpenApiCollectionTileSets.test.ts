@@ -297,3 +297,70 @@ describe('OgcOpenApiGetCapabilities tiling-scheme links', () => {
         expect(tileSets[0].tilingSchemeHref).toBe("https://example.com/tileMatrixSets/WebMercatorQuad");
     });
 });
+
+describe('OgcOpenApiGetCapabilities dataset tilesets', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const base = "https://api.example.com/ogc/v1/";
+    const capabilities = (links: { rel: string, href: string }[]) =>
+        ({...server(base), links: links.map(l => ({...l, type: "application/json", title: ""}))});
+    const LANDING = [{rel: VECTOR, href: base + "tiles"}];
+
+    it('Whether the server tiles the dataset, per type', () => {
+        expect(OgcOpenApiGetCapabilities.hasDatasetTileSets(capabilities(LANDING), CollectionLinkType.VectorTiles)).toBe(true);
+        expect(OgcOpenApiGetCapabilities.hasDatasetTileSets(capabilities(LANDING), CollectionLinkType.Tiles)).toBe(false);
+        expect(OgcOpenApiGetCapabilities.hasDatasetTileSets(server(base), CollectionLinkType.VectorTiles)).toBe(false);
+    });
+
+    it('Lists the tilesets of the landing page tiles link (PDOK)', async () => {
+        const fetchSpy = respondWith({tilesets: [{
+            tileMatrixSetId: "NetherlandsRDNewQuad", dataType: "vector", crs: "https://www.opengis.net/def/crs/EPSG/0/28992",
+            links: [{rel: "self", href: base + "tiles/NetherlandsRDNewQuad"}, {rel: "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme", href: base + "tileMatrixSets/NetherlandsRDNewQuad"}],
+        }]});
+        const tileSets = await OgcOpenApiGetCapabilities.fetchDatasetTileSets(capabilities(LANDING), CollectionLinkType.VectorTiles);
+        expect(String(fetchSpy.mock.calls[0][0])).toBe(base + "tiles");
+        expect(tileSets.map(t => [t.tileMatrixSetId, t.href, t.tilingSchemeHref])).toEqual([
+            ["NetherlandsRDNewQuad", base + "tiles/NetherlandsRDNewQuad", base + "tileMatrixSets/NetherlandsRDNewQuad"]]);
+    });
+
+    it('Rejects when the dataset is not tiled', async () => {
+        await expect(OgcOpenApiGetCapabilities.fetchDatasetTileSets(server(base), CollectionLinkType.VectorTiles)).rejects.toBeDefined();
+    });
+
+    it('Builds the tileset URL of the dataset from a tile matrix set id', async () => {
+        const fetchSpy = respondWith({dataType: "vector", boundingBox: {lowerLeft: [35.7, 32.3], upperRight: [37.2, 33.2], crs: "http://www.opengis.net/def/crs/OGC/1.3/CRS84"},
+            links: [{rel: "item", type: "application/vnd.mapbox-vector-tile", href: base + "tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}"}]});
+        const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities(LANDING), null, "WebMercatorQuad", {}, CollectionLinkType.VectorTiles);
+        expect(String(fetchSpy.mock.calls[0][0])).toBe(base + "tiles/WebMercatorQuad");
+        expect(tileSet.boundingBox.lowerLeft).toEqual([35.7, 32.3]);
+    });
+});
+
+describe('OgcOpenApiGetCapabilities tile matrix set in the tileset', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const inline = {id: "Custom", crs: "http://www.opengis.net/def/crs/EPSG/0/3857", tileMatrices: [{id: "0"}]};
+
+    it('Uses the tile matrix set of the tileset summary without a request', async () => {
+        const fetchSpy = respondWith({tilesets: [{links: [{rel: "self", type: "application/json", href: "https://example.com/tiles/Custom"}], tileMatrixSet: inline}]});
+        const [tileSet] = await OgcOpenApiGetCapabilities.fetchCollectionTileSets(server("https://example.com/"),
+            collection("c", VECTOR, "https://example.com/tiles"), CollectionLinkType.VectorTiles);
+        fetchSpy.mockClear();
+        const tileMatrix = await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(server("https://example.com/"), tileSet, tileMatrixSets({id: "WebMercatorQuad"}));
+        expect(tileMatrix.id).toBe("Custom");
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('Uses the tile matrix set of the tileset, when its summary does not identify one', async () => {
+        respondWith({dataType: "vector", tileMatrixSet: inline, links: []});
+        const tileMatrix = await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(server("https://example.com/"),
+            {href: "https://example.com/tiles/Custom"}, tileMatrixSets({id: "WebMercatorQuad"}));
+        expect(tileMatrix.id).toBe("Custom");
+    });
+});

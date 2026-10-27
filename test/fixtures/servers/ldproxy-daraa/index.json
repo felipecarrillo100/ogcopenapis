@@ -3,7 +3,7 @@
     "status": 200,
     "headers": {
       "content-type": "application/json",
-      "content-length": "961"
+      "content-length": "963"
     },
     "file": "47fe93b357d31b35.json"
   },
@@ -23,7 +23,7 @@
     "headers": {
       "content-type": "application/geo+json",
       "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
-      "content-length": "1060"
+      "content-length": "1056"
     },
     "file": "1764787fa69bc54e.json"
   },
@@ -59,6 +59,21 @@
     },
     "file": "e4c490ccb4dfcd1a.bin"
   },
+  "https://demo.ldproxy.net/daraa/styles/topographic?f=mbs": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/vnd.mapbox.style+json"
+    },
+    "file": "915c54f15d1f7f36.json"
+  },
+  "https://demo.ldproxy.net/daraa/styles?f=json": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "402"
+    },
+    "file": "8138fb2b20fa0b9f.json"
+  },
   "https://demo.ldproxy.net/daraa/tileMatrixSets": {
     "status": 200,
     "headers": {
@@ -82,5 +97,26 @@
       "content-length": "1312"
     },
     "file": "015f04924c265155.json"
+  },
+  "https://demo.ldproxy.net/daraa/tiles": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "file": "27c1a52ce8bb7089.json"
+  },
+  "https://demo.ldproxy.net/daraa/tiles/WebMercatorQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "file": "574659fde06d6ecb.json"
+  },
+  "https://demo.ldproxy.net/daraa/tiles/WebMercatorQuad/12/1654/2458?f=mvt": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/vnd.mapbox-vector-tile"
+    },
+    "file": "c3d9c8408a1203c2.bin"
   }
 }

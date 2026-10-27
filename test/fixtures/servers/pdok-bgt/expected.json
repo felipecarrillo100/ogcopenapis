@@ -3,5 +3,30 @@
     "collections": 49,
     "dataUrl": "https://api.pdok.nl/kadaster/bgt/ogc/v1/collections/bord/items?f=json",
     "features": 5
+  },
+  "datasetVectorTiles": {
+    "tileMatrixSets": [
+      "EuropeanETRS89_LAEAQuad",
+      "NetherlandsRDNewQuad",
+      "WebMercatorQuad"
+    ],
+    "template": "https://api.pdok.nl/kadaster/bgt/ogc/v1/tiles/NetherlandsRDNewQuad/{tileMatrix}/{tileRow}/{tileCol}?f=mvt",
+    "layers": 0,
+    "limits": 1,
+    "maxLevel": 12,
+    "tile": {
+      "level": 12,
+      "x": 1890,
+      "y": 2160
+    },
+    "tileLayers": 18,
+    "styles": {
+      "ids": [
+        "bgt_achtergrondvisualisatie__netherlandsrdnewquad",
+        "bgt_standaardvisualisatie__netherlandsrdnewquad"
+      ],
+      "stylesheet": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_standaardvisualisatie__netherlandsrdnewquad?f=mapbox",
+      "layers": 400
+    }
   }
 }

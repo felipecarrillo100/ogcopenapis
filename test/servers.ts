@@ -12,6 +12,8 @@ export interface TestServer {
     mapTiles?: { collection: string, tileMatrixSet: string };
     // knownIssue: why the layer is not painted in the demo yet, the browser test expects it to fail
     vectorTiles?: { collection: string, tileMatrixSet: string, style?: string, knownIssue?: string };
+    // The vector tiles of the dataset, all collections in each tile. center, [lon, lat], is a place with data
+    datasetVectorTiles?: { tileMatrixSet: string, style?: string, center: number[], knownIssue?: string };
     // Why the server is not recorded, its responses are only tested live
     notRecorded?: string;
 }
@@ -23,6 +25,7 @@ export const TEST_SERVERS: TestServer[] = [
         url: "https://demo.ldproxy.net/daraa/",
         features: {collection: "TransportationGroundCrv"},
         vectorTiles: {collection: "TransportationGroundCrv", tileMatrixSet: "WebMercatorQuad", style: "topographic"},
+        datasetVectorTiles: {tileMatrixSet: "WebMercatorQuad", style: "topographic", center: [36.1033, 32.6264]},
     },
     {
         id: "ldproxy-vineyards",
@@ -73,6 +76,8 @@ export const TEST_SERVERS: TestServer[] = [
         title: "PDOK BGT",
         url: "https://api.pdok.nl/lv/bgt/ogc/v1/",
         features: {collection: "bord"},
+        // Only the dataset is tiled, at one level, in tile matrix sets in EPSG:28992 that the map reprojects to EPSG:3857
+        datasetVectorTiles: {tileMatrixSet: "NetherlandsRDNewQuad", style: "bgt_standaardvisualisatie__netherlandsrdnewquad", center: [4.8936, 52.3731]},
     },
     {
         id: "gnosis",

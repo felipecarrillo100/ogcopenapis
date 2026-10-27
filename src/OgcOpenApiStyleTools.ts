@@ -24,11 +24,12 @@ const DEFAULT_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "
 class OgcOpenApiStyleTools {
 
     /**
-     * Lists the styles of a collection (OGC API Styles) that are available as a Mapbox GL style.
+     * Lists the styles of a collection (OGC API Styles) that are available as a Mapbox GL style, or with collection
+     * null the styles of the dataset, for its dataset tilesets.
      */
     public static fetchStyles(
         capabilities: OgcOpenApiCapabilitiesObject | null,
-        collection: OgcOpenApiCapabilitiesCollection,
+        collection: OgcOpenApiCapabilitiesCollection | null,
         options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
     ) {
         return new Promise<OgcOpenApiStyle[]>((resolve, reject) => {
@@ -64,6 +65,18 @@ class OgcOpenApiStyleTools {
                 }, () => reject({error: true, message: "Not JSON data"}));
             }, err => reject({error: true, message: err.message}));
         });
+    }
+
+    /**
+     * The styles for a tile matrix set. Zoom levels are tile matrix set specific, so a server can have a style per
+     * tile matrix set and name it after it (PDOK: bgt_standaardvisualisatie__netherlandsrdnewquad). A style named after
+     * another of tileMatrixSetIds, and not after tileMatrixSetId, is left out. Other styles have a stylesheet per tile
+     * matrix set or serve all of them (pickStylesheet).
+     */
+    public static getStylesForTileMatrixSet(styles: OgcOpenApiStyle[], tileMatrixSetId: string, tileMatrixSetIds: string[]) {
+        const names = (style: OgcOpenApiStyle, id: string) => (style.id + " " + style.title).toLowerCase().indexOf(id.toLowerCase()) > -1;
+        const others = tileMatrixSetIds.filter(id => id.toLowerCase() !== tileMatrixSetId.toLowerCase());
+        return styles.filter(style => names(style, tileMatrixSetId) || !others.some(id => names(style, id)));
     }
 
     /**
@@ -147,8 +160,14 @@ class OgcOpenApiStyleTools {
         return {version: 8, name: name ? name : "default", sources: {}, layers: styleLayers};
     }
 
-    // Some servers (ldproxy) list the styles link only in the collection document, not in /collections
-    private static getStylesHref(capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection) {
+    // Some servers (ldproxy) list the styles link only in the collection document, not in /collections.
+    // The styles of the dataset are linked from the landing page.
+    private static getStylesHref(capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection | null) {
+        if (!collection) {
+            const datasetLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(capabilities.links ? capabilities.links : [], CollectionLinkType.Styles);
+            const datasetLink = datasetLinks.find(l => l.type === "application/json") || datasetLinks.find(l => !l.type);
+            return datasetLink ? datasetLink.href : capabilities.baseUrl + "styles";
+        }
         const stylesLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Styles);
         const link = stylesLinks.find(l => l.type === "application/json") || stylesLinks.find(l => !l.type);
         if (link) return link.href;

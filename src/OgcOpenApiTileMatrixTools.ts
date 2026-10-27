@@ -101,7 +101,8 @@ class OgcOpenApiTileMatrixTools {
     private static isFirstAxisNorthing(orderedAxes: string[] | undefined) {
         if (!orderedAxes || orderedAxes.length === 0) return false;
         const axis = orderedAxes[0].toUpperCase();
-        return axis === "LAT" || axis === "N" || axis === "S";
+        // EPSG:3035 names its northing Y and its easting X, with Y first
+        return ["LAT", "LATITUDE", "N", "S", "Y", "NORTHING"].indexOf(axis) > -1;
     }
 }
 

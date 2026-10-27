@@ -104,6 +104,12 @@ export class DemoPage {
         await this.page.waitForTimeout(1000);
     }
 
+    // Fits the map to a square of size degrees around center, [lon, lat], and waits for it to settle
+    async zoomTo(center: number[], size: number) {
+        await this.page.evaluate(([lon, lat, s]) => (window as any).demo.zoomTo(lon, lat, s), [center[0], center[1], size]);
+        await this.page.waitForTimeout(500);
+    }
+
     async hideBasemap() {
         await this.page.evaluate(() => {
             const map = (window as any).map;

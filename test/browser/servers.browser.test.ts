@@ -13,6 +13,9 @@ const SCREENSHOTS = fileURLToPath(new URL("./screenshots/", import.meta.url));
 // Low because some collections are a few small points
 const MIN_PAINTED = 20;
 const GENERATED_STYLE = "__generated__";
+// Degrees around the center of a case, small enough for data that is only tiled at a detailed level:
+// PDOK tiles BGT at RD level 12 only, about 0.84 m per pixel
+const CENTER_SIZE = 0.003;
 
 interface Case {
     server: TestServer;
@@ -21,7 +24,12 @@ interface Case {
     tileMatrixSet?: string;
     style?: string;
     knownIssue?: string;
+    // [lon, lat], the map shows it after the layer is added
+    center?: number[];
 }
+
+// The collection option of the demo for the tilesets of the dataset
+const DATASET = "__dataset__";
 
 function getCases(server: TestServer): Case[] {
     const cases: Case[] = [];
@@ -31,6 +39,10 @@ function getCases(server: TestServer): Case[] {
     if (server.vectorTiles) {
         const {collection, tileMatrixSet, style, knownIssue} = server.vectorTiles;
         cases.push({server, type: "vectorTiles", collection, tileMatrixSet, style: style ? style : GENERATED_STYLE, knownIssue});
+    }
+    if (server.datasetVectorTiles) {
+        const {tileMatrixSet, style, center, knownIssue} = server.datasetVectorTiles;
+        cases.push({server, type: "vectorTiles", collection: DATASET, tileMatrixSet, style: style ? style : GENERATED_STYLE, knownIssue, center});
     }
     return cases;
 }
@@ -49,7 +61,8 @@ describe("Test servers in the demo", () => {
         for (const c of getCases(server)) {
             // A known issue is expected to fail, the test fails once it is fixed, as a reminder to remove it
             const test = c.knownIssue ? it.fails : it;
-            const name = `${server.title}: ${c.type} ${c.collection}` + (c.knownIssue ? ` (known issue: ${c.knownIssue})` : "");
+            const what = c.collection === DATASET ? "dataset " + c.tileMatrixSet : c.collection;
+            const name = `${server.title}: ${c.type} ${what}` + (c.knownIssue ? ` (known issue: ${c.knownIssue})` : "");
             test(name, async () => {
                 demo = await openDemo(new URL(server.url).host);
                 await demo.load();
@@ -57,10 +70,11 @@ describe("Test servers in the demo", () => {
                 expect(await demo.status()).toMatch(/collections/);
                 await demo.addLayer(c.collection, {tileMatrixSet: c.tileMatrixSet, style: c.style});
                 expect(await demo.status()).toMatch(/^Added/);
+                if (c.center) await demo.zoomTo(c.center, CENTER_SIZE);
                 await demo.waitForData();
                 await demo.hideBasemap();
                 const painted = await demo.countPaintedPixels();
-                await demo.screenshot(SCREENSHOTS + `${server.id}-${c.type}.png`);
+                await demo.screenshot(SCREENSHOTS + `${server.id}-${c.type}${c.collection === DATASET ? "-dataset" : ""}.png`);
 
                 expect(demo.pageErrors, "page errors").toEqual([]);
                 expect(demo.failedResponses, "failed responses of " + server.url).toEqual([]);
