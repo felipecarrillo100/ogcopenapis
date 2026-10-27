@@ -38,6 +38,22 @@ export interface TileSetData {
   }
 }
 
+export interface TileSetLayer {
+  id: string;
+  title?: string;
+  dataType?: string;
+  geometryDimension?: number;
+  minTileMatrix?: string;
+  maxTileMatrix?: string;
+}
+
+export interface CollectionTileSet {
+  dataType?: string;
+  links: LinkType[];
+  layers: TileSetLayer[];
+  tileMatrixSetLimits?: { tileMatrix: string }[];
+}
+
 export interface TileSetMeta {
   id: string;
   title: string;
@@ -81,6 +97,7 @@ export enum CollectionLinkType {
   Styles = 'styles',
   Map = 'map',
   Tiles = 'tiles',
+  VectorTiles = 'vectorTiles',
 }
 
 const CollectionLinkTypeAlternatives = {
@@ -88,6 +105,13 @@ const CollectionLinkTypeAlternatives = {
   [CollectionLinkType.Styles]: ["http://www.opengis.net/def/rel/ogc/1.0/styles", "styles"],
   [CollectionLinkType.Map]: ["http://www.opengis.net/def/rel/ogc/1.0/map", "map"],
   [CollectionLinkType.Tiles]: ["http://www.opengis.net/def/rel/ogc/1.0/tilesets-map", "tilesets-map"],
+  [CollectionLinkType.VectorTiles]: ["http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector", "tilesets-vector"],
+}
+
+const CollectionLinkTypeDefaultFormat = {
+  [CollectionLinkType.Map]: "image/png",
+  [CollectionLinkType.Tiles]: "image/png",
+  [CollectionLinkType.VectorTiles]: "application/vnd.mapbox-vector-tile",
 }
 
 interface FetchLinkContentOptions {
@@ -258,6 +282,7 @@ export class OgcOpenApiGetCapabilities {
       case CollectionLinkType.Map:
       case CollectionLinkType.Styles:
       case CollectionLinkType.Tiles:
+      case CollectionLinkType.VectorTiles:
         return links.filter((link: any) => CollectionLinkTypeAlternatives[linkType].some(e=>e===link.rel));
       default:
         return [];
@@ -277,16 +302,11 @@ export class OgcOpenApiGetCapabilities {
 
   private static detectTypeFormat(link: OgcOpenApiCapabilitiesCollectionServiceLinkType) {
     if (link.type) return link.type;
-    let rel = null;
-    for (let key in CollectionLinkTypeAlternatives) {
-      if (CollectionLinkTypeAlternatives.hasOwnProperty(key)) {
-        CollectionLinkTypeAlternatives[key].some(e=>e===link.rel);
-        rel = key;
+    for (const key in CollectionLinkTypeAlternatives) {
+      if (CollectionLinkTypeAlternatives.hasOwnProperty(key) && CollectionLinkTypeAlternatives[key].some(e=>e===link.rel)) {
+        if (CollectionLinkTypeDefaultFormat[key]) return CollectionLinkTypeDefaultFormat[key];
         break;
       }
-    }
-    if (rel) {
-      if (CollectionLinkType.Map) return "image/png";
     }
     return "application/json"
   }
@@ -370,14 +390,29 @@ export class OgcOpenApiGetCapabilities {
       capabilities: OgcOpenApiCapabilitiesObject | null,
       currentCollection: OgcOpenApiCapabilitiesCollection,
       tileMatrixId: string,
-      options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
+      options?: {credentials?: boolean, requestHeaders?: RequestHeaders},
+      linkType: CollectionLinkType = CollectionLinkType.Tiles
   ) {
-    return new Promise<LinkType[]>((resolve, reject)=>{
-      if (capabilities===null) reject();
-        const dataLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(
-          currentCollection.links,
-          CollectionLinkType.Tiles
-      )
+    return this.fetchCollectionTileSet(capabilities, currentCollection, tileMatrixId, options, linkType).then(tileSet => tileSet.links);
+  }
+
+  /**
+   * Fetches the tileset of a collection for one tile matrix set: the tile URL templates (rel item) and, for vector
+   * tiles, the layers contained in each tile.
+   */
+  public static fetchCollectionTileSet (
+      capabilities: OgcOpenApiCapabilitiesObject | null,
+      currentCollection: OgcOpenApiCapabilitiesCollection,
+      tileMatrixId: string,
+      options?: {credentials?: boolean, requestHeaders?: RequestHeaders},
+      linkType: CollectionLinkType = CollectionLinkType.Tiles
+  ) {
+    return new Promise<CollectionTileSet>((resolve, reject)=>{
+      if (capabilities===null) {
+        reject();
+        return;
+      }
+      const dataLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(currentCollection.links, linkType);
       const link = dataLinks.find((link) => link.type === "application/json");
       const href = link ? link.href : dataLinks.length > 0 ? dataLinks[0].href : '';
       const tileInfoUrl = OgcOpenApiFetchTools.cleanUrl(href) + tileMatrixId;
@@ -388,13 +423,14 @@ export class OgcOpenApiGetCapabilities {
       }, capabilities.serverOptions).then(result => {
         if (result.status === 200) {
           result.json().then((data) => {
-                if (data.links.length > 0) {
-                  const links = data.links.filter(l=>l.rel === "item" || l.rel === "items").map(a=>({...a, href: capabilities.serverOptions.complete(a.href)}));
-                  if (links) {
-                    resolve(links);
-                  } else {
-                    reject({error: true, message: "Invalid"});
-                  }
+                const links = data.links ? data.links.filter(l=>l.rel === "item" || l.rel === "items").map(a=>({...a, href: capabilities.serverOptions.complete(a.href)})) : [];
+                if (links.length > 0) {
+                  resolve({
+                    dataType: data.dataType,
+                    links,
+                    layers: data.layers ? data.layers : [],
+                    tileMatrixSetLimits: data.tileMatrixSetLimits
+                  });
                 } else {
                   reject({error: true, message: "Invalid"});
                 }
