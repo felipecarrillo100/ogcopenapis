@@ -7,6 +7,7 @@ import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
 import {createBounds} from "@luciad/ria/shape/ShapeFactory";
 import {Cursor} from "@luciad/ria/model/Cursor";
+import {FeatureModel} from "@luciad/ria/model/feature/FeatureModel";
 
 jest.useFakeTimers();
 
@@ -91,6 +92,17 @@ jest.useFakeTimers();
                 }, () => {
                     expect(true).toBe(false);
                 })
+            });
+
+            it('OgcOpenApiFeatureStore reports its operations to a FeatureModel', async () => {
+                const featureModel = new FeatureModel(storeWindmills, {reference: getReference(model.tmp_reference)});
+                expect(featureModel.isOperationSupported("get")).toBe(true);
+                expect(featureModel.isOperationSupported("spatialQuery")).toBe(true);
+                expect(featureModel.isOperationSupported("add")).toBe(false);
+
+                const bounds = createBounds(getReference(model.tmp_reference), [ 3.40, 0.6, 51.15, 0.15])
+                const cursor = await featureModel.spatialQuery(bounds, {"filter":null,"limit":2});
+                expect(cursor.hasNext()).toBe(true);
             });
         })
 

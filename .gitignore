@@ -2,3 +2,8 @@ node_modules/
 lib/
 .idea/
 *.tgz
+
+# Demo: the LuciadRIA license is never committed, only its readme
+demo/license/*.txt
+!demo/license/readme.txt
+demo/dist/
