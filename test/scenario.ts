@@ -55,7 +55,8 @@ function countFeatures(cursor: Cursor) {
 
 async function features(server: TestServer) {
     const {capabilities, collection} = await connect(server, CollectionLinkType.Items, server.features.collection);
-    const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Items);
+    // GeoJSON, not JSON-FG: GeoJsonCodec reads GeoJSON
+    const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Items).filter(l => !OgcOpenApiGetCapabilities.isJsonFgLink(l));
     const link = items.find(l => l.type === "application/geo+json") || items.find(l => l.type === "application/json") || items[0];
     const store = new OgcOpenApiFeatureStore({
         dataUrl: link.href, outputFormat: "application/geo+json", codec: new GeoJsonCodec({generateIDs: false}),

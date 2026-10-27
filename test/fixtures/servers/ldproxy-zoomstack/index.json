@@ -3,7 +3,7 @@
     "status": 200,
     "headers": {
       "content-type": "application/json",
-      "content-length": "929"
+      "content-length": "928"
     },
     "file": "d86e7088040efb33.json"
   },
@@ -18,13 +18,13 @@
     },
     "file": "52c815039b4350fa.json"
   },
-  "https://demo.ldproxy.net/zoomstack/collections/airports/items?f=json&limit=5&bbox=-7.942759150065165,49.901607895996534,1.9957427933628145,60.133709755754": {
+  "https://demo.ldproxy.net/zoomstack/collections/airports/items?f=json&profile=rfc7946&limit=5&bbox=-7.942759150065165,49.901607895996534,1.9957427933628145,60.133709755754": {
     "status": 200,
     "headers": {
       "content-type": "application/geo+json",
       "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
-      "content-length": "734"
+      "content-length": "740"
     },
-    "file": "bf50b0cec5f5b4e1.json"
+    "file": "4d9b1d78ba7a08ef.json"
   }
 }

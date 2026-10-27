@@ -180,10 +180,10 @@ describe('OgcOpenApiGetCapabilities.fetchCollectionTileSet', () => {
         expect(tileSet.links[0].href).toBe("https://example.com/{tileMatrix}/{tileRow}/{tileCol}");
     });
 
-    it('Still builds the tileset URL from a tile matrix set id', async () => {
+    it('Still builds the tileset URL from a tile matrix set id, with the query of the tilesets link', async () => {
         const fetchSpy = respondWith(TILESET);
         await OgcOpenApiGetCapabilities.fetchCollectionTileSet(server("https://example.com/"), lakes, "WebMercatorQuad", {}, CollectionLinkType.VectorTiles);
-        expect(String(fetchSpy.mock.calls[0][0])).toBe("https://example.com/collections/lakes/tiles/WebMercatorQuad");
+        expect(String(fetchSpy.mock.calls[0][0])).toBe("https://example.com/collections/lakes/tiles/WebMercatorQuad?f=json");
     });
 });
 
@@ -250,6 +250,19 @@ describe('OgcOpenApiGetCapabilities relative links', () => {
             collection("c", VECTOR, "https://example.com/ogcapi/collections/c/tiles"),
             {href: "https://example.com/ogcapi/collections/c/tiles/WebMercatorQuad"}, {}, CollectionLinkType.VectorTiles);
         expect(tileSet.links[0].href).toBe("https://example.com/ogcapi/collections/c/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}");
+    });
+});
+
+describe('OgcOpenApiGetCapabilities.fromURL query', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('Requests the landing page with the query it is given, such as an api key', async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(new Response(JSON.stringify({links: []}), {status: 200})));
+        await OgcOpenApiGetCapabilities.fromURL("https://example.com/ogcapi?apikey=k1").catch(() => undefined);
+        expect(String(fetchSpy.mock.calls[0][0])).toBe("https://example.com/ogcapi/?apikey=k1");
     });
 });
 
@@ -362,5 +375,32 @@ describe('OgcOpenApiGetCapabilities tile matrix set in the tileset', () => {
         const tileMatrix = await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(server("https://example.com/"),
             {href: "https://example.com/tiles/Custom"}, tileMatrixSets({id: "WebMercatorQuad"}));
         expect(tileMatrix.id).toBe("Custom");
+    });
+});
+
+describe('OgcOpenApiGetCapabilities JSON-FG', () => {
+    const link = (type: string, profile?: string | string[]) => ({rel: "items", type, title: "", href: "https://example.com/items", profile});
+
+    it('Recognises JSON-FG by its media type (PDOK, CubeWerx) and by its profile (ldproxy)', () => {
+        expect(OgcOpenApiGetCapabilities.isJsonFgLink(link("application/vnd.ogc.fg+json"))).toBe(true);
+        expect(OgcOpenApiGetCapabilities.isJsonFgLink(link("application/vnd.ogc.fg+json; conformance=geojson"))).toBe(true);
+        expect(OgcOpenApiGetCapabilities.isJsonFgLink(link("application/geo+json", ["http://www.opengis.net/def/profile/OGC/0/jsonfg"]))).toBe(true);
+        expect(OgcOpenApiGetCapabilities.isJsonFgLink(link("application/geo+json", ["http://www.opengis.net/def/profile/OGC/0/rfc7946"]))).toBe(false);
+        expect(OgcOpenApiGetCapabilities.isJsonFgLink(link("application/geo+json"))).toBe(false);
+    });
+
+    it('Reports JSON-FG as application/vnd.ogc.fg+json in the formats of a collection', async () => {
+        const documents = {
+            "https://example.com/": {links: [{rel: "data", type: "application/json", href: "https://example.com/collections"}]},
+            "https://example.com/collections": {collections: [{id: "c", links: [
+                {rel: "items", type: "application/geo+json", href: "https://example.com/collections/c/items?f=json&profile=jsonfg", profile: ["http://www.opengis.net/def/profile/OGC/0/jsonfg"]},
+                {rel: "items", type: "application/geo+json", href: "https://example.com/collections/c/items?f=json&profile=rfc7946", profile: ["http://www.opengis.net/def/profile/OGC/0/rfc7946"]},
+            ]}]},
+        };
+        vi.spyOn(globalThis, "fetch").mockImplementation((input) =>
+            Promise.resolve(new Response(JSON.stringify(documents[String(input)]), {status: documents[String(input)] ? 200 : 404})));
+        const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://example.com/", {filterCollectionsByLinkType: CollectionLinkType.Items});
+        expect(capabilities.collections[0].outputFormats).toEqual(["application/vnd.ogc.fg+json", "application/geo+json"]);
+        vi.restoreAllMocks();
     });
 });

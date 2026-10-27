@@ -111,3 +111,44 @@ describe('OgcOpenApiFeatureStore decoding', () => {
         expect(countFeatures(await (createStore().spatialQuery(bounds()) as Promise<Cursor>))).toBe(1);
     });
 });
+
+describe('OgcOpenApiFeatureStore request URLs', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const storeFor = (dataUrl: string) => new OgcOpenApiFeatureStore({
+        dataUrl, outputFormat: "application/geo+json", codec: new GeoJsonCodec({generateIDs: false}), crs: CRS84,
+    });
+    const requested = (fetchSpy: ReturnType<typeof respond>) => String(fetchSpy.mock.calls[0][0]);
+
+    it('Keeps every parameter of the items link, f first', async () => {
+        const fetchSpy = respond(200, JSON.stringify(COLLECTION));
+        await storeFor("https://example.com/collections/c/items?apikey=k1&f=json&profile=jsonfg").query({limit: 5});
+        expect(requested(fetchSpy)).toBe("https://example.com/collections/c/items?f=json&apikey=k1&profile=jsonfg&limit=5");
+    });
+
+    it('A parameter of the request replaces the one of the link', async () => {
+        const fetchSpy = respond(200, JSON.stringify(COLLECTION));
+        await storeFor("https://example.com/collections/c/items?f=json&limit=10").query({limit: 5});
+        expect(requested(fetchSpy)).toBe("https://example.com/collections/c/items?f=json&limit=5");
+    });
+
+    it('Encodes the values: a CQL filter with spaces, quotes, & and #, and a datetime interval', async () => {
+        const fetchSpy = respond(200, JSON.stringify(COLLECTION));
+        await storeFor(DATA_URL).query({filter: "name = 'A&B #1' AND v > 2", datetime: "2020-01-01T00:00:00Z/..", bbox: [4, 51, 6, 53]});
+        const url = new URL(requested(fetchSpy));
+        expect(url.searchParams.get("filter")).toBe("name = 'A&B #1' AND v > 2");
+        expect(url.searchParams.get("datetime")).toBe("2020-01-01T00:00:00Z/..");
+        // , : and / stay readable
+        expect(requested(fetchSpy)).toContain("bbox=4,51,6,53");
+        expect(requested(fetchSpy)).toContain("datetime=2020-01-01T00:00:00Z/..");
+    });
+
+    it('get keeps the parameters of the link and encodes the id', async () => {
+        const fetchSpy = respond(200, JSON.stringify(FEATURE));
+        await storeFor("https://example.com/collections/c/items?f=json&apikey=k1").get("a/b c");
+        expect(requested(fetchSpy)).toBe("https://example.com/collections/c/items/a%2Fb%20c?f=json&apikey=k1");
+    });
+});

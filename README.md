@@ -143,8 +143,9 @@ import {OgcOpenApiFeatureStore} from "ogcopenapis/OgcOpenApiFeatureStore";
 
 function createFeatureLayer(collection: OgcOpenApiCapabilitiesCollection) {
     const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Items);
-    // GeoJSON, the encoding that GeoJsonCodec reads
-    const link = items.find(l => l.type === "application/geo+json") || items.find(l => l.type === "application/json");
+    // GeoJSON, the encoding that GeoJsonCodec reads. Not JSON-FG, which some servers also type application/geo+json
+    const geoJson = items.filter(l => !OgcOpenApiGetCapabilities.isJsonFgLink(l));
+    const link = geoJson.find(l => l.type === "application/geo+json") || geoJson.find(l => l.type === "application/json");
     if (!link) throw new Error("Collection " + collection.id + " has no GeoJSON items");
     // CRS84: OGC API Features requires every server to support it
     const crs = CRS84;
@@ -161,7 +162,13 @@ function createFeatureLayer(collection: OgcOpenApiCapabilitiesCollection) {
     return new FeatureLayer(model, {label: collection.title || collection.id, loadingStrategy: new LoadSpatially()});
 }
 ```
-The store requests the features in view, a query does not follow the `next` links of a response yet (no paging).
+The store requests the features in view, a query does not follow the `next` links of a response yet (no paging). It
+keeps the parameters of the items link, such as `profile` or an api key, and encodes the values of its own.
+
+JSON-FG (OGC Features and Geometries JSON) needs a JSON-FG codec, which LuciadRIA does not have yet. Servers offer it as
+`application/vnd.ogc.fg+json`, or as `application/geo+json` with the JSON-FG profile (ldproxy); `isJsonFgLink` tells them
+apart, and `outputFormats` of a collection reports JSON-FG as `application/vnd.ogc.fg+json`. To read JSON-FG, pass a
+JSON-FG codec of your own to the store with that link.
 
 Keep the ids of the server: `generateIDs: false`. Each feature of an OGC API Features collection has an id, `get(id)` of
 the store requests `items/{id}` with it, and LuciadRIA updates only the features that changed when the ids stay the same

@@ -1,7 +1,7 @@
 {
   "features": {
     "collections": 21,
-    "dataUrl": "https://demo.ldproxy.net/zoomstack/collections/airports/items?f=json&profile=jsonfg",
+    "dataUrl": "https://demo.ldproxy.net/zoomstack/collections/airports/items?f=json&profile=rfc7946",
     "features": 5
   }
 }

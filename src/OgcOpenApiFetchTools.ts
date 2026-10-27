@@ -62,6 +62,23 @@ class OgcOpenApiFetchTools {
         return hostUrl + "/" + url;
     }
 
+    /**
+     * A value for a query parameter: encoded, except for , : and / which are allowed in a query (RFC 3986) and keep
+     * values such as bbox=1,2,3,4 and crs=http://www.opengis.net/def/crs/... readable. Spaces, &, #, + and = are encoded.
+     */
+    public static encodeQueryValue(value: string | number | boolean | Array<string | number>) {
+        return encodeURIComponent(Array.isArray(value) ? value.join(",") : String(value))
+            .replace(/%2C/gi, ",").replace(/%3A/gi, ":").replace(/%2F/gi, "/");
+    }
+
+    /**
+     * url with path appended to its path, keeping its query: .../collections/c?f=json and styles give .../collections/c/styles?f=json
+     */
+    public static appendPath(url: string, path: string) {
+        const [base, query] = url.split(/\?(.*)/s);
+        return OgcOpenApiFetchTools.cleanUrl(base) + path + (query ? "?" + query : "");
+    }
+
     public static cleanUrl(inputUrl:string) {
         return inputUrl.split("?")[0].replace(/\/?$/, '/');
     }

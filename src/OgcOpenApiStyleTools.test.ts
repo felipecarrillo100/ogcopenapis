@@ -85,3 +85,24 @@ describe('OgcOpenApiStyleTools.fetchStyles of the dataset', () => {
         expect(styles.map(s => s.id)).toEqual(["topographic"]);
     });
 });
+
+describe('OgcOpenApiStyleTools.fetchStyles of a collection without a styles link', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('Requests styles next to the self link of the collection, with its query', async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(new Response(JSON.stringify({styles: []}), {status: 200})));
+        const capabilities = {
+            name: "", collections: [], version: "", service: "", info: {}, baseUrl: "https://example.com/",
+            serverOptions: OgcOpenApiFetchTools.createFetchOptions({originalUrl: "https://example.com/"}),
+        };
+        const collection = {
+            id: "c", name: "c", title: "c", defaultReference: "CRS:84", outputFormats: [], description: "", keywords: [], extent: {},
+            links: [{rel: "self", type: "application/json", title: "", href: "https://example.com/collections/c?apikey=k1"}],
+        };
+        await OgcOpenApiStyleTools.fetchStyles(capabilities, collection);
+        expect(String(fetchSpy.mock.calls[0][0])).toBe("https://example.com/collections/c/styles?apikey=k1&f=json");
+    });
+});

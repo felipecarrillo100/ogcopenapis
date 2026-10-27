@@ -34,14 +34,14 @@
     },
     "file": "81450365c8764c98.bin"
   },
-  "https://demo.ldproxy.net/strassen/collections/netzknoten/items?f=json&limit=5&bbox=5.719475455482996,50.31135979175767,9.468298285316274,53.149734402190724": {
+  "https://demo.ldproxy.net/strassen/collections/netzknoten/items?f=json&profile=rfc7946&limit=5&bbox=5.719475455482996,50.31135979175767,9.468298285316274,53.149734402190724": {
     "status": 200,
     "headers": {
       "content-type": "application/geo+json",
       "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
-      "content-length": "809"
+      "content-length": "818"
     },
-    "file": "7feefa3983735b94.json"
+    "file": "1c40f98a3b29fb92.json"
   },
   "https://demo.ldproxy.net/strassen/tileMatrixSets": {
     "status": 200,
