@@ -32,6 +32,7 @@ export default async function setup(project: TestProject) {
         // LuciadRIA 2026.1 renders with WebGPU
         args: ["--enable-unsafe-webgpu"],
     });
+    await warmUp(browserServer.wsEndpoint(), origin);
     project.provide("origin", origin);
     project.provide("wsEndpoint", browserServer.wsEndpoint());
 
@@ -39,4 +40,32 @@ export default async function setup(project: TestProject) {
         await browserServer.close();
         await server.close();
     };
+}
+
+// With a cold dependency cache, Vite discovers the dependencies of the demo while the first page loads, optimizes them
+// and reloads the page: that first load fails with "Failed to fetch dynamically imported module". The demo is loaded
+// until it has started, and no reload followed for QUIET_PERIOD, before the tests run.
+const WARM_UP_TIMEOUT = 120000;
+const QUIET_PERIOD = 3000;
+
+async function warmUp(wsEndpoint: string, origin: string) {
+    const browser = await chromium.connect(wsEndpoint);
+    try {
+        const page = await browser.newPage();
+        let lastNavigation = Date.now();
+        page.on("framenavigated", frame => {
+            if (frame === page.mainFrame()) lastNavigation = Date.now();
+        });
+        const start = Date.now();
+        await page.goto(origin, {waitUntil: "load"});
+        while (Date.now() - start < WARM_UP_TIMEOUT) {
+            const started = await page.evaluate(() => !!(window as any).map && document.querySelectorAll("#preset option").length > 0)
+                .catch(() => false);
+            if (started && Date.now() - lastNavigation > QUIET_PERIOD) return;
+            await page.waitForTimeout(250);
+        }
+        throw new Error("The demo did not start within " + WARM_UP_TIMEOUT / 1000 + " seconds at " + origin);
+    } finally {
+        await browser.close();
+    }
 }
