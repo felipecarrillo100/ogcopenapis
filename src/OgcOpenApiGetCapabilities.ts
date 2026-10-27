@@ -165,7 +165,8 @@ export interface OgcOpenApiGetCapabilitiesFromURL {
 
 export class OgcOpenApiGetCapabilities {
 
-  public static fromURL(inputRequest: string, options?: OgcOpenApiGetCapabilitiesFromURL) {
+  public static fromURL(inputRequest: string, fromUrlOptions?: OgcOpenApiGetCapabilitiesFromURL) {
+    const options: OgcOpenApiGetCapabilitiesFromURL = fromUrlOptions ? fromUrlOptions : {};
     return new Promise<OgcOpenApiCapabilitiesObject>((resolve, reject) => {
       const baseUrl = OgcOpenApiFetchTools.cleanUrl(inputRequest);
       const requestUrl = OgcOpenApiFetchTools.cleanUrl(inputRequest);
@@ -200,17 +201,21 @@ export class OgcOpenApiGetCapabilities {
               );
               const tilingSchemes = jsonObject.links.filter((link) => isRel(link, 'tiling-schemes'));
               const linkToTileMatrixSets = tilingSchemes.find((link) => link.type === 'application/json') || tilingSchemes.find((link) => !link.type);
+              // The links of the landing page are relative to it, the links of the collections to /collections
+              const resolveLink = (link: OgcOpenApiCapabilitiesCollectionServiceLinkType, documentUrl: string) =>
+                  ({...link, href: OgcOpenApiFetchTools.resolveUrl(link.href, documentUrl, serverOptions)});
               const promiseArray = [];
               if (linkToData) {
+                const collectionsLink = resolveLink(linkToData, requestUrl);
                 const collectionsPromise = OgcOpenApiGetCapabilities.fetchLinkContentAsJSON(
-                    linkToData,
+                    collectionsLink,
                     {credentials: options.credentials, requestHeaders: options.requestHeaders},
                     serverOptions
                 );
                 promiseArray.push(collectionsPromise);
                 if (linkToApi) {
                   const apiPromise = OgcOpenApiGetCapabilities.fetchLinkContentAsJSON(
-                      linkToApi,
+                      resolveLink(linkToApi, requestUrl),
                       {credentials: options.credentials, requestHeaders: options.requestHeaders},
                       serverOptions
                   );
@@ -258,14 +263,14 @@ export class OgcOpenApiGetCapabilities {
                   // console.log(featureTypes);
                   const o: OgcOpenApiCapabilitiesObject = {
                     name: '',
-                    collections: foundCollections.map(col=>({...col, crs: col.crs ? col.crs : [], links: col.links.map(l=>({...l, href: serverOptions.complete(l.href)}))})),
+                    collections: foundCollections.map(col=>({...col, crs: col.crs ? col.crs : [], links: col.links.map(l => resolveLink(l, collectionsLink.href))})),
                     version: responseOpenApi ? responseOpenApi.openapi : '',
                     service: '',
                     info: responseOpenApi ? responseOpenApi.info : {},
                     ...crsArray,
                     serverOptions: serverOptions,
                     baseUrl,
-                    tileMatrixSetsUrl: linkToTileMatrixSets ? serverOptions.complete(linkToTileMatrixSets.href) : undefined
+                    tileMatrixSetsUrl: linkToTileMatrixSets ? resolveLink(linkToTileMatrixSets, requestUrl).href : undefined
                   };
                   resolve(o);
                 });
@@ -396,7 +401,12 @@ export class OgcOpenApiGetCapabilities {
     const url = capabilities.tileMatrixSetsUrl ? capabilities.tileMatrixSetsUrl : capabilities.baseUrl + "tileMatrixSets";
     const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, url, options);
     if (!data.tileMatrixSets) throw {error: true, message: "tileMatrixSets not defined"};
-    return data.tileMatrixSets.map(tml => ({...tml, href: capabilities.serverOptions.complete(tml.href)}));
+    const resolve = (href: string) => OgcOpenApiFetchTools.resolveUrl(href, url, capabilities.serverOptions);
+    return data.tileMatrixSets.map(tml => ({
+      ...tml,
+      href: resolve(tml.href),
+      links: (tml.links ? tml.links : []).map(l => ({...l, href: resolve(l.href)}))
+    }));
   }
 
   // GETs a JSON document. Servers answer JSON for the Accept header, or for the f parameter that their links carry.
@@ -419,10 +429,10 @@ export class OgcOpenApiGetCapabilities {
     }
   }
 
-  // The link that identifies the tile matrix set of a tileset
-  private static getTilingSchemeHref(capabilities: OgcOpenApiCapabilitiesObject, links: LinkType[]) {
+  // The link that identifies the tile matrix set of a tileset, relative to the document that has it
+  private static getTilingSchemeHref(capabilities: OgcOpenApiCapabilitiesObject, links: LinkType[], documentUrl: string) {
     const tilingScheme = links.find(l => isRel(l, "tiling-scheme"));
-    return tilingScheme ? capabilities.serverOptions.complete(tilingScheme.href) : undefined;
+    return tilingScheme ? OgcOpenApiFetchTools.resolveUrl(tilingScheme.href, documentUrl, capabilities.serverOptions) : undefined;
   }
 
   public static getTilesLink (
@@ -468,8 +478,8 @@ export class OgcOpenApiGetCapabilities {
         tileMatrixSetId: tileSet.tileMatrixSetId,
         dataType: tileSet.dataType,
         crs: typeof tileSet.crs === "string" ? tileSet.crs : undefined,
-        href: capabilities.serverOptions.complete(self.href),
-        tilingSchemeHref: OgcOpenApiGetCapabilities.getTilingSchemeHref(capabilities, links),
+        href: OgcOpenApiFetchTools.resolveUrl(self.href, href, capabilities.serverOptions),
+        tilingSchemeHref: OgcOpenApiGetCapabilities.getTilingSchemeHref(capabilities, links, href),
       });
     }
     return tileSets;
@@ -526,7 +536,7 @@ export class OgcOpenApiGetCapabilities {
     return {
       tileMatrixSetURI: data.tileMatrixSetURI as string | undefined,
       tileMatrixSetId: data.tileMatrixSetId as string | undefined,
-      tilingSchemeHref: OgcOpenApiGetCapabilities.getTilingSchemeHref(capabilities, data.links ? data.links : []),
+      tilingSchemeHref: OgcOpenApiGetCapabilities.getTilingSchemeHref(capabilities, data.links ? data.links : [], href),
     };
   }
 
@@ -548,7 +558,7 @@ export class OgcOpenApiGetCapabilities {
         tileMatrix.href;
     // pygeoapi answers 500 without f=json or an Accept header
     const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, tileInfoUrl, options);
-    const links = data.links ? data.links.filter(l => l.rel === "item" || l.rel === "items").map(a => ({...a, href: capabilities.serverOptions.complete(a.href)})) : [];
+    const links = data.links ? data.links.filter(l => l.rel === "item" || l.rel === "items").map(a => ({...a, href: OgcOpenApiFetchTools.resolveUrl(a.href, tileInfoUrl, capabilities.serverOptions)})) : [];
     if (links.length === 0) throw {error: true, message: "Invalid"};
     return {
       dataType: data.dataType,
