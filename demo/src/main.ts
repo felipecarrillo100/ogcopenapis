@@ -117,7 +117,7 @@ async function connect() {
         const collections = [...capabilities.collections].sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
         fillSelect(collectionSelect, collections.map(c => ({value: c.id, label: c.title || c.id})));
         if (isTiled()) {
-            tileMatrixSets = (await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities)).filter(isUsableTileMatrixSet);
+            tileMatrixSets = (await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities)).filter(t => isUsableTileMatrixSet(t, linkType()));
             fillSelect(tmsSelect, tileMatrixSets.map(t => ({value: t.id, label: t.title || t.id})), "WebMercatorQuad");
         }
         setStatus(collections.length + " collections");
@@ -128,10 +128,12 @@ async function connect() {
     }
 }
 
-// Only tile matrix sets in a known reference that LuciadRIA can address as a quad-tree
-function isUsableTileMatrixSet(tileMatrixSet: TileSetData) {
+// Only tile matrix sets in a known reference. Map tiles support any tile matrix set,
+// vector tiles only the ones that LuciadRIA can address as a quad-tree
+function isUsableTileMatrixSet(tileMatrixSet: TileSetData, type: CollectionLinkType) {
     try {
-        return OgcOpenApiTileMatrixTools.createTileGrid(tileMatrixSet).levelCount > 1;
+        const grid = OgcOpenApiTileMatrixTools.createTileGrid(tileMatrixSet);
+        return type === CollectionLinkType.Tiles || grid.levelCount > 1;
     } catch (e) {
         console.info("Skipping tile matrix set " + tileMatrixSet.id + ": " + errorMessage(e));
         return false;
@@ -216,7 +218,14 @@ async function createLayer(collection: OgcOpenApiCapabilitiesCollection): Promis
             const tileMatrix = tileMatrixSets.find(t => t.id === tmsSelect.value);
             const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileMatrix.id, {}, CollectionLinkType.Tiles);
             const link = tileSet.links.find(l => l.type === "image/png") || tileSet.links[0];
-            const model = new OgcOpenApiTilesModel({tileMatrix, baseURL: link.href, collection: collection.id});
+            const model = await OgcOpenApiTilesModel.createFromTileSet({
+                tileMatrix,
+                baseURL: link.href,
+                collection: collection.id,
+                format: link.type && link.type.indexOf("image/") === 0 ? link.type : undefined,
+                tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+                extent: collection.extent?.spatial?.bbox?.[0],
+            });
             return new RasterTileSetLayer(model, {label});
         }
         case CollectionLinkType.VectorTiles: {

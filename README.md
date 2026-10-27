@@ -96,7 +96,22 @@ For Maps and Tiles use OgcOpenApiMapsModel and OgcOpenApiTilesModel:
 import {OgcOpenApiMapsModel} from "ogcopenapis/lib/OgcOpenApiMapsModel";
 import {OgcOpenApiTilesModel} from "ogcopenapis/lib/OgcOpenApiTilesModel";
 ```
-OgcOpenApiMapsModel extends WMSTileSetModel and OgcOpenApiTilesModel extends UrlTileSetModel, so you can use them in combination with RasterTileSetLayer. 
+OgcOpenApiMapsModel extends WMSTileSetModel and OgcOpenApiTilesModel extends WMTSTileSetModel, so you can use them in combination with RasterTileSetLayer. 
+
+Create OgcOpenApiTilesModel with `createFromTileSet`. It describes the tileset to LuciadRIA's WMTS support, which handles
+tile matrix sets that are quad-trees and tile matrix sets that are not (such as GlobalCRS84Scale), and it does not request
+tiles outside the `tileMatrixSetLimits`:
+```typescript
+const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileMatrix.id, {}, CollectionLinkType.Tiles);
+const model = await OgcOpenApiTilesModel.createFromTileSet({
+    tileMatrix,
+    baseURL: tileSet.links.find(l => l.type === "image/png").href,
+    collection: collection.id,
+    tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+    extent: collection.extent.spatial.bbox[0],
+});
+```
+The constructor `new OgcOpenApiTilesModel(options)` still works, but is deprecated: it supports quad-tree tile matrix sets only.
 Look at the LuciadRIA documentation if you need further information on using RasterTileSetLayer. 
 
 ### Vector tiles
@@ -144,7 +159,9 @@ About styles:
   `discoverLayers` of the vector tiles model reads them from a few tiles where the data is.
 
 Notes:
-* Only tile matrix sets that LuciadRIA can address as a quad-tree are supported, both for map tiles and vector tiles.
+* Map tiles support any tile matrix set of LuciadRIA's WMTS support. Vector tiles support only tile matrix sets that
+  LuciadRIA can address as a quad-tree, LuciadRIA's vector tile structure is a quad-tree.
+* Tile matrix sets with a bottomLeft corner of origin are not in WMTS 1.0, `createFromTileSet` supports them as quad-trees only.
 * LuciadRIA 2026.1.1 paints nothing for a vector tiles model with `minLevel > 0`. OgcOpenApiVectorTilesModel therefore starts at
   level 0, and does not request tiles outside the `tileMatrixSetLimits` of the tileset.
 * LuciadRIA 2026.1.1 does not paint Mapbox `circle` layers. The default style draws points as a text symbol for that reason.

@@ -97,7 +97,10 @@ async function mapTiles(server: TestServer) {
     const tileMatrix = await getTileMatrixSet(capabilities, server.mapTiles.tileMatrixSet);
     const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileMatrix.id, {}, CollectionLinkType.Tiles);
     const link = tileSet.links.find(l => l.type === "image/png") || tileSet.links[0];
-    const model = new OgcOpenApiTilesModel({tileMatrix, baseURL: link.href, collection: collection.id});
+    const model = await OgcOpenApiTilesModel.createFromTileSet({
+        tileMatrix, baseURL: link.href, collection: collection.id,
+        tileMatrixSetLimits: tileSet.tileMatrixSetLimits, extent: getExtent(collection),
+    });
     const tile = getCenterTile(tileMatrix, collection, tileSet.tileMatrixSetLimits);
     return {collections: capabilities.collections.length, template: link.href, tile, tileUrl: model.getTileURL(model.baseURL, tile)};
 }

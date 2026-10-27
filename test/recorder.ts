@@ -34,6 +34,8 @@ export function startRecording(dir: string) {
     const realFetch = globalThis.fetch;
     const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
         const url = getUrl(input);
+        // LuciadRIA's WMTS capabilities of a tileset are a data URL, nothing to record
+        if (url.startsWith("data:")) return realFetch(input, init);
         const response = await realFetch(input, init);
         const body = Buffer.from(await response.arrayBuffer());
         const headers: { [name: string]: string } = {};
@@ -67,8 +69,10 @@ export function hasRecording(dir: string) {
 
 export function startReplay(dir: string) {
     const recording: Recording = JSON.parse(readFileSync(join(dir, "index.json"), "utf8"));
-    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const realFetch = globalThis.fetch;
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
         const url = getUrl(input);
+        if (url.startsWith("data:")) return realFetch(input, init);
         const recorded = recording[url];
         if (!recorded) throw new Error("No recorded response for " + url + ", record again with npm run test:record");
         const body = recorded.file && !hasNoBody(recorded.status) ? readFileSync(join(dir, recorded.file)) : null;
