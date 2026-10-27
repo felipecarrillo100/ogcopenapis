@@ -131,6 +131,10 @@ const CollectionLinkTypeAlternatives = {
   [CollectionLinkType.VectorTiles]: ["http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector", "tilesets-vector"],
 }
 
+// OGC API link relations are given in full or, by older servers, short: tiling-scheme or http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme
+const OGC_REL = "http://www.opengis.net/def/rel/ogc/1.0/";
+const isRel = (link: LinkType, rel: string) => link.rel === OGC_REL + rel || link.rel === rel;
+
 const CollectionLinkTypeDefaultFormat = {
   [CollectionLinkType.Map]: "image/png",
   [CollectionLinkType.Tiles]: "image/png",
@@ -194,7 +198,7 @@ export class OgcOpenApiGetCapabilities {
                   );
                 }
               );
-              const tilingSchemes = jsonObject.links.filter((link) => link.rel === 'http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes' || link.rel === 'tiling-schemes');
+              const tilingSchemes = jsonObject.links.filter((link) => isRel(link, 'tiling-schemes'));
               const linkToTileMatrixSets = tilingSchemes.find((link) => link.type === 'application/json') || tilingSchemes.find((link) => !link.type);
               const promiseArray = [];
               if (linkToData) {
@@ -337,15 +341,20 @@ export class OgcOpenApiGetCapabilities {
     return "application/json"
   }
 
-  public static fetchTileSetsInFull(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}) {
-    return new Promise<TileSetData[]>((resolve, reject)=> {
-      this.fetchTileSets(capabilities, options).then((tileSetMetaArray)=>{
-        const promises = tileSetMetaArray.map(tml=>this.fetchTileset(capabilities,tml,options));
-        Promise.all(promises).then((arr)=>{
-          resolve(arr);
-        }).catch(()=>{reject()})
-      }, reject)
-    });
+  /**
+   * The tile matrix sets of the server, with their definitions. A definition that cannot be read is left out, so one
+   * broken definition does not hide the others. Rejects only when none can be read.
+   */
+  public static async fetchTileSetsInFull(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}) {
+    const tileSetMetaArray = await this.fetchTileSets(capabilities, options);
+    const settled = await Promise.all(tileSetMetaArray.map(tml => this.fetchTileset(capabilities, tml, options).then(
+        tileSet => ({tileSet, error: undefined}),
+        error => ({tileSet: undefined as TileSetData, error})
+    )));
+    const tileSets = settled.filter(s => s.tileSet).map(s => s.tileSet);
+    const failed = settled.find(s => !s.tileSet);
+    if (tileSets.length === 0 && failed) throw failed.error;
+    return tileSets;
   }
 
   public static getQuadTreeCompatibleLevelOffset(tileMatrixSet: TileSetData) {
@@ -382,34 +391,38 @@ export class OgcOpenApiGetCapabilities {
     return 0;
   }
 
-  private static fetchTileSets(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}) {
-    return new Promise<TileSetMeta[]>((resolve, reject)=> {
-      if (capabilities===null) reject();
-      const url = capabilities.tileMatrixSetsUrl ? capabilities.tileMatrixSetsUrl : capabilities.baseUrl + "tileMatrixSets";
+  private static async fetchTileSets(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}): Promise<TileSetMeta[]> {
+    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    const url = capabilities.tileMatrixSetsUrl ? capabilities.tileMatrixSetsUrl : capabilities.baseUrl + "tileMatrixSets";
+    const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, url, options);
+    if (!data.tileMatrixSets) throw {error: true, message: "tileMatrixSets not defined"};
+    return data.tileMatrixSets.map(tml => ({...tml, href: capabilities.serverOptions.complete(tml.href)}));
+  }
 
-      OgcOpenApiFetchTools.fetch(url, {
+  // GETs a JSON document. Servers answer JSON for the Accept header, or for the f parameter that their links carry.
+  private static async fetchJson(capabilities: OgcOpenApiCapabilitiesObject, href: string, options?: {credentials?: boolean, requestHeaders?: RequestHeaders}) {
+    let result: Response;
+    try {
+      result = await OgcOpenApiFetchTools.fetch(href, {
         method: "GET",
         credentials: options?.credentials ? "same-origin" : "omit",
-        headers: options?.requestHeaders ? options.requestHeaders : {}
-      }, capabilities.serverOptions).then(result => {
-        if (result.status === 200) {
-          result.json().then((data) => {
-                if (data.tileMatrixSets) {
-                  resolve(data.tileMatrixSets.map(tml=>({...tml, href: capabilities.serverOptions.complete(tml.href)})))
-                } else {
-                  reject({error: true, message: "tileMatrixSets not defined"  });
-                }
-              },
-              ()=>{
-                reject({error: true, message: "Not JSON data"});
-              });
-        } else {
-          reject({error: true, message: "Invalid response: " + result.status});
-        }
-      }, (err)=>{
-        reject({error: true, message: err.message});
-      })
-    })
+        headers: {Accept: "application/json", ...(options?.requestHeaders ? options.requestHeaders : {})}
+      }, capabilities.serverOptions);
+    } catch (err) {
+      throw {error: true, message: err.message};
+    }
+    if (result.status !== 200) throw {error: true, message: "Invalid response: " + result.status};
+    try {
+      return await result.json();
+    } catch (err) {
+      throw {error: true, message: "Not JSON data"};
+    }
+  }
+
+  // The link that identifies the tile matrix set of a tileset
+  private static getTilingSchemeHref(capabilities: OgcOpenApiCapabilitiesObject, links: LinkType[]) {
+    const tilingScheme = links.find(l => isRel(l, "tiling-scheme"));
+    return tilingScheme ? capabilities.serverOptions.complete(tilingScheme.href) : undefined;
   }
 
   public static getTilesLink (
@@ -433,56 +446,33 @@ export class OgcOpenApiGetCapabilities {
    * Lists the tilesets of a collection: the tile matrix sets the collection is tiled in, which can be fewer than the
    * tile matrix sets of the server.
    */
-  public static fetchCollectionTileSets(
+  public static async fetchCollectionTileSets(
       capabilities: OgcOpenApiCapabilitiesObject | null,
       collection: OgcOpenApiCapabilitiesCollection,
       linkType: CollectionLinkType = CollectionLinkType.Tiles,
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
-  ) {
-    return new Promise<CollectionTileSetInfo[]>((resolve, reject) => {
-      if (capabilities === null) {
-        reject();
-        return;
-      }
-      const href = OgcOpenApiGetCapabilities.getTileSetsHref(collection, linkType);
-      if (href === '') {
-        reject({error: true, message: "Collection " + collection.id + " has no " + linkType + " link"});
-        return;
-      }
-      OgcOpenApiFetchTools.fetch(href, {
-        method: "GET",
-        credentials: options?.credentials ? "same-origin" : "omit",
-        headers: {Accept: "application/json", ...(options?.requestHeaders ? options.requestHeaders : {})}
-      }, capabilities.serverOptions).then(result => {
-        if (result.status !== 200) {
-          reject({error: true, message: "Invalid response: " + result.status});
-          return;
-        }
-        result.json().then(data => {
-          if (!Array.isArray(data.tilesets)) {
-            reject({error: true, message: "Response has no tilesets"});
-            return;
-          }
-          const tileSets: CollectionTileSetInfo[] = [];
-          for (const tileSet of data.tilesets) {
-            const links: LinkType[] = tileSet.links ? tileSet.links : [];
-            const selfLinks = links.filter(l => l.rel === "self");
-            const self = selfLinks.find(l => l.type === "application/json") || selfLinks[0];
-            if (!self) continue;
-            const tilingScheme = links.find(l => l.rel === "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme" || l.rel === "tiling-scheme");
-            tileSets.push({
-              tileMatrixSetURI: tileSet.tileMatrixSetURI,
-              tileMatrixSetId: tileSet.tileMatrixSetId,
-              dataType: tileSet.dataType,
-              crs: typeof tileSet.crs === "string" ? tileSet.crs : undefined,
-              href: capabilities.serverOptions.complete(self.href),
-              tilingSchemeHref: tilingScheme ? capabilities.serverOptions.complete(tilingScheme.href) : undefined,
-            });
-          }
-          resolve(tileSets);
-        }, () => reject({error: true, message: "Not JSON data"}));
-      }, err => reject({error: true, message: err.message}));
-    });
+  ): Promise<CollectionTileSetInfo[]> {
+    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    const href = OgcOpenApiGetCapabilities.getTileSetsHref(collection, linkType);
+    if (href === '') throw {error: true, message: "Collection " + collection.id + " has no " + linkType + " link"};
+    const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, href, options);
+    if (!Array.isArray(data.tilesets)) throw {error: true, message: "Response has no tilesets"};
+    const tileSets: CollectionTileSetInfo[] = [];
+    for (const tileSet of data.tilesets) {
+      const links: LinkType[] = tileSet.links ? tileSet.links : [];
+      const selfLinks = links.filter(l => l.rel === "self");
+      const self = selfLinks.find(l => l.type === "application/json") || selfLinks[0];
+      if (!self) continue;
+      tileSets.push({
+        tileMatrixSetURI: tileSet.tileMatrixSetURI,
+        tileMatrixSetId: tileSet.tileMatrixSetId,
+        dataType: tileSet.dataType,
+        crs: typeof tileSet.crs === "string" ? tileSet.crs : undefined,
+        href: capabilities.serverOptions.complete(self.href),
+        tilingSchemeHref: OgcOpenApiGetCapabilities.getTilingSchemeHref(capabilities, links),
+      });
+    }
+    return tileSets;
   }
 
   /**
@@ -532,19 +522,11 @@ export class OgcOpenApiGetCapabilities {
 
   // What identifies the tile matrix set in a tileset: its URI, its id or its tiling-scheme link
   private static async fetchTileSetIdentity(capabilities: OgcOpenApiCapabilitiesObject, href: string, options?: {credentials?: boolean, requestHeaders?: RequestHeaders}) {
-    const result = await OgcOpenApiFetchTools.fetch(href, {
-      method: "GET",
-      credentials: options?.credentials ? "same-origin" : "omit",
-      headers: {Accept: "application/json", ...(options?.requestHeaders ? options.requestHeaders : {})}
-    }, capabilities.serverOptions);
-    if (result.status !== 200) throw {error: true, message: "Invalid response: " + result.status};
-    const data = await result.json();
-    const links: LinkType[] = data.links ? data.links : [];
-    const tilingScheme = links.find(l => l.rel === "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme" || l.rel === "tiling-scheme");
+    const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, href, options);
     return {
       tileMatrixSetURI: data.tileMatrixSetURI as string | undefined,
       tileMatrixSetId: data.tileMatrixSetId as string | undefined,
-      tilingSchemeHref: tilingScheme ? capabilities.serverOptions.complete(tilingScheme.href) : undefined,
+      tilingSchemeHref: OgcOpenApiGetCapabilities.getTilingSchemeHref(capabilities, data.links ? data.links : []),
     };
   }
 
@@ -552,89 +534,44 @@ export class OgcOpenApiGetCapabilities {
    * Fetches the tileset of a collection for one tile matrix set: the tile URL templates (rel item) and, for vector
    * tiles, the layers contained in each tile.
    */
-  public static fetchCollectionTileSet (
+  public static async fetchCollectionTileSet (
       capabilities: OgcOpenApiCapabilitiesObject | null,
       currentCollection: OgcOpenApiCapabilitiesCollection,
       // The id of the tile matrix set, or a tileset from fetchCollectionTileSets
       tileMatrix: string | CollectionTileSetInfo,
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders},
       linkType: CollectionLinkType = CollectionLinkType.Tiles
-  ) {
-    return new Promise<CollectionTileSet>((resolve, reject)=>{
-      if (capabilities===null) {
-        reject();
-        return;
-      }
-      const tileInfoUrl = typeof tileMatrix === "string" ?
-          OgcOpenApiFetchTools.cleanUrl(OgcOpenApiGetCapabilities.getTileSetsHref(currentCollection, linkType)) + tileMatrix :
-          tileMatrix.href;
-      OgcOpenApiFetchTools.fetch(tileInfoUrl, {
-        method:"GET",
-        credentials: options?.credentials ? "same-origin" : "omit",
-        // pygeoapi answers 500 without f=json or an Accept header
-        headers: {Accept: "application/json", ...(options?.requestHeaders ? options.requestHeaders : {})}
-      }, capabilities.serverOptions).then(result => {
-        if (result.status === 200) {
-          result.json().then((data) => {
-                const links = data.links ? data.links.filter(l=>l.rel === "item" || l.rel === "items").map(a=>({...a, href: capabilities.serverOptions.complete(a.href)})) : [];
-                if (links.length > 0) {
-                  resolve({
-                    dataType: data.dataType,
-                    links,
-                    layers: data.layers ? data.layers : [],
-                    tileMatrixSetLimits: data.tileMatrixSetLimits
-                  });
-                } else {
-                  reject({error: true, message: "Invalid"});
-                }
-              },
-              ()=>{
-                reject({error: true, message: "Not JSON data"});
-              });
-        } else {
-          reject({error: true, message: "Invalid response: " + result.status});
-        }
-      }, (err)=>{
-        reject({error: true, message: err.message});
-      })
-    })
+  ): Promise<CollectionTileSet> {
+    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    const tileInfoUrl = typeof tileMatrix === "string" ?
+        OgcOpenApiFetchTools.cleanUrl(OgcOpenApiGetCapabilities.getTileSetsHref(currentCollection, linkType)) + tileMatrix :
+        tileMatrix.href;
+    // pygeoapi answers 500 without f=json or an Accept header
+    const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, tileInfoUrl, options);
+    const links = data.links ? data.links.filter(l => l.rel === "item" || l.rel === "items").map(a => ({...a, href: capabilities.serverOptions.complete(a.href)})) : [];
+    if (links.length === 0) throw {error: true, message: "Invalid"};
+    return {
+      dataType: data.dataType,
+      links,
+      layers: data.layers ? data.layers : [],
+      tileMatrixSetLimits: data.tileMatrixSetLimits
+    };
   }
 
-  public static fetchTileset(
+  /**
+   * Fetches the definition of a tile matrix set, by its JSON link as the server gives it: with the query that tells
+   * the server to answer JSON (f=json), if it has one.
+   */
+  public static async fetchTileset(
       capabilities: OgcOpenApiCapabilitiesObject | null,
       tileset: TileSetMeta,
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
-  ) {
-    return new Promise<TileSetData>((resolve, reject) =>{
-      if (capabilities===null) {
-        reject();
-        return;
-      }
-      let jsonLink = tileset.links.find(l=>l.type ? l.type==="application/json" : false) ;
-      jsonLink = jsonLink ? jsonLink : tileset.links[0];
-      const href = OgcOpenApiFetchTools.cleanUrlToAsset(jsonLink.href);
-      OgcOpenApiFetchTools.fetch(href, {
-        method: "GET",
-        credentials: options?.credentials ? "same-origin" : "omit",
-        headers: options? options.requestHeaders : {}
-      }, capabilities.serverOptions).then(result => {
-        if (result.status === 200) {
-          result.json().then((data: TileSetData) => {
-                if (typeof data.id !== "undefined" && data.tileMatrices && data.crs) {
-                  resolve(data)
-                } else {
-                  reject({error: true, message: "TileSet has invalid data"  });
-                }
-              },
-              ()=>{
-                reject({error: true, message: "Not JSON data"});
-              });
-        } else {
-          reject({error: true, message: "Invalid response: " + result.status});
-        }
-      }, (err)=>{
-        reject({error: true, message: err.message});
-      })
-    })
+  ): Promise<TileSetData> {
+    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    const jsonLink = tileset.links.find(l => l.type === "application/json") || tileset.links.find(l => !l.type) || tileset.links[0];
+    if (!jsonLink) throw {error: true, message: "Tile matrix set " + tileset.id + " has no link"};
+    const data: TileSetData = await OgcOpenApiGetCapabilities.fetchJson(capabilities, jsonLink.href, options);
+    if (typeof data.id === "undefined" || !data.tileMatrices || !data.crs) throw {error: true, message: "TileSet has invalid data"};
+    return data;
   }
 }

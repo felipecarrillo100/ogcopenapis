@@ -128,7 +128,8 @@ const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://demo.ldpro
 const collection = capabilities.collections.find(c => c.id === "TransportationGroundCrv");
 
 // The tilesets of the collection: the tile matrix sets it is tiled in, which can be fewer than the ones of the server.
-// Servers give tile matrix sets their own ids (CubeWerx calls WebMercatorQuad smerc), they are matched by URI
+// Servers give tile matrix sets their own ids (CubeWerx calls WebMercatorQuad smerc), they are matched by URI.
+// fetchTileSetsInFull leaves out definitions that cannot be read, it rejects only when none can
 const tileMatrixSets = await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities);
 const tileSets = await OgcOpenApiGetCapabilities.fetchCollectionTileSets(capabilities, collection, CollectionLinkType.VectorTiles);
 const webMercator = tileSets.find(t => /WebMercatorQuad$/.test(t.tileMatrixSetURI));
