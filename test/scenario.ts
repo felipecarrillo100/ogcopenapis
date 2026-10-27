@@ -145,14 +145,17 @@ async function datasetVectorTiles(server: TestServer) {
     const {tileSet: tileSetInfo, tileMatrix} = selected;
     const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, null, tileSetInfo, {}, CollectionLinkType.VectorTiles);
     const link = tileSet.links.find(l => l.type === "application/vnd.mapbox-vector-tile") || tileSet.links[0];
+    const collections = server.datasetVectorTiles.collections;
     const model = new OgcOpenApiVectorTilesModel({
-        tileMatrix, baseURL: link.href, collection: "dataset", tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+        tileMatrix, baseURL: link.href, collection: "dataset", tileMatrixSetLimits: tileSet.tileMatrixSetLimits, collections,
     });
     const [lon, lat] = server.datasetVectorTiles.center;
     const tile = getCenterTile(tileMatrix, [lon, lat, lon, lat], tileSet.tileMatrixSetLimits);
     const content = await model.getVectorTile(tile);
     const tileMatrixSetIds = resolved.map(t => t.tileMatrix.id);
     return {
+        collectionSelection: OgcOpenApiGetCapabilities.supportsCollectionSelection(capabilities),
+        collections,
         tileMatrixSets: tileMatrixSetIds.sort(),
         template: link.href,
         layers: tileSet.layers.length,

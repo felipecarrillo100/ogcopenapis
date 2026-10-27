@@ -1,4 +1,5 @@
-import {describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
+import {OgcOpenApiVectorTilesModel} from "./OgcOpenApiVectorTilesModel";
 import {OgcOpenApiTilesModel} from "./OgcOpenApiTilesModel";
 import {OgcOpenApiWmtsTools} from "./OgcOpenApiWmtsTools";
 import {TileSetData} from "./OgcOpenApiGetCapabilities";
@@ -103,5 +104,30 @@ describe('OgcOpenApiWmtsTools', () => {
         const xml = OgcOpenApiWmtsTools.toCapabilitiesXml({layer: "a&b", tileMatrix: EURO_3857, template: EURO_TEMPLATE + "?f=png&x=<1>", format: "image/png"});
         expect(xml).toContain('template="https://example.com/collections/erm/map/tiles/euro_3857/{TileMatrix}/{TileRow}/{TileCol}?f=png&amp;x=&lt;1&gt;"');
         expect(xml).toContain("<ows:Identifier>a&amp;b</ows:Identifier>");
+    });
+});
+
+describe('The tiles of the dataset, limited to some collections', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('OgcOpenApiTilesModel requests the collections', async () => {
+        const model = await OgcOpenApiTilesModel.createFromTileSet({
+            tileMatrix: EURO_3857, collection: "dataset", collections: ["erm_roads", "erm_rivers"],
+            baseURL: "https://example.com/map/tiles/euro_3857/{tileMatrix}/{tileRow}/{tileCol}?f=png",
+        });
+        expect(path(model.getTileURL(model.baseURL, {level: 1, x: 1, y: 1}), "euro_3857")).toBe("01/0/1?f=png&transparent=true&collections=erm_roads,erm_rivers");
+    });
+
+    it('OgcOpenApiVectorTilesModel requests the collections', async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(new Response(null, {status: 204})));
+        const model = new OgcOpenApiVectorTilesModel({
+            tileMatrix: WEB_MERCATOR_QUAD, collection: "dataset", collections: ["roads"],
+            baseURL: "https://example.com/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}?f=mvt",
+        });
+        await model.getVectorTile({level: 2, x: 1, y: 3});
+        expect(String(fetchSpy.mock.calls[0][0])).toBe("https://example.com/tiles/WebMercatorQuad/2/0/1?f=mvt&collections=roads");
     });
 });

@@ -74,6 +74,19 @@ class OgcOpenApiTileMatrixTools {
         return {level, x: tileCol, y};
     }
 
+    /**
+     * The tiles of the dataset limited to some of its collections (OGC API Tiles, collections selection):
+     * collections=a,b. A comma inside an id is encoded, the commas between ids are not. A collections parameter
+     * that the URL already has is replaced. Without collections, the URL is returned as is.
+     */
+    public static setCollections(url: string, collections?: string[]): string {
+        if (!collections || collections.length === 0) return url;
+        const [base, query] = url.split(/\?(.*)/s);
+        const kept = query ? query.split("&").filter(p => p !== "" && decodeURIComponent(p.split("=")[0]) !== "collections") : [];
+        kept.push("collections=" + collections.map(c => encodeURIComponent(c)).join(","));
+        return base + "?" + kept.join("&");
+    }
+
     public static appendQueryParameters(url: string, parameters: { [key: string]: string | number | boolean | undefined }): string {
         const query = Object.keys(parameters)
             .filter(k => parameters[k] !== undefined && parameters[k] !== null)

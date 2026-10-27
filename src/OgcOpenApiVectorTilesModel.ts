@@ -19,6 +19,9 @@ export interface OgcOpenApiVectorTilesModelOptions {
     tileMatrixSetLimits?: TileMatrixLimits[];
     // The data extent, defaults to the extent of the tile matrix set
     bounds?: Bounds;
+    // For a tileset of the dataset: only these collections in each tile. The server must support collections
+    // selection, see OgcOpenApiGetCapabilities.supportsCollectionSelection
+    collections?: string[];
     styleUrl?: string;
 
     proxify?: ProxifyFunction
@@ -51,7 +54,7 @@ export class OgcOpenApiVectorTilesModel extends MapboxVectorTileSetModel {
             requestHeaders: options.requestHeaders ? options.requestHeaders : {},
         });
         this.tileGrid = tileGrid;
-        this.tileTemplate = options.baseURL;
+        this.tileTemplate = OgcOpenApiTileMatrixTools.setCollections(options.baseURL, options.collections);
         this.serverOptions = OgcOpenApiFetchTools.createFetchOptions({originalUrl: options.baseURL, proxify: options.proxify});
         this.tileMatrixSetLimits = options.tileMatrixSetLimits;
     }

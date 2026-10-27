@@ -19,6 +19,9 @@ export interface OgcOpenApiTilesModelOptions {
     requestHeaders?: { [p: string]: string };
     transparent?: boolean;
     bgcolor?: string;
+    // For a tileset of the dataset: only these collections in each tile. The server must support collections
+    // selection, see OgcOpenApiGetCapabilities.supportsCollectionSelection
+    collections?: string[];
 
     proxify?: ProxifyFunction
 }
@@ -43,6 +46,7 @@ export class OgcOpenApiTilesModel extends WMTSTileSetModel {
     private transparent: boolean;
     private bgcolor: string | undefined;
     private proxy: ProxifyFunction;
+    private collections: string[] | undefined;
     private tileMatrixSetLimits: TileMatrixLimits[] | undefined;
     // Not tileMatrices: WMTSTileSetModel keeps the tile matrix ids in that property
     private ogcTileMatrices: { id: string, matrixHeight: number }[];
@@ -109,6 +113,7 @@ export class OgcOpenApiTilesModel extends WMTSTileSetModel {
         this.tileMatrixSetLimits = options.tileMatrixSetLimits;
         this.transparent = typeof options.transparent !== "undefined" ? options.transparent : true;
         this.bgcolor = options.bgcolor;
+        this.collections = options.collections;
 
         this.proxy = options.proxify;
 
@@ -127,10 +132,10 @@ export class OgcOpenApiTilesModel extends WMTSTileSetModel {
             OgcOpenApiTileMatrixTools.resolveTileTemplate(this.ogcTemplate, this.tileGrid, tile) :
             super.getTileURL(baseURL, tile);
         if (targetUrl === null) return null;
-        let tileUrl = OgcOpenApiTileMatrixTools.appendQueryParameters(targetUrl, {
+        let tileUrl = OgcOpenApiTileMatrixTools.setCollections(OgcOpenApiTileMatrixTools.appendQueryParameters(targetUrl, {
             transparent: this.transparent,
             bgcolor: this.transparent ? undefined : this.bgcolor
-        });
+        }), this.collections);
         if (typeof this.proxy === "function") {
             const proxyfied = this.proxy(tileUrl, {});
             tileUrl = proxyfied.url;

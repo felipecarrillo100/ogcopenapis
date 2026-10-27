@@ -60,6 +60,7 @@ const connectButton = $<HTMLButtonElement>("connect");
 const collectionSelect = $<HTMLSelectElement>("collection");
 const tmsSelect = $<HTMLSelectElement>("tms");
 const formatSelect = $<HTMLSelectElement>("format");
+const collectionsSelect = $<HTMLSelectElement>("collections");
 const styleSelect = $<HTMLSelectElement>("style");
 const addButton = $<HTMLButtonElement>("add");
 const statusLine = $<HTMLDivElement>("status");
@@ -124,8 +125,19 @@ const selectedCollection = () => capabilities?.collections.find(c => c.id === co
 const isDatasetSelected = () => collectionSelect.value === DATASET;
 const hasSelection = () => isDatasetSelected() || !!selectedCollection();
 
+// The tiles of the dataset can hold only some of its collections, when the server supports collections selection
+const canSelectCollections = () => isTiled() && isDatasetSelected() && OgcOpenApiGetCapabilities.supportsCollectionSelection(capabilities);
+const selectedCollections = () => canSelectCollections() ? Array.from(collectionsSelect.selectedOptions).map(o => o.value) : [];
+
+function updateCollectionsRow() {
+    $("collectionsRow").hidden = !canSelectCollections();
+    fillSelect(collectionsSelect, canSelectCollections() ?
+        capabilities.collections.map(c => ({value: c.id, label: c.title || c.id})) : []);
+}
+
 function updateRows() {
     $("formatRow").hidden = linkType() !== CollectionLinkType.Items;
+    $("collectionsRow").hidden = !canSelectCollections();
     $("tmsRow").hidden = !isTiled();
     $("styleRow").hidden = linkType() !== CollectionLinkType.VectorTiles;
 }
@@ -184,6 +196,7 @@ async function updateCollection() {
     const request = ++listRequest;
     addButton.disabled = true;
     updateFormats();
+    updateCollectionsRow();
     await Promise.all([updateTileMatrixSets(request), updateStyles(request)]);
     if (request !== listRequest) return;
     listedRequest = request;
@@ -326,10 +339,13 @@ async function createLayer(collection: OgcOpenApiCapabilitiesCollection | undefi
     const {tileSet: tileSetInfo, tileMatrix} = getSelectedTileSet();
     const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, null, tileSetInfo, {}, linkType());
     const extent = getTileSetExtent(tileSet);
-    return {layer: await createTileLayer(tileSet, tileMatrix, "dataset", label, extent), extent};
+    const collections = selectedCollections();
+    const layer = await createTileLayer(tileSet, tileMatrix, "dataset", collections.length > 0 ? label + ": " + collections.join(", ") : label, extent, collections);
+    return {layer, extent};
 }
 
-async function createTileLayer(tileSet: CollectionTileSet, tileMatrix: TileSetData, id: string, label: string, extent?: number[]): Promise<Layer> {
+// collections: for a tileset of the dataset, only these collections in each tile, all when empty
+async function createTileLayer(tileSet: CollectionTileSet, tileMatrix: TileSetData, id: string, label: string, extent?: number[], collections: string[] = []): Promise<Layer> {
     if (linkType() === CollectionLinkType.Tiles) {
         const link = tileSet.links.find(l => l.type === "image/png") || tileSet.links[0];
         const model = await OgcOpenApiTilesModel.createFromTileSet({
@@ -339,6 +355,7 @@ async function createTileLayer(tileSet: CollectionTileSet, tileMatrix: TileSetDa
             format: link.type && link.type.indexOf("image/") === 0 ? link.type : undefined,
             tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
             extent,
+            collections,
         });
         return new RasterTileSetLayer(model, {label});
     }
@@ -348,6 +365,7 @@ async function createTileLayer(tileSet: CollectionTileSet, tileMatrix: TileSetDa
         baseURL: link.href,
         collection: id,
         tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+        collections,
     });
     // Not all servers list the layers of a tileset, then they are read from the tiles
     const layers = tileSet.layers.length > 0 ? tileSet.layers : await model.discoverLayers({extent});

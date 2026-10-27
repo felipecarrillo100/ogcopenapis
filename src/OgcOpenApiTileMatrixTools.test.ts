@@ -126,3 +126,28 @@ describe('OgcOpenApiTileMatrixTools.createTileGrid, a tile matrix set with north
         expect(grid.bounds.y + grid.bounds.height).toBeCloseTo(5500000, 3);
     });
 });
+
+describe('OgcOpenApiTileMatrixTools.setCollections', () => {
+    const TEMPLATE_URL = "https://example.com/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}?f=mvt";
+
+    it('Appends the collections, keeping the query and the braces of the template', () => {
+        expect(OgcOpenApiTileMatrixTools.setCollections(TEMPLATE_URL, ["roads", "rivers"]))
+            .toBe("https://example.com/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}?f=mvt&collections=roads,rivers");
+        expect(OgcOpenApiTileMatrixTools.setCollections("https://example.com/tiles/{tileMatrix}", ["roads"]))
+            .toBe("https://example.com/tiles/{tileMatrix}?collections=roads");
+    });
+
+    it('Replaces a collections parameter of the URL', () => {
+        expect(OgcOpenApiTileMatrixTools.setCollections(TEMPLATE_URL + "&collections=all&x=1", ["roads"]))
+            .toBe("https://example.com/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}?f=mvt&x=1&collections=roads");
+    });
+
+    it('Encodes a comma inside a collection id, not the commas between ids', () => {
+        expect(OgcOpenApiTileMatrixTools.setCollections(TEMPLATE_URL, ["a,b", "c d"])).toContain("collections=a%2Cb,c%20d");
+    });
+
+    it('Keeps the URL as is without collections', () => {
+        expect(OgcOpenApiTileMatrixTools.setCollections(TEMPLATE_URL, [])).toBe(TEMPLATE_URL);
+        expect(OgcOpenApiTileMatrixTools.setCollections(TEMPLATE_URL, undefined)).toBe(TEMPLATE_URL);
+    });
+});

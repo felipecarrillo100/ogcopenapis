@@ -24,6 +24,13 @@
     },
     "file": "21834dd7f24cd56a.json"
   },
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/conformance": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    },
+    "file": "a2856d63a29fcd15.json"
+  },
   "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/tileMatrixSets": {
     "status": 200,
     "headers": {
