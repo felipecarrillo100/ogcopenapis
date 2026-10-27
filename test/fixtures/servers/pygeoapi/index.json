@@ -48,14 +48,6 @@
     },
     "file": "3da42cc6727def07.json"
   },
-  "https://demo.pygeoapi.io/master/collections/lakes/tiles/WebMercatorQuad": {
-    "status": 200,
-    "headers": {
-      "content-type": "application/json",
-      "content-length": "906"
-    },
-    "file": "c67eb6845f28aafd.json"
-  },
   "https://demo.pygeoapi.io/master/collections/lakes/tiles/WebMercatorQuad/12/2047/2047?f=mvt": {
     "status": 404,
     "headers": {
@@ -63,6 +55,14 @@
       "content-length": "14"
     },
     "file": "491ae090d6227c52.bin"
+  },
+  "https://demo.pygeoapi.io/master/collections/lakes/tiles/WebMercatorQuad?f=json": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "906"
+    },
+    "file": "c452636620c9594c.json"
   },
   "https://demo.pygeoapi.io/master/openapi": {
     "status": 404,

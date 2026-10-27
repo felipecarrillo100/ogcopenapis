@@ -1,7 +1,7 @@
 {
   "features": {
     "collections": 1,
-    "dataUrl": "https://demo.ldproxy.net/vineyards/collections/vineyards/items?f=json&profile=jsonfg",
+    "dataUrl": "https://demo.ldproxy.net/vineyards/collections/vineyards/items?f=json&profile=rfc7946",
     "features": 5
   },
   "vectorTiles": {

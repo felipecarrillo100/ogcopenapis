@@ -18,14 +18,14 @@
     },
     "file": "9724c0e90b69e61f.json"
   },
-  "https://demo.ldproxy.net/daraa/collections/TransportationGroundCrv/items?f=json&limit=5&bbox=35.902874,32.416814,36.574769,33.142435": {
+  "https://demo.ldproxy.net/daraa/collections/TransportationGroundCrv/items?f=json&profile=rfc7946&limit=5&bbox=35.902874,32.416814,36.574769,33.142435": {
     "status": 200,
     "headers": {
       "content-type": "application/geo+json",
       "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
-      "content-length": "1056"
+      "content-length": "1066"
     },
-    "file": "1764787fa69bc54e.json"
+    "file": "c6de0e6860555f7f.json"
   },
   "https://demo.ldproxy.net/daraa/collections/TransportationGroundCrv/styles/topographic?f=mbs": {
     "status": 200,

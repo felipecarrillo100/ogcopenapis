@@ -8,6 +8,23 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-27
+
+### Fixed
+- OgcOpenApiFeatureStore keeps every parameter of the items link, such as `profile` or an api key, instead of only
+  `f`. A parameter of a request replaces the one of the link with the same name.
+- OgcOpenApiFeatureStore encodes the values of its queries: a CQL `filter` with spaces, `&` or `#`, or a `datetime`
+  interval, no longer gives a malformed URL. `get(id)` encodes the id.
+- `fromURL` requests the landing page with the query of the URL it is given.
+- The tileset URL built from a tile matrix set id, and the styles URL built from the self link of a collection, keep
+  the query of the link they start from.
+
+### Added
+- `isJsonFgLink`, `JSON_FG_MEDIA_TYPE` and `JSON_FG_PROFILE`: JSON-FG links, by their media type or by the JSON-FG
+  profile of an `application/geo+json` link. `outputFormats` of a collection reports JSON-FG as
+  `application/vnd.ogc.fg+json`. Reading JSON-FG needs a JSON-FG codec, which the application provides.
+- Demo: a format for features. JSON-FG is listed, but cannot be selected yet.
+
 ## [1.0.2] - 2026-10-27
 
 ### Fixed
@@ -68,7 +85,8 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/felipecarrillo100/ogcopenapis/releases/tag/v1.0.0

@@ -7,7 +7,14 @@ export interface LinkType {
   type: string;
   title: string;
   href: string;
+  // The profiles of the representation, such as JSON-FG for application/geo+json (ldproxy)
+  profile?: string | string[];
 }
+
+// JSON-FG, OGC Features and Geometries JSON: a media type of its own, or application/geo+json with the JSON-FG profile.
+// Reading it needs a JSON-FG codec, GeoJsonCodec reads GeoJSON
+export const JSON_FG_MEDIA_TYPE = "application/vnd.ogc.fg+json";
+export const JSON_FG_PROFILE = "http://www.opengis.net/def/profile/OGC/0/jsonfg";
 
 export interface TileMatrix {
   id: string,
@@ -119,6 +126,7 @@ export interface OgcOpenApiCapabilitiesCollectionServiceLinkType {
   type: string;
   title: string;
   href: string;
+  profile?: string | string[];
 }
 
 export enum CollectionLinkType {
@@ -174,8 +182,9 @@ export class OgcOpenApiGetCapabilities {
   public static fromURL(inputRequest: string, fromUrlOptions?: OgcOpenApiGetCapabilitiesFromURL) {
     const options: OgcOpenApiGetCapabilitiesFromURL = fromUrlOptions ? fromUrlOptions : {};
     return new Promise<OgcOpenApiCapabilitiesObject>((resolve, reject) => {
+      // The landing page, with the query it was given, such as an api key. baseUrl is without it
       const baseUrl = OgcOpenApiFetchTools.cleanUrl(inputRequest);
-      const requestUrl = OgcOpenApiFetchTools.cleanUrl(inputRequest);
+      const requestUrl = OgcOpenApiFetchTools.appendPath(inputRequest, "");
       const serverOptions = OgcOpenApiFetchTools.createFetchOptions({originalUrl: requestUrl, proxify: options?.proxify});
 
       OgcOpenApiFetchTools.fetch(requestUrl, {
@@ -342,7 +351,18 @@ export class OgcOpenApiGetCapabilities {
     return dataLink ? dataLink.href : '';
   }
 
+  /**
+   * Whether the link is to JSON-FG: by its media type, or by the JSON-FG profile of an application/geo+json link
+   */
+  public static isJsonFgLink(link: LinkType) {
+    const type = link.type ? link.type.toLowerCase() : "";
+    const profiles = Array.isArray(link.profile) ? link.profile : link.profile ? [link.profile] : [];
+    return type.indexOf(JSON_FG_MEDIA_TYPE) === 0 || profiles.indexOf(JSON_FG_PROFILE) > -1;
+  }
+
+  // JSON-FG is reported as JSON-FG also when the server types it application/geo+json with the JSON-FG profile
   private static detectTypeFormat(link: OgcOpenApiCapabilitiesCollectionServiceLinkType) {
+    if (link.type && OgcOpenApiGetCapabilities.isJsonFgLink(link) && link.type.indexOf(JSON_FG_MEDIA_TYPE) !== 0) return JSON_FG_MEDIA_TYPE;
     if (link.type) return link.type;
     for (const key in CollectionLinkTypeAlternatives) {
       if (CollectionLinkTypeAlternatives.hasOwnProperty(key) && CollectionLinkTypeAlternatives[key].some(e=>e===link.rel)) {
@@ -608,7 +628,7 @@ export class OgcOpenApiGetCapabilities {
     const tileSetsHref = currentCollection ?
         OgcOpenApiGetCapabilities.getTileSetsHref(currentCollection, linkType) :
         OgcOpenApiGetCapabilities.getDatasetTileSetsHref(capabilities, linkType);
-    const tileInfoUrl = typeof tileMatrix === "string" ? OgcOpenApiFetchTools.cleanUrl(tileSetsHref) + tileMatrix : tileMatrix.href;
+    const tileInfoUrl = typeof tileMatrix === "string" ? OgcOpenApiFetchTools.appendPath(tileSetsHref, tileMatrix) : tileMatrix.href;
     // pygeoapi answers 500 without f=json or an Accept header
     const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, tileInfoUrl, options);
     const links = data.links ? data.links.filter(l => l.rel === "item" || l.rel === "items").map(a => ({...a, href: OgcOpenApiFetchTools.resolveUrl(a.href, tileInfoUrl, capabilities.serverOptions)})) : [];

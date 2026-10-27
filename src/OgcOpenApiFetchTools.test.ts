@@ -75,4 +75,19 @@ describe('OgcOpenApiFetchTools',  () => {
             expect(resolve("/ogcapi/collections", "../api/proxy/collections")).toBe("https://example.com/ogcapi/collections");
         });
     });
+
+    describe('Queries', () => {
+        it('encodeQueryValue keeps , : and / readable and encodes the rest', () => {
+            expect(OgcOpenApiFetchTools.encodeQueryValue("http://www.opengis.net/def/crs/OGC/1.3/CRS84")).toBe("http://www.opengis.net/def/crs/OGC/1.3/CRS84");
+            expect(OgcOpenApiFetchTools.encodeQueryValue([4, 51, 6, 53])).toBe("4,51,6,53");
+            expect(OgcOpenApiFetchTools.encodeQueryValue("application/geo+json")).toBe("application/geo%2Bjson");
+            expect(OgcOpenApiFetchTools.encodeQueryValue("a = 'b&c' #d")).toBe("a%20%3D%20'b%26c'%20%23d");
+        });
+
+        it('appendPath keeps the query', () => {
+            expect(OgcOpenApiFetchTools.appendPath("https://example.com/collections/c?f=json", "styles")).toBe("https://example.com/collections/c/styles?f=json");
+            expect(OgcOpenApiFetchTools.appendPath("https://example.com/ogcapi/?apikey=k1&f=json", "")).toBe("https://example.com/ogcapi/?apikey=k1&f=json");
+            expect(OgcOpenApiFetchTools.appendPath("https://example.com/tiles/", "WebMercatorQuad")).toBe("https://example.com/tiles/WebMercatorQuad");
+        });
+    });
 })

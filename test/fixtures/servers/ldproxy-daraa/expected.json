@@ -1,7 +1,7 @@
 {
   "features": {
     "collections": 33,
-    "dataUrl": "https://demo.ldproxy.net/daraa/collections/TransportationGroundCrv/items?f=json&profile=jsonfg",
+    "dataUrl": "https://demo.ldproxy.net/daraa/collections/TransportationGroundCrv/items?f=json&profile=rfc7946",
     "features": 5
   },
   "vectorTiles": {

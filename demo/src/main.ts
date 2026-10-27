@@ -59,6 +59,7 @@ const typeSelect = $<HTMLSelectElement>("type");
 const connectButton = $<HTMLButtonElement>("connect");
 const collectionSelect = $<HTMLSelectElement>("collection");
 const tmsSelect = $<HTMLSelectElement>("tms");
+const formatSelect = $<HTMLSelectElement>("format");
 const styleSelect = $<HTMLSelectElement>("style");
 const addButton = $<HTMLButtonElement>("add");
 const statusLine = $<HTMLDivElement>("status");
@@ -107,13 +108,14 @@ function errorMessage(e: any) {
     return e && e.message ? e.message : typeof e === "string" || typeof e === "number" ? String(e) : "Request failed";
 }
 
-function fillSelect(select: HTMLSelectElement, options: { value: string, label: string, data?: Record<string, string> }[], selected?: string) {
+function fillSelect(select: HTMLSelectElement, options: { value: string, label: string, data?: Record<string, string>, disabled?: boolean }[], selected?: string) {
     select.replaceChildren(...options.map(o => {
         const option = new Option(o.label, o.value, false, o.value === selected);
+        option.disabled = !!o.disabled;
         Object.assign(option.dataset, o.data);
         return option;
     }));
-    select.disabled = options.length === 0;
+    select.disabled = options.every(o => o.disabled);
 }
 
 const linkType = () => typeSelect.value as CollectionLinkType;
@@ -123,6 +125,7 @@ const isDatasetSelected = () => collectionSelect.value === DATASET;
 const hasSelection = () => isDatasetSelected() || !!selectedCollection();
 
 function updateRows() {
+    $("formatRow").hidden = linkType() !== CollectionLinkType.Items;
     $("tmsRow").hidden = !isTiled();
     $("styleRow").hidden = linkType() !== CollectionLinkType.VectorTiles;
 }
@@ -180,11 +183,30 @@ function isUsableTileMatrixSet(tileMatrixSet: TileSetData, type: CollectionLinkT
 async function updateCollection() {
     const request = ++listRequest;
     addButton.disabled = true;
+    updateFormats();
     await Promise.all([updateTileMatrixSets(request), updateStyles(request)]);
     if (request !== listRequest) return;
     listedRequest = request;
     fillStyleSelect();
     addButton.disabled = !hasSelection();
+}
+
+// The encodings of the features: GeoJSON, which GeoJsonCodec reads, and JSON-FG, listed but not selectable yet,
+// as it needs a JSON-FG codec
+function updateFormats() {
+    const collection = selectedCollection();
+    if (linkType() !== CollectionLinkType.Items || !collection) {
+        fillSelect(formatSelect, []);
+        return;
+    }
+    const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Items);
+    const jsonFg = items.filter(l => OgcOpenApiGetCapabilities.isJsonFgLink(l));
+    const geoJson = items.filter(l => !OgcOpenApiGetCapabilities.isJsonFgLink(l) && (l.type === GEOJSON || l.type === "application/json"));
+    const options = [
+        ...geoJson.map(l => ({value: l.href, label: "GeoJSON (" + l.type + ")"})),
+        ...jsonFg.map(l => ({value: l.href, label: "JSON-FG (" + l.type + "), needs a JSON-FG codec", disabled: true})),
+    ];
+    fillSelect(formatSelect, options, geoJson.length > 0 ? geoJson[0].href : undefined);
 }
 
 // Only the tile matrix sets the collection is tiled in, which can be fewer than the ones of the server.
@@ -338,7 +360,8 @@ async function createCollectionLayer(collection: OgcOpenApiCapabilitiesCollectio
     switch (linkType()) {
         case CollectionLinkType.Items: {
             const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Items);
-            const link = items.find(l => l.type === GEOJSON) || items.find(l => l.type === "application/json") || items[0];
+            const link = items.find(l => l.href === formatSelect.value);
+            if (!link) throw new Error("The collection has no GeoJSON items");
             const store = new OgcOpenApiFeatureStore({
                 dataUrl: link.href,
                 // The encoding of the link: GeoJSON, as application/geo+json or application/json

@@ -173,7 +173,7 @@ class OgcOpenApiStyleTools {
         if (link) return link.href;
         const self = collection.links.find(l => l.rel === "self");
         const collectionHref = self ? self.href : capabilities.baseUrl + "collections/" + collection.id;
-        return OgcOpenApiFetchTools.cleanUrl(collectionHref) + "styles";
+        return OgcOpenApiFetchTools.appendPath(collectionHref, "styles");
     }
 
     private static withJsonFormat(href: string) {

@@ -73,6 +73,8 @@ export class OgcOpenApiFeatureStore extends Store {
   private codec: Codec;
   private baseUrl: string;
   private dataFormat: string | undefined;
+  // The query of the items link, such as f=json or an api key: kept in every request
+  private linkParameters: { [key: string]: string };
   private customCrs: string | undefined;
   private dataBounds: Bounds;
   private requestHeaders: { [key: string]: string };
@@ -97,7 +99,8 @@ export class OgcOpenApiFeatureStore extends Store {
     this.featureUrl = options.featureUrl ? OgcOpenApiFeatureStore.cleanUrl(options.featureUrl, true) : OgcOpenApiFeatureStore.cleanUrl(predictedFeatureUrl, true);
 
     this.baseUrl = OgcOpenApiFeatureStore.cleanUrl(this.dataUrl);
-    this.dataFormat = OgcOpenApiFeatureStore.dataFormatInQuery(this.dataUrl);
+    this.linkParameters = OgcOpenApiFeatureStore.getQueryParameters(this.dataUrl);
+    this.dataFormat = this.linkParameters.f;
     this.customCrs = options.crs === "http://www.opengis.net/def/crs/OGC/1.3/CRS84" ? undefined : options.crs;
     this.codec = options.codec;
     this.requestHeaders = options.requestHeaders ? options.requestHeaders : {};
@@ -140,14 +143,7 @@ export class OgcOpenApiFeatureStore extends Store {
     options.query = (options.query ? options.query : {}) as OgcOpenApiFeatureStoreQueryOptions;
     options.query.f = options.query.f ? options.query.f : this.dataFormat;
     options.query.crs = options.query.crs ? options.query.crs : this.customCrs;
-    let request = this.featureUrl + id;
-    const simpleQuery = [];
-    if (options.query.f) simpleQuery.push("f");
-    if (options.query.crs) simpleQuery.push("crs");
-    if (simpleQuery.length > 0) {
-      const queryString = simpleQuery.map( k => ""+k+"="+options.query[k]).join("&");
-      request += "?" + queryString;
-    }
+    const request = this.withQuery(this.featureUrl + encodeURIComponent(String(id)), {f: options.query.f, crs: options.query.crs});
     return this.fetchFeatures(request, options.abortSignal).then(cursor => cursor && cursor.hasNext() ? cursor.next() : null);
   }
 
@@ -156,20 +152,19 @@ export class OgcOpenApiFeatureStore extends Store {
     query.f = query.f ? query.f : this.dataFormat;
     query.crs = query.crs ? query.crs : this.customCrs;
     query.limit = query.limit ? query.limit : undefined;
-    let request = this.baseUrl;
+    return this.fetchFeatures(this.withQuery(this.baseUrl, query), options?.abortSignal);
+  }
 
-    const allKeys = Object.keys(query);
-    if (allKeys.length>0) {
-      const filteredKeys = allKeys.filter(e => (typeof query[e] !== "undefined" && query[e] !== null));
-      const indexOfFormat = filteredKeys.indexOf("f");
-      if (indexOfFormat > -1) {
-        filteredKeys.splice(indexOfFormat, 1);
-        filteredKeys.unshift("f");
-      }
-      const queryString = filteredKeys.map( k => ""+k+"="+query[k]).join("&");
-      request += "?" + queryString;
+  // The parameters of the items link, then those of the request, which replace a link parameter of the same name.
+  // f comes first, every value is encoded
+  private withQuery(url: string, parameters: { [key: string]: any }) {
+    const merged = {...this.linkParameters};
+    for (const key of Object.keys(parameters)) {
+      if (typeof parameters[key] !== "undefined" && parameters[key] !== null) merged[key] = parameters[key];
     }
-    return this.fetchFeatures(request, options?.abortSignal);
+    const keys = Object.keys(merged).sort((a, b) => (a === "f" ? -1 : b === "f" ? 1 : 0));
+    if (keys.length === 0) return url;
+    return url + "?" + keys.map(k => encodeURIComponent(k) + "=" + OgcOpenApiFetchTools.encodeQueryValue(merged[k])).join("&");
   }
 
   // Fetches and decodes features. The promise always settles: it rejects with the reason when the request,
@@ -274,20 +269,11 @@ export class OgcOpenApiFeatureStore extends Store {
     return parts[0].endsWith('/') ? parts[0] : (addSlash ? parts[0] + '/' : parts[0]);
   }
 
-  private static dataFormatInQuery(dataUrl: string) {
-    let format;
-    const parts = dataUrl.split('?');
-    if (parts.length > 1) {
-      const query = parts[1];
-      const qs = query.split('&');
-      for (const q of qs) {
-        if (q.startsWith('f=')) {
-          format = q.slice(2);
-          return format;
-        }
-      }
-    }
-    return format;
+  private static getQueryParameters(url: string) {
+    const parameters: { [key: string]: string } = {};
+    const query = url.split("?")[1];
+    if (query) new URLSearchParams(query).forEach((value, key) => parameters[key] = value);
+    return parameters;
   }
 }
 
