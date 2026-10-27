@@ -36,8 +36,8 @@ class OgcOpenApiStyleTools {
                 reject();
                 return;
             }
-            const href = OgcOpenApiStyleTools.getStylesHref(capabilities, collection);
-            OgcOpenApiFetchTools.fetch(OgcOpenApiStyleTools.withJsonFormat(href), {
+            const href = OgcOpenApiStyleTools.withJsonFormat(OgcOpenApiStyleTools.getStylesHref(capabilities, collection));
+            OgcOpenApiFetchTools.fetch(href, {
                 method: "GET",
                 credentials: options?.credentials ? "same-origin" : "omit",
                 headers: {...(options?.requestHeaders ? options.requestHeaders : {}), Accept: "application/json"}
@@ -58,7 +58,8 @@ class OgcOpenApiStyleTools {
                         title: style.title ? style.title : style.id,
                         mapboxStylesheets: (style.links ? style.links : [])
                             .filter(l => l.rel === "stylesheet" && typeof l.type === "string" && l.type.indexOf(MAPBOX_STYLE_TYPE) === 0)
-                            .map(l => ({...l, href: capabilities.serverOptions.complete(l.href)}))
+                            // Relative to the styles document
+                            .map(l => ({...l, href: OgcOpenApiFetchTools.resolveUrl(l.href, href, capabilities.serverOptions)}))
                     })).filter(style => style.mapboxStylesheets.length > 0));
                 }, () => reject({error: true, message: "Not JSON data"}));
             }, err => reject({error: true, message: err.message}));

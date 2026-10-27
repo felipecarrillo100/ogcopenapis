@@ -227,6 +227,60 @@ describe('OgcOpenApiGetCapabilities.fetchTileSetsInFull', () => {
     });
 });
 
+describe('OgcOpenApiGetCapabilities relative links', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('Resolves the links of a tileset list against the list', async () => {
+        respondWith({tilesets: [{links: [
+            {rel: "self", type: "application/json", href: "WebMercatorQuad?f=json"},
+            {rel: "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme", href: "../../../tileMatrixSets/WebMercatorQuad"},
+        ]}]});
+        const tileSets = await OgcOpenApiGetCapabilities.fetchCollectionTileSets(server("https://example.com/ogcapi/"),
+            collection("c", VECTOR, "https://example.com/ogcapi/collections/c/tiles/"), CollectionLinkType.VectorTiles);
+        expect(tileSets[0].href).toBe("https://example.com/ogcapi/collections/c/tiles/WebMercatorQuad?f=json");
+        expect(tileSets[0].tilingSchemeHref).toBe("https://example.com/ogcapi/tileMatrixSets/WebMercatorQuad");
+    });
+
+    it('Resolves the tile URL template of a tileset against the tileset', async () => {
+        respondWith({dataType: "vector", links: [{rel: "item", type: "application/vnd.mapbox-vector-tile", href: "./WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}"}]});
+        const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(server("https://example.com/ogcapi/"),
+            collection("c", VECTOR, "https://example.com/ogcapi/collections/c/tiles"),
+            {href: "https://example.com/ogcapi/collections/c/tiles/WebMercatorQuad"}, {}, CollectionLinkType.VectorTiles);
+        expect(tileSet.links[0].href).toBe("https://example.com/ogcapi/collections/c/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}");
+    });
+});
+
+describe('OgcOpenApiGetCapabilities.fromURL relative links', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('Resolves the landing page links against it, the collection links against /collections', async () => {
+        const documents = {
+            "https://example.com/ogcapi/": {links: [
+                {rel: "data", type: "application/json", href: "collections?f=json"},
+                {rel: "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes", type: "application/json", href: "./tileMatrixSets"},
+            ]},
+            "https://example.com/ogcapi/collections?f=json": {collections: [{id: "lakes", title: "Lakes", links: [
+                {rel: "items", type: "application/geo+json", href: "collections/lakes/items"},
+                {rel: "http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector", type: "application/json", href: "./collections/lakes/tiles"},
+            ]}]},
+        };
+        vi.spyOn(globalThis, "fetch").mockImplementation((input) =>
+            Promise.resolve(new Response(JSON.stringify(documents[String(input)]), {status: documents[String(input)] ? 200 : 404})));
+        const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://example.com/ogcapi/");
+        expect(capabilities.tileMatrixSetsUrl).toBe("https://example.com/ogcapi/tileMatrixSets");
+        expect(capabilities.collections[0].links.map(l => l.href)).toEqual([
+            "https://example.com/ogcapi/collections/lakes/items",
+            "https://example.com/ogcapi/collections/lakes/tiles",
+        ]);
+    });
+});
+
 describe('OgcOpenApiGetCapabilities tiling-scheme links', () => {
 
     afterEach(() => {

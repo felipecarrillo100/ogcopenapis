@@ -11,6 +11,10 @@ export interface FetchServerOptions {
     complete: (url: string) => string
 }
 
+// Stand-ins for the braces of URL templates while resolving, URL keeps them as they are
+const OPEN_BRACE = "__OGC_OPEN_BRACE__";
+const CLOSE_BRACE = "__OGC_CLOSE_BRACE__";
+
 class OgcOpenApiFetchTools {
 
     public static createFetchOptions(options: ExtFetchOptions) {
@@ -31,6 +35,19 @@ class OgcOpenApiFetchTools {
         const fullUrl = serverOptions.complete(input);
         const result = serverOptions.proxy(fullUrl, options)
         return fetch(result.url, result.fetchOptions);
+    }
+
+    /**
+     * A link of a document, resolved against the URL of that document (RFC 3986): ./x, ../x, x, /x and //host/x.
+     * Absolute links are kept as they are. Without an absolute document URL, as behind a relative proxy path, the link
+     * is completed with the host of the server.
+     */
+    public static resolveUrl(href: string, documentUrl: string, serverOptions: FetchServerOptions) {
+        if (typeof href !== "string" || /^[a-z][a-z0-9+.-]*:/i.test(href)) return href;
+        if (!/^https?:\/\//i.test(documentUrl)) return serverOptions.complete(href);
+        // URL encodes { and } in paths, which tile URL templates use: {tileMatrix}/{tileRow}/{tileCol}
+        const resolved = new URL(href.replace(/\{/g, OPEN_BRACE).replace(/}/g, CLOSE_BRACE), documentUrl).href;
+        return resolved.split(OPEN_BRACE).join("{").split(CLOSE_BRACE).join("}");
     }
 
     public static addHostURL(url: string, HostUrl?: string) {
