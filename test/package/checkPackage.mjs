@@ -1,7 +1,7 @@
 /**
  * npm run test:package: checks the package as published, whatever tool builds lib/.
  *
- * 1. npm pack, and the files in the tarball: lib/, the sources of its source maps, README, LICENSE and package.json.
+ * 1. npm pack, and the files in the tarball: lib/, the sources of its source maps, README, CHANGELOG, LICENSE and package.json.
  *    Nothing of LuciadRIA: it is a peer dependency, the application provides its single copy.
  * 2. lib/ imports only its own files and @luciad/ria, with the .js extensions that native ES modules need.
  * 3. publint and Are the Types Wrong on the tarball.
@@ -39,11 +39,12 @@ const report = JSON.parse(run(NPM, ["pack", "--json", "--pack-destination", CHEC
 const packed = Array.isArray(report) ? report[0] : Object.values(report)[0];
 const tarball = join(CHECK, packed.filename);
 const files = packed.files.map(f => f.path);
-const allowed = /^(package\.json|README\.md|LICENSE|lib\/[^/]+\.(js|d\.ts)(\.map)?|src\/[^/]+\.ts)$/;
-check(files.every(f => allowed.test(f)), "only lib/, src/, README, LICENSE and package.json: " +
+const allowed = /^(package\.json|README\.md|CHANGELOG\.md|LICENSE|lib\/[^/]+\.(js|d\.ts)(\.map)?|src\/[^/]+\.ts)$/;
+check(files.every(f => allowed.test(f)), "only lib/, src/, README, CHANGELOG, LICENSE and package.json: " +
     (files.filter(f => !allowed.test(f)).join(", ") || "none other"));
 check(!files.some(f => /node_modules|luciad/i.test(f)), "no node_modules and no LuciadRIA files");
 check(!files.some(f => /\.test\.ts$|fixtures\//.test(f)), "no tests and no fixtures");
+check(files.includes("CHANGELOG.md"), "the changelog is included");
 
 const modules = files.filter(f => /^lib\/[^/]+\.js$/.test(f)).map(f => f.slice("lib/".length, -".js".length)).sort();
 const sources = files.filter(f => /^src\/[^/]+\.ts$/.test(f)).map(f => f.slice("src/".length, -".ts".length)).sort();

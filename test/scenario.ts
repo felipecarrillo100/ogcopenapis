@@ -58,7 +58,7 @@ async function features(server: TestServer) {
     const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Items);
     const link = items.find(l => l.type === "application/geo+json") || items.find(l => l.type === "application/json") || items[0];
     const store = new OgcOpenApiFeatureStore({
-        dataUrl: link.href, outputFormat: "application/geo+json", codec: new GeoJsonCodec({generateIDs: true}),
+        dataUrl: link.href, outputFormat: "application/geo+json", codec: new GeoJsonCodec({generateIDs: false}),
         crs: CRS84, extent: collection.extent, useCrs84Bounds: true,
     });
     const [minX, minY, maxX, maxY] = getExtent(collection);

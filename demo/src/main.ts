@@ -340,7 +340,7 @@ async function createCollectionLayer(collection: OgcOpenApiCapabilitiesCollectio
             const store = new OgcOpenApiFeatureStore({
                 dataUrl: link.href,
                 outputFormat: GEOJSON,
-                codec: new GeoJsonCodec({generateIDs: true}),
+                codec: new GeoJsonCodec({generateIDs: false}),
                 crs: CRS84,
                 extent: collection.extent,
                 useCrs84Bounds: true,

@@ -63,7 +63,7 @@ npm run test:record
 GNOSIS (https://maps.gnosis.earth/ogcapi/) is in the list but not tested: its `/collections` response is 9 MB, and its tiles need a login.
 
 The package check builds and packs the package, and checks it as published: only `lib/`, the sources of its source
-maps, README, LICENSE and package.json are in it, nothing of LuciadRIA; `lib/` imports only its own modules and
+maps, README, CHANGELOG, LICENSE and package.json are in it, nothing of LuciadRIA; `lib/` imports only its own modules and
 `@luciad/ria`; [publint](https://publint.dev) and [Are the Types Wrong](https://arethetypeswrong.github.io) find no
 problems; and every module loads through the package exports, installed in a `node_modules` folder, by Node's own
 ES module loader, as in the tests of an application:
@@ -130,7 +130,7 @@ const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, 
 const store = new OgcOpenApiFeatureStore({
     dataUrl: items.find(l => l.type === "application/geo+json").href,
     outputFormat: "application/geo+json",
-    codec: new GeoJsonCodec({generateIDs: true}),
+    codec: new GeoJsonCodec({generateIDs: false}),
     crs: "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
     extent: collection.extent,
     useCrs84Bounds: true,
@@ -139,6 +139,10 @@ const model = new FeatureModel(store, {reference: getReference("CRS:84")});
 map.layerTree.addChild(new FeatureLayer(model, {label: collection.title, loadingStrategy: new LoadSpatially()}));
 ```
 The store requests the features in view, a query does not follow the `next` links of a response yet (no paging).
+
+Keep the ids of the server: `generateIDs: false`. Each feature of an OGC API Features collection has an id, `get(id)` of
+the store requests `items/{id}` with it, and LuciadRIA updates only the features that changed when the ids stay the same
+between queries. `generateIDs: true` replaces them with ids of its own on every query.
 
 ### Maps and map tiles
 For maps and map tiles use OgcOpenApiMapsModel and OgcOpenApiTilesModel. OgcOpenApiMapsModel extends WMSTileSetModel
@@ -291,17 +295,8 @@ which MapEvolution uses) do. The WKT of epsg.io that the demo uses has no `AXIS`
   level 0, and does not request tiles outside the `tileMatrixSetLimits` of the tileset.
 * LuciadRIA 2026.1.1 does not paint Mapbox `circle` layers. The default style draws points as a text symbol for that reason.
 
-## Changes in 1.0.0
-Version 1.0.0 is a breaking change from 0.0.12:
-* It requires LuciadRIA 2026.1 or higher, as a peer dependency: the application installs it.
-* The package is native ES modules (`"type": "module"`), with an `exports` map. Import components as
-  `ogcopenapis/OgcOpenApiFeatureStore`, the paths with `lib/` still work.
-* New: vector tiles (OgcOpenApiVectorTilesModel), OGC API Styles (OgcOpenApiStyleTools), the tilesets of a collection
-  (`fetchCollectionTileSets`) and of the dataset (`fetchDatasetTileSets`).
-* OgcOpenApiTilesModel uses LuciadRIA's WMTS support, create it with `createFromTileSet`. The constructor is deprecated.
-* OgcOpenApiFeatureStore extends LuciadRIA's `Store`.
-* `fetchTileSetsInFull` leaves out tile matrix sets whose definition cannot be read, instead of failing.
-* Relative links are resolved against the document that has them, instead of the host of the server.
+## Changes
+See [CHANGELOG.md](CHANGELOG.md) for the changes of each version.
 
 ## Requirements
 * LuciadRIA 2026.1 or higher, a peer dependency that the application installs (place it on a local npm repository,
