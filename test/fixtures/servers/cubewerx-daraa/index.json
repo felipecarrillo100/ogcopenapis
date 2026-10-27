@@ -29,7 +29,7 @@
     "headers": {
       "content-type": "application/geo+json",
       "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
-      "content-length": "5687"
+      "content-length": "5686"
     },
     "file": "a6e5db2375931dd9.json"
   },
@@ -55,25 +55,25 @@
     },
     "file": "735f0bd5adf44f35.json"
   },
-  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/tileMatrixSets/3395": {
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/tileMatrixSets/3395?f=json": {
     "status": 200,
     "headers": {
       "content-type": "application/json; charset=UTF-8"
     },
-    "file": "2ea9b888e6076ada.json"
+    "file": "27bb8e0fbeb62d95.json"
   },
-  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/tileMatrixSets/smerc": {
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/tileMatrixSets/smerc?f=json": {
     "status": 200,
     "headers": {
       "content-type": "application/json; charset=UTF-8"
     },
-    "file": "0b83da3b018eb464.json"
+    "file": "dcee105c483ec94e.json"
   },
-  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/tileMatrixSets/wgs84": {
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/tileMatrixSets/wgs84?f=json": {
     "status": 200,
     "headers": {
       "content-type": "application/json; charset=UTF-8"
     },
-    "file": "3c5e805eb755ec89.json"
+    "file": "c9792fd683fbffb7.json"
   }
 }

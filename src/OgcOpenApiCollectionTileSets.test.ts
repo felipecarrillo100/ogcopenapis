@@ -186,3 +186,60 @@ describe('OgcOpenApiGetCapabilities.fetchCollectionTileSet', () => {
         expect(String(fetchSpy.mock.calls[0][0])).toBe("https://example.com/collections/lakes/tiles/WebMercatorQuad");
     });
 });
+
+describe('OgcOpenApiGetCapabilities.fetchTileSetsInFull', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const base = "https://example.com/";
+    const definition = (id: string) => ({id, crs: "http://www.opengis.net/def/crs/EPSG/0/3857", tileMatrices: []});
+    const list = {tileMatrixSets: ["WebMercatorQuad", "Broken"].map(id => ({id, title: id, links: [{rel: "self", type: "application/json", href: base + "tileMatrixSets/" + id + "?f=json"}]}))};
+
+    function respondByUrl(responses: { [url: string]: { status: number, json?: object } }) {
+        return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+            const response = responses[String(input)];
+            return Promise.resolve(response ? new Response(JSON.stringify(response.json), {status: response.status}) : new Response("", {status: 404}));
+        });
+    }
+
+    it('Leaves out a definition that cannot be read', async () => {
+        respondByUrl({
+            [base + "tileMatrixSets"]: {status: 200, json: list},
+            [base + "tileMatrixSets/WebMercatorQuad?f=json"]: {status: 200, json: definition("WebMercatorQuad")},
+            [base + "tileMatrixSets/Broken?f=json"]: {status: 500},
+        });
+        const tileMatrixSets = await OgcOpenApiGetCapabilities.fetchTileSetsInFull(server(base));
+        expect(tileMatrixSets.map(t => t.id)).toEqual(["WebMercatorQuad"]);
+    });
+
+    it('Rejects with the error when no definition can be read', async () => {
+        respondByUrl({[base + "tileMatrixSets"]: {status: 200, json: list}});
+        await expect(OgcOpenApiGetCapabilities.fetchTileSetsInFull(server(base))).rejects.toEqual({error: true, message: "Invalid response: 404"});
+    });
+
+    it('Requests a definition by its link as given, with its query and an Accept header', async () => {
+        const fetchSpy = respondWith(definition("WebMercatorQuad"));
+        await OgcOpenApiGetCapabilities.fetchTileset(server(base), list.tileMatrixSets[0] as any, {requestHeaders: {Authorization: "Bearer x"}});
+        expect(String(fetchSpy.mock.calls[0][0])).toBe(base + "tileMatrixSets/WebMercatorQuad?f=json");
+        expect(fetchSpy.mock.calls[0][1].headers).toEqual({Accept: "application/json", Authorization: "Bearer x"});
+    });
+});
+
+describe('OgcOpenApiGetCapabilities tiling-scheme links', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('Accepts the short rel of the tiling-scheme link', async () => {
+        respondWith({tilesets: [{links: [
+            {rel: "self", type: "application/json", href: "https://example.com/collections/c/tiles/WebMercatorQuad"},
+            {rel: "tiling-scheme", href: "https://example.com/tileMatrixSets/WebMercatorQuad"},
+        ]}]});
+        const tileSets = await OgcOpenApiGetCapabilities.fetchCollectionTileSets(server("https://example.com/"),
+            collection("c", VECTOR, "https://example.com/collections/c/tiles"), CollectionLinkType.VectorTiles);
+        expect(tileSets[0].tilingSchemeHref).toBe("https://example.com/tileMatrixSets/WebMercatorQuad");
+    });
+});

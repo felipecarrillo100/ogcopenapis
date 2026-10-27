@@ -7,21 +7,21 @@
     },
     "file": "1a2e5fecd5010803.json"
   },
-  "https://demo.pygeoapi.io/master/TileMatrixSets/WebMercatorQuad": {
+  "https://demo.pygeoapi.io/master/TileMatrixSets/WebMercatorQuad?f=json": {
     "status": 200,
     "headers": {
       "content-type": "application/json",
       "content-length": "9617"
     },
-    "file": "d5ad4a29fce6e71e.json"
+    "file": "332348c7c4facb71.json"
   },
-  "https://demo.pygeoapi.io/master/TileMatrixSets/WorldCRS84Quad": {
+  "https://demo.pygeoapi.io/master/TileMatrixSets/WorldCRS84Quad?f=json": {
     "status": 200,
     "headers": {
       "content-type": "application/json",
       "content-length": "8601"
     },
-    "file": "32f7390639366791.json"
+    "file": "5af7cb170eef4217.json"
   },
   "https://demo.pygeoapi.io/master/TileMatrixSets?f=json": {
     "status": 200,

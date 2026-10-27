@@ -31,11 +31,11 @@
     },
     "file": "15a5559b6e70c9ad.json"
   },
-  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/tileMatrixSets/euro_3857": {
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/tileMatrixSets/euro_3857?f=json": {
     "status": 200,
     "headers": {
       "content-type": "application/json; charset=UTF-8"
     },
-    "file": "6e62e1729e637089.json"
+    "file": "f9e9182d84a98b5d.json"
   }
 }
