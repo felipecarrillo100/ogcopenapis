@@ -173,7 +173,7 @@ async function updateTileMatrixSets() {
     }
     if (request !== tileSetsRequest) return;
     collectionTileSets = usable;
-    const webMercator = usable.find(t => /WebMercatorQuad$/.test(t.tileSet.tileMatrixSetURI || t.tileMatrix.id));
+    const webMercator = usable.find(t => /WebMercatorQuad\/?$/.test(t.tileSet.tileMatrixSetURI || t.tileMatrix.id));
     fillSelect(tmsSelect, usable.map(t => ({value: t.tileMatrix.id, label: t.tileMatrix.title || t.tileMatrix.id})),
         webMercator ? webMercator.tileMatrix.id : undefined);
 }

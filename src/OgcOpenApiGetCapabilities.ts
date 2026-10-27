@@ -491,12 +491,19 @@ export class OgcOpenApiGetCapabilities {
    */
   public static matchTileMatrixSet(tileSet: CollectionTileSetInfo, tileMatrixSets: TileSetData[]): TileSetData | undefined {
     const lastSegment = (url: string) => url.split("?")[0].replace(/\/$/, "").split("/").pop();
-    const byUri = tileSet.tileMatrixSetURI ? tileMatrixSets.find(t => t.uri === tileSet.tileMatrixSetURI) : undefined;
+    const byUri = tileSet.tileMatrixSetURI ? tileMatrixSets.find(t => OgcOpenApiGetCapabilities.sameUri(t.uri, tileSet.tileMatrixSetURI)) : undefined;
     if (byUri) return byUri;
     const ids = [tileSet.tileMatrixSetId,
       tileSet.tileMatrixSetURI ? lastSegment(tileSet.tileMatrixSetURI) : undefined,
       tileSet.tilingSchemeHref ? lastSegment(tileSet.tilingSchemeHref) : undefined].filter(id => !!id);
     return tileMatrixSets.find(t => ids.indexOf(t.id) > -1);
+  }
+
+  // Both forms name the same resource: http or https, the case of the scheme and host, a trailing slash
+  private static sameUri(a: string | undefined, b: string | undefined) {
+    const normalize = (uri: string) => uri.trim().replace(/\/$/, "")
+        .replace(/^https?:\/\/[^/]*/i, prefix => prefix.toLowerCase().replace(/^https:/, "http:"));
+    return !!a && !!b && normalize(a) === normalize(b);
   }
 
   /**
