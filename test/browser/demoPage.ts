@@ -78,15 +78,17 @@ export class DemoPage {
     async addLayer(collection: string, options: { tileMatrixSet?: string, style?: string } = {}) {
         await this.page.selectOption("#collection", collection);
         if (options.tileMatrixSet) {
-            // The tile matrix sets of the collection load after it is selected
-            await this.page.waitForSelector(`#tms option[value="${options.tileMatrixSet}"]`, {state: "attached", timeout: LOAD_TIMEOUT});
-            await this.page.selectOption("#tms", options.tileMatrixSet);
+            // The tile matrix sets of the collection load after it is selected. An option is a tileset, by its self link
+            const option = await this.page.waitForSelector(`#tms option[data-tile-matrix-set="${options.tileMatrixSet}"]`, {state: "attached", timeout: LOAD_TIMEOUT});
+            await this.page.selectOption("#tms", await option.getAttribute("value"));
         }
         if (options.style) {
             // The styles of the collection load after it is selected
             await this.page.waitForSelector(`#style option[value="${options.style}"]`, {state: "attached", timeout: LOAD_TIMEOUT});
             await this.page.selectOption("#style", options.style);
         }
+        // Adding is possible once the tile matrix sets and styles of the collection are listed
+        await this.page.waitForSelector("#add:not([disabled])", {timeout: LOAD_TIMEOUT});
         await this.page.click("#add");
         await this.page.waitForFunction(() => /Added|Could not/.test(document.querySelector("#status").textContent), null, {timeout: LOAD_TIMEOUT});
     }
