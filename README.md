@@ -100,12 +100,15 @@ The package is native ES modules. Import each component by its name, `ogcopenapi
 instance. The paths of version 0.0.12, `ogcopenapis/lib/OgcOpenApiFeatureStore`, still work.
 
 ### Capabilities
-`fromURL` reads the landing page of a server and its collections, optionally only those with links of one type:
+`fromURL` reads the landing page of a server and its collections, optionally only those with links of one type. Everything
+the examples below need comes from these capabilities: links and their formats, extents, the CRSs a collection offers,
+tilesets, tile matrix sets and styles. Nothing is configured by hand.
 ```typescript
 import {CollectionLinkType, OgcOpenApiGetCapabilities} from "ogcopenapis/OgcOpenApiGetCapabilities";
 
-const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/", {filterCollectionsByLinkType: CollectionLinkType.Items});
-const collection = capabilities.collections.find(c => c.id === "lakes");
+const capabilities = await OgcOpenApiGetCapabilities.fromURL(serverUrl, {filterCollectionsByLinkType: CollectionLinkType.Items});
+// The collections, as the server lists them: id, title, extent, crs and links
+const collection = capabilities.collections.find(c => c.id === collectionId);
 ```
 Links that are relative are resolved against the document that has them.
 
@@ -116,6 +119,19 @@ const proxify = (url: string, fetchOptions: RequestInit) => ({url: "https://prox
 const capabilities = await OgcOpenApiGetCapabilities.fromURL(serverUrl, {proxify});
 ```
 
+The examples below share these imports and constants:
+```typescript
+import type {Map} from "@luciad/ria/view/Map.js";
+import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
+import {
+    CollectionLinkType, OgcOpenApiCapabilitiesCollection, OgcOpenApiCapabilitiesObject, OgcOpenApiGetCapabilities,
+    CollectionTileSet, CollectionTileSetInfo, TileSetData
+} from "ogcopenapis/OgcOpenApiGetCapabilities";
+import {OgcOpenApiCrsTools} from "ogcopenapis/OgcOpenApiCrsTools";
+
+const CRS84 = "http://www.opengis.net/def/crs/OGC/1.3/CRS84";
+```
+
 ### Features
 OgcOpenApiFeatureStore implements a LuciadRIA store, to use with FeatureModel and FeatureLayer:
 ```typescript
@@ -123,20 +139,27 @@ import {FeatureModel} from "@luciad/ria/model/feature/FeatureModel.js";
 import {FeatureLayer} from "@luciad/ria/view/feature/FeatureLayer.js";
 import {LoadSpatially} from "@luciad/ria/view/feature/loadingstrategy/LoadSpatially.js";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec.js";
-import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
 import {OgcOpenApiFeatureStore} from "ogcopenapis/OgcOpenApiFeatureStore";
 
-const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Items);
-const store = new OgcOpenApiFeatureStore({
-    dataUrl: items.find(l => l.type === "application/geo+json").href,
-    outputFormat: "application/geo+json",
-    codec: new GeoJsonCodec({generateIDs: false}),
-    crs: "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-    extent: collection.extent,
-    useCrs84Bounds: true,
-});
-const model = new FeatureModel(store, {reference: getReference("CRS:84")});
-map.layerTree.addChild(new FeatureLayer(model, {label: collection.title, loadingStrategy: new LoadSpatially()}));
+function createFeatureLayer(collection: OgcOpenApiCapabilitiesCollection) {
+    const items = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Items);
+    // GeoJSON, the encoding that GeoJsonCodec reads
+    const link = items.find(l => l.type === "application/geo+json") || items.find(l => l.type === "application/json");
+    if (!link) throw new Error("Collection " + collection.id + " has no GeoJSON items");
+    // CRS84: OGC API Features requires every server to support it
+    const crs = CRS84;
+    const store = new OgcOpenApiFeatureStore({
+        dataUrl: link.href,
+        outputFormat: link.type,
+        // The ids of the server: get(id) requests items/{id} with them
+        codec: new GeoJsonCodec({generateIDs: false}),
+        crs,
+        extent: collection.extent,
+        useCrs84Bounds: true,
+    });
+    const model = new FeatureModel(store, {reference: getReference(OgcOpenApiCrsTools.getReferenceName(crs))});
+    return new FeatureLayer(model, {label: collection.title || collection.id, loadingStrategy: new LoadSpatially()});
+}
 ```
 The store requests the features in view, a query does not follow the `next` links of a response yet (no paging).
 
@@ -144,99 +167,147 @@ Keep the ids of the server: `generateIDs: false`. Each feature of an OGC API Fea
 the store requests `items/{id}` with it, and LuciadRIA updates only the features that changed when the ids stay the same
 between queries. `generateIDs: true` replaces them with ids of its own on every query.
 
-### Maps and map tiles
-For maps and map tiles use OgcOpenApiMapsModel and OgcOpenApiTilesModel. OgcOpenApiMapsModel extends WMSTileSetModel
-and OgcOpenApiTilesModel extends WMTSTileSetModel, so you use them in combination with RasterTileSetLayer.
-
-OgcOpenApiMapsModel requests the map as tiles. The map link carries the `f` value the server accepts, such as `f=png`:
+### Maps
+OgcOpenApiMapsModel extends WMSTileSetModel, use it with a RasterTileSetLayer. It requests the map as tiles, in the
+reference of the map when the collection offers it, otherwise in CRS84, which every server supports, and LuciadRIA
+reprojects it:
 ```typescript
 import {RasterTileSetLayer} from "@luciad/ria/view/tileset/RasterTileSetLayer.js";
 import {OgcOpenApiMapsModel} from "ogcopenapis/OgcOpenApiMapsModel";
 
-const mapLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Map);
-const mapsModel = new OgcOpenApiMapsModel({
-    crs: "http://www.opengis.net/def/crs/EPSG/0/3857",
-    baseURL: (mapLinks.find(l => l.type === "image/png") || mapLinks[0]).href,
-    collection: collection.id,
-});
-map.layerTree.addChild(new RasterTileSetLayer(mapsModel, {label: collection.title}));
+function createMapLayer(map: Map, collection: OgcOpenApiCapabilitiesCollection) {
+    const mapLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Map);
+    // PNG, with transparency, when the server types its links. The link carries the f value the server accepts
+    const link = mapLinks.find(l => l.type === "image/png") || mapLinks[0];
+    if (!link) throw new Error("Collection " + collection.id + " has no map");
+    const crs = (collection.crs || []).find(c => OgcOpenApiCrsTools.getReferenceName(c) === map.reference.identifier) || CRS84;
+    const model = new OgcOpenApiMapsModel({crs, baseURL: link.href, collection: collection.id});
+    return new RasterTileSetLayer(model, {label: collection.title || collection.id});
+}
 ```
 
-Create OgcOpenApiTilesModel with `createFromTileSet`. It describes the tileset to LuciadRIA's WMTS support, which handles
-tile matrix sets that are quad-trees and tile matrix sets that are not (such as GlobalCRS84Scale), and it does not request
-tiles outside the `tileMatrixSetLimits`. The tilesets and tile matrix sets are found as for vector tiles, below:
+### Tilesets
+Map tiles and vector tiles start from the tilesets: of a collection, or of the dataset (`collection` null), all its
+collections in each tile. Each tileset is in one tile matrix set. Servers give tile matrix sets their own ids (CubeWerx
+calls WebMercatorQuad `smerc`), `fetchTileMatrixSetOfTileSet` matches them by URI.
+```typescript
+import {OgcOpenApiTileMatrixTools} from "ogcopenapis/OgcOpenApiTileMatrixTools";
+
+interface UsableTileSet {
+    tileSet: CollectionTileSetInfo;
+    tileMatrix: TileSetData;
+}
+
+// The tilesets that LuciadRIA can use, each with its tile matrix set. Left out: tile matrix sets in a reference that is
+// not registered (see References below), and for vector tiles those that LuciadRIA cannot address as a quad-tree
+async function fetchUsableTileSets(capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection | null, linkType: CollectionLinkType) {
+    // fetchTileSetsInFull leaves out definitions that cannot be read, it rejects only when none can
+    const tileMatrixSets = await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities);
+    const tileSets = collection ?
+        await OgcOpenApiGetCapabilities.fetchCollectionTileSets(capabilities, collection, linkType) :
+        await OgcOpenApiGetCapabilities.fetchDatasetTileSets(capabilities, linkType);
+    const usable = await Promise.all(tileSets.map(async (tileSet): Promise<UsableTileSet | null> => {
+        try {
+            const tileMatrix = await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(capabilities, tileSet, tileMatrixSets);
+            const grid = OgcOpenApiTileMatrixTools.createTileGrid(tileMatrix);
+            return linkType === CollectionLinkType.VectorTiles && grid.levelCount <= 1 ? null : {tileSet, tileMatrix};
+        } catch (e) {
+            return null;
+        }
+    }));
+    return usable.filter(t => t !== null);
+}
+
+// The tileset in the reference of the map, which needs no reprojection, otherwise the first one
+function pickTileSet(map: Map, tileSets: UsableTileSet[]) {
+    if (tileSets.length === 0) throw new Error("No tileset in a tile matrix set that LuciadRIA can use");
+    return tileSets.find(t => OgcOpenApiCrsTools.getReferenceName(t.tileMatrix.crs) === map.reference.identifier) || tileSets[0];
+}
+
+// Where the data is, in CRS84 as [minX, minY, maxX, maxY]: the extent of the collection, or for the dataset the
+// bounding box of the tileset, when the server gives them in CRS84
+function getExtent(collection: OgcOpenApiCapabilitiesCollection | null, tileSet: CollectionTileSet): number[] | undefined {
+    if (collection) {
+        const spatial = collection.extent && collection.extent.spatial;
+        return spatial && spatial.bbox && (!spatial.crs || /CRS84$/.test(spatial.crs)) ? spatial.bbox[0] : undefined;
+    }
+    const box = tileSet.boundingBox;
+    return box && box.crs && /CRS84$/.test(box.crs) ? [...box.lowerLeft, ...box.upperRight] : undefined;
+}
+```
+
+### Map tiles
+OgcOpenApiTilesModel extends WMTSTileSetModel, use it with a RasterTileSetLayer. Create it with `createFromTileSet`: it
+describes the tileset to LuciadRIA's WMTS support, which handles tile matrix sets that are quad-trees and tile matrix sets
+that are not (such as GlobalCRS84Scale), and it does not request tiles outside the `tileMatrixSetLimits`:
 ```typescript
 import {OgcOpenApiTilesModel} from "ogcopenapis/OgcOpenApiTilesModel";
 
-const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileSetInfo, {}, CollectionLinkType.Tiles);
-const model = await OgcOpenApiTilesModel.createFromTileSet({
-    tileMatrix,
-    baseURL: tileSet.links.find(l => l.type === "image/png").href,
-    collection: collection.id,
-    tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
-    extent: collection.extent.spatial.bbox[0],
-});
-map.layerTree.addChild(new RasterTileSetLayer(model, {label: collection.title}));
+async function createTileLayer(map: Map, capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection | null) {
+    const {tileSet: tileSetInfo, tileMatrix} = pickTileSet(map, await fetchUsableTileSets(capabilities, collection, CollectionLinkType.Tiles));
+    const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileSetInfo, {}, CollectionLinkType.Tiles);
+    // PNG, with transparency, when the server types its links
+    const link = tileSet.links.find(l => l.type === "image/png") || tileSet.links[0];
+    const model = await OgcOpenApiTilesModel.createFromTileSet({
+        tileMatrix,
+        baseURL: link.href,
+        collection: collection ? collection.id : "dataset",
+        format: link.type && link.type.indexOf("image/") === 0 ? link.type : undefined,
+        tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+        extent: getExtent(collection, tileSet),
+    });
+    return new RasterTileSetLayer(model, {label: collection ? collection.title || collection.id : "All collections"});
+}
 ```
 The constructor `new OgcOpenApiTilesModel(options)` still works, but is deprecated: it supports quad-tree tile matrix sets only.
-Look at the LuciadRIA documentation if you need further information on using RasterTileSetLayer.
 
 ### Vector tiles
-For vector tiles use OgcOpenApiVectorTilesModel. It extends LuciadRIA's MapboxVectorTileSetModel, so you use it in combination with
-MapboxVectorTileSetLayer and a MapboxStyle:
+OgcOpenApiVectorTilesModel extends LuciadRIA's MapboxVectorTileSetModel, use it with a MapboxVectorTileSetLayer and a
+MapboxStyle. The style is one of the server (OGC API Styles) for the tile matrix set in use, or a style generated from
+the layers in the tiles when the server has none:
 ```typescript
 import {MapboxVectorTileSetLayer} from "@luciad/ria/view/mapbox/MapboxVectorTileSetLayer.js";
 import {MapboxStyle} from "@luciad/ria/view/mapbox/MapboxStyle.js";
-import {CollectionLinkType, OgcOpenApiGetCapabilities} from "ogcopenapis/OgcOpenApiGetCapabilities";
 import {OgcOpenApiVectorTilesModel} from "ogcopenapis/OgcOpenApiVectorTilesModel";
 import {OgcOpenApiStyleTools} from "ogcopenapis/OgcOpenApiStyleTools";
 
-const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://demo.ldproxy.net/daraa/", {filterCollectionsByLinkType: CollectionLinkType.VectorTiles});
-const collection = capabilities.collections.find(c => c.id === "TransportationGroundCrv");
-
-// The tilesets of the collection: the tile matrix sets it is tiled in, which can be fewer than the ones of the server.
-// Servers give tile matrix sets their own ids (CubeWerx calls WebMercatorQuad smerc), they are matched by URI.
-// fetchTileSetsInFull leaves out definitions that cannot be read, it rejects only when none can
-const tileMatrixSets = await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities);
-const tileSets = await OgcOpenApiGetCapabilities.fetchCollectionTileSets(capabilities, collection, CollectionLinkType.VectorTiles);
-const webMercator = tileSets.find(t => /WebMercatorQuad\/?$/.test(t.tileMatrixSetURI));
-const tileMatrix = await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(capabilities, webMercator, tileMatrixSets);
-const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, webMercator, {}, CollectionLinkType.VectorTiles);
-
-const model = new OgcOpenApiVectorTilesModel({
-    tileMatrix,
-    baseURL: tileSet.links.find(l => l.type === "application/vnd.mapbox-vector-tile").href,
-    collection: collection.id,
-    tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
-});
-
-// A style of the server (OGC API Styles), or a default style when the server has none.
-// The default style needs the layers in the tiles: from the tileset, or read from a few tiles when the tileset does not list them
-const styles = await OgcOpenApiStyleTools.fetchStyles(capabilities, collection);
-const layers = tileSet.layers.length > 0 ? tileSet.layers : await model.discoverLayers({extent: collection.extent.spatial.bbox[0]});
-const styleJson = styles.length > 0 ?
-    await OgcOpenApiStyleTools.fetchMapboxStyle(capabilities, OgcOpenApiStyleTools.pickStylesheet(styles[0], tileMatrix.id)) :
-    OgcOpenApiStyleTools.createDefaultStyle(layers);
-
-map.layerTree.addChild(new MapboxVectorTileSetLayer(model, {label: collection.title, style: MapboxStyle.createFromObject(styleJson)}));
+async function createVectorTileLayer(map: Map, capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection | null) {
+    const tileSets = await fetchUsableTileSets(capabilities, collection, CollectionLinkType.VectorTiles);
+    const {tileSet: tileSetInfo, tileMatrix} = pickTileSet(map, tileSets);
+    const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileSetInfo, {}, CollectionLinkType.VectorTiles);
+    // Mapbox Vector Tiles, the vector tile encoding LuciadRIA reads
+    const link = tileSet.links.find(l => l.type === "application/vnd.mapbox-vector-tile") || tileSet.links.find(l => !l.type);
+    if (!link) throw new Error("The tileset has no Mapbox Vector Tiles");
+    const label = collection ? collection.title || collection.id : "All collections";
+    const model = new OgcOpenApiVectorTilesModel({
+        tileMatrix,
+        baseURL: link.href,
+        collection: collection ? collection.id : "dataset",
+        tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+    });
+    // The styles of the collection, or of the dataset, for this tile matrix set. An application can let the user pick one
+    const styles = OgcOpenApiStyleTools.getStylesForTileMatrixSet(
+        await OgcOpenApiStyleTools.fetchStyles(capabilities, collection), tileMatrix.id, tileSets.map(t => t.tileMatrix.id));
+    let styleJson;
+    if (styles.length > 0) {
+        styleJson = await OgcOpenApiStyleTools.fetchMapboxStyle(capabilities, OgcOpenApiStyleTools.pickStylesheet(styles[0], tileMatrix.id));
+    } else {
+        // The layers in the tiles: from the tileset, or read from a few tiles where the data is
+        const layers = tileSet.layers.length > 0 ? tileSet.layers : await model.discoverLayers({extent: getExtent(collection, tileSet)});
+        styleJson = OgcOpenApiStyleTools.createDefaultStyle(layers, label);
+    }
+    return new MapboxVectorTileSetLayer(model, {label, style: MapboxStyle.createFromObject(styleJson)});
+}
 ```
 
 ### Tiles of the dataset
 Some servers tile the dataset as a whole, with all its collections in each tile, and some only the dataset (PDOK).
-The tilesets and styles of the dataset are linked from the landing page:
-
+The tilesets and styles of the dataset are linked from the landing page. The functions above take `null` for them:
 ```typescript
 if (OgcOpenApiGetCapabilities.hasDatasetTileSets(capabilities, CollectionLinkType.VectorTiles)) {
-    const datasetTileSets = await OgcOpenApiGetCapabilities.fetchDatasetTileSets(capabilities, CollectionLinkType.VectorTiles);
-    const tileMatrix = await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(capabilities, datasetTileSets[0], tileMatrixSets);
-    // null instead of a collection: the tileset of the dataset
-    const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, null, datasetTileSets[0], {}, CollectionLinkType.VectorTiles);
-    // The styles of the dataset, only those for the tile matrix set in use
-    const datasetStyles = OgcOpenApiStyleTools.getStylesForTileMatrixSet(
-        await OgcOpenApiStyleTools.fetchStyles(capabilities, null), tileMatrix.id, [tileMatrix.id /* and the ids of the other tilesets */]);
+    map.layerTree.addChild(await createVectorTileLayer(map, capabilities, null));
 }
 ```
-A tileset of the dataset can have a `boundingBox`, where its data is. A collection has its `extent` instead.
 
 ### Styles
 * LuciadRIA reads the Mapbox GL encoding of OGC API Styles only, not SLD or other encodings.

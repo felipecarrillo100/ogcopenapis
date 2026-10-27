@@ -8,6 +8,16 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-27
+
+### Fixed
+- The README examples take every value from the capabilities: the formats of the links, the CRS of a map (the
+  reference of the map when the collection offers it, otherwise CRS84), the tileset in the reference of the map, the
+  styles for its tile matrix set, and the extents. The examples are functions that run as written; two of them failed on
+  servers whose links have no type or whose tilesets list no URI.
+- Demo: the CRS of a map and the encoding of features come from the capabilities, and a tileset bounding box without a
+  CRS is not taken as CRS84.
+
 ## [1.0.1] - 2026-10-27
 
 ### Fixed
@@ -58,6 +68,7 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/felipecarrillo100/ogcopenapis/releases/tag/v1.0.0

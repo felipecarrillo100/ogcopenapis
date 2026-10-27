@@ -29,6 +29,7 @@ import {OgcOpenApiTilesModel} from "ogcopenapis/OgcOpenApiTilesModel";
 import {OgcOpenApiVectorTilesModel} from "ogcopenapis/OgcOpenApiVectorTilesModel";
 import {OgcOpenApiStyle, OgcOpenApiStyleTools} from "ogcopenapis/OgcOpenApiStyleTools";
 import {OgcOpenApiTileMatrixTools} from "ogcopenapis/OgcOpenApiTileMatrixTools";
+import {OgcOpenApiCrsTools} from "ogcopenapis/OgcOpenApiCrsTools";
 import {registerReferences} from "./references";
 
 // What each server supports, as tested with this demo
@@ -290,7 +291,8 @@ async function zoomToLayer(layer: Layer) {
 // The extent of a tileset in CRS:84, when the server gives it
 function getTileSetExtent(tileSet: CollectionTileSet): number[] | undefined {
     const box = tileSet.boundingBox;
-    if (!box || (box.crs && !/CRS84$/.test(box.crs))) return undefined;
+    // Without a crs, the bounding box is in the CRS of the tile matrix set
+    if (!box || !box.crs || !/CRS84$/.test(box.crs)) return undefined;
     return [box.lowerLeft[0], box.lowerLeft[1], box.upperRight[0], box.upperRight[1]];
 }
 
@@ -339,7 +341,8 @@ async function createCollectionLayer(collection: OgcOpenApiCapabilitiesCollectio
             const link = items.find(l => l.type === GEOJSON) || items.find(l => l.type === "application/json") || items[0];
             const store = new OgcOpenApiFeatureStore({
                 dataUrl: link.href,
-                outputFormat: GEOJSON,
+                // The encoding of the link: GeoJSON, as application/geo+json or application/json
+                outputFormat: link.type ? link.type : GEOJSON,
                 codec: new GeoJsonCodec({generateIDs: false}),
                 crs: CRS84,
                 extent: collection.extent,
@@ -351,8 +354,10 @@ async function createCollectionLayer(collection: OgcOpenApiCapabilitiesCollectio
         case CollectionLinkType.Map: {
             const maps = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links, CollectionLinkType.Map);
             const link = maps.find(l => l.type === "image/png") || maps[0];
+            // The reference of the map when the collection offers it, otherwise CRS84, which every server supports
+            const crs = (collection.crs || []).find(c => OgcOpenApiCrsTools.getReferenceName(c) === map.reference.identifier) || CRS84;
             const model = new OgcOpenApiMapsModel({
-                crs: "http://www.opengis.net/def/crs/EPSG/0/3857",
+                crs,
                 // The link carries the f value the server accepts, such as f=png
                 baseURL: link.href,
                 collection: collection.id,
