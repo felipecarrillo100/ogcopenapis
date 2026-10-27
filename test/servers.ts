@@ -12,8 +12,9 @@ export interface TestServer {
     mapTiles?: { collection: string, tileMatrixSet: string };
     // knownIssue: why the layer is not painted in the demo yet, the browser test expects it to fail
     vectorTiles?: { collection: string, tileMatrixSet: string, style?: string, knownIssue?: string };
-    // The vector tiles of the dataset, all collections in each tile. center, [lon, lat], is a place with data
-    datasetVectorTiles?: { tileMatrixSet: string, style?: string, center: number[], knownIssue?: string };
+    // The vector tiles of the dataset, all collections in each tile, or only those of collections (collections
+    // selection). center, [lon, lat], is a place with data
+    datasetVectorTiles?: { tileMatrixSet: string, style?: string, collections?: string[], center: number[], knownIssue?: string };
     // Why the server is not recorded, its responses are only tested live
     notRecorded?: string;
 }
@@ -40,6 +41,8 @@ export const TEST_SERVERS: TestServer[] = [
         url: "https://demo.ldproxy.net/strassen/",
         features: {collection: "netzknoten"},
         vectorTiles: {collection: "abschnitteaeste", tileMatrixSet: "WebMercatorQuad"},
+        // Only the road sections of the four collections in the tiles
+        datasetVectorTiles: {tileMatrixSet: "WebMercatorQuad", collections: ["abschnitteaeste"], center: [7.9248, 52.267]},
     },
     {
         id: "ldproxy-zoomstack",

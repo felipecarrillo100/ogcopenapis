@@ -29,7 +29,7 @@
     "headers": {
       "content-type": "application/geo+json",
       "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
-      "content-length": "5686"
+      "content-length": "5685"
     },
     "file": "084967345cc2433a.json"
   },
@@ -47,6 +47,13 @@
       "content-length": "7097"
     },
     "file": "797f4400f9e12a64.bin"
+  },
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/conformance": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    },
+    "file": "cb3997faa39a9a07.json"
   },
   "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/tileMatrixSets": {
     "status": 200,

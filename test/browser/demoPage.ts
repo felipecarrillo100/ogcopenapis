@@ -75,8 +75,13 @@ export class DemoPage {
             null, {timeout: LOAD_TIMEOUT});
     }
 
-    async addLayer(collection: string, options: { tileMatrixSet?: string, style?: string } = {}) {
+    async addLayer(collection: string, options: { tileMatrixSet?: string, style?: string, collections?: string[] } = {}) {
         await this.page.selectOption("#collection", collection);
+        if (options.collections) {
+            // Offered only when the server supports collections selection
+            await this.page.waitForSelector("#collectionsRow:not([hidden])", {timeout: LOAD_TIMEOUT});
+            await this.page.selectOption("#collections", options.collections);
+        }
         if (options.tileMatrixSet) {
             // The tile matrix sets of the collection load after it is selected. An option is a tileset, by its self link
             const option = await this.page.waitForSelector(`#tms option[data-tile-matrix-set="${options.tileMatrixSet}"]`, {state: "attached", timeout: LOAD_TIMEOUT});

@@ -21,5 +21,25 @@
       "y": 2738
     },
     "tileBytes": 4403
+  },
+  "datasetVectorTiles": {
+    "collectionSelection": true,
+    "collections": [
+      "abschnitteaeste"
+    ],
+    "tileMatrixSets": [
+      "AdV_25832",
+      "WebMercatorQuad"
+    ],
+    "template": "https://demo.ldproxy.net/strassen/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}?f=mvt",
+    "layers": 4,
+    "limits": 10,
+    "maxLevel": 14,
+    "tile": {
+      "level": 12,
+      "x": 2138,
+      "y": 2747
+    },
+    "tileLayers": 1
   }
 }

@@ -19,6 +19,14 @@
     },
     "file": "ef6a0c7a965ede86.json"
   },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/conformance?f=json": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "602"
+    },
+    "file": "c713b3053f06e96e.json"
+  },
   "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles/bgt_standaardvisualisatie__netherlandsrdnewquad?f=mapbox": {
     "status": 200,
     "headers": {

@@ -8,6 +8,17 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-27
+
+### Added
+- The tiles of the dataset limited to some of its collections (OGC API Tiles, collections selection): the option
+  `collections` of OgcOpenApiTilesModel and OgcOpenApiVectorTilesModel, which request `collections=a,b`.
+- `fromURL` reads the conformance classes of the server, in `capabilities.conformsTo`.
+- `supportsCollectionSelection(capabilities)`: whether the server declares collections selection, by the conformance
+  class of the standard (`COLLECTIONS_SELECTION_CONFORMANCE`), or by the name ldproxy declares it under, which is not in
+  the standard (`COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS`).
+- Demo: the collections in the tiles of the dataset, when the server supports collections selection.
+
 ## [1.0.3] - 2026-10-27
 
 ### Fixed
@@ -85,7 +96,8 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.0...v1.0.1

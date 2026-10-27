@@ -316,6 +316,30 @@ if (OgcOpenApiGetCapabilities.hasDatasetTileSets(capabilities, CollectionLinkTyp
 }
 ```
 
+The tiles of the dataset can hold only some of its collections, when the server supports the `collections` parameter
+(OGC API Tiles, collections selection). Both tiles models take them as `collections`:
+```typescript
+if (OgcOpenApiGetCapabilities.supportsCollectionSelection(capabilities)) {
+    const model = new OgcOpenApiVectorTilesModel({
+        tileMatrix,
+        baseURL: link.href,
+        collection: "dataset",
+        tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
+        // The ids of the collections, as capabilities.collections lists them
+        collections: ["abschnitteaeste"],
+    });
+}
+```
+* `supportsCollectionSelection` reads the conformance classes of the server (`capabilities.conformsTo`): the class of the
+  standard, `http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collections-selection` (OGC 20-057, Table 7).
+* It also accepts `http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collection-selection`, a name that is not in the
+  standard: ldproxy declares the class so, and supports the parameter as the standard requires.
+  `COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS` lists it, to be removed once ldproxy declares the class of the standard.
+* The models do not check the conformance classes: they request the collections they are given. Use `collections` for
+  tilesets of the dataset only, the tiles of a collection hold that collection.
+* A comma inside a collection id is encoded, the commas between ids are not. A `collections` parameter in the tile URL
+  template is replaced.
+
 ### Styles
 * LuciadRIA reads the Mapbox GL encoding of OGC API Styles only, not SLD or other encodings.
 * A server can publish a stylesheet per tile matrix set, because zoom levels depend on it. `pickStylesheet` picks the one for the tile matrix set in use.

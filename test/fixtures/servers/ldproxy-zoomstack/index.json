@@ -26,5 +26,13 @@
       "content-length": "740"
     },
     "file": "4d9b1d78ba7a08ef.json"
+  },
+  "https://demo.ldproxy.net/zoomstack/conformance": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "679"
+    },
+    "file": "4168b9d78279f812.json"
   }
 }

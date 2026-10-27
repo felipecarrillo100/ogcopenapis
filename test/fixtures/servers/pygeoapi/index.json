@@ -64,6 +64,14 @@
     },
     "file": "c452636620c9594c.json"
   },
+  "https://demo.pygeoapi.io/master/conformance": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "3307"
+    },
+    "file": "5a079ed4395304e0.json"
+  },
   "https://demo.pygeoapi.io/master/openapi": {
     "status": 404,
     "headers": {}

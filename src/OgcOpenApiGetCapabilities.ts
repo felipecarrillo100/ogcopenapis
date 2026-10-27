@@ -16,6 +16,12 @@ export interface LinkType {
 export const JSON_FG_MEDIA_TYPE = "application/vnd.ogc.fg+json";
 export const JSON_FG_PROFILE = "http://www.opengis.net/def/profile/OGC/0/jsonfg";
 
+// The conformance class of OGC API Tiles for the collections parameter of dataset tiles (OGC 20-057, Table 7)
+export const COLLECTIONS_SELECTION_CONFORMANCE = "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collections-selection";
+// The same class under another name, also accepted. Not in the standard: ldproxy declares it so, and supports the
+// collections parameter as the standard requires. To be removed once ldproxy declares the class of the standard
+export const COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS = ["http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collection-selection"];
+
 export interface TileMatrix {
   id: string,
   scaleDenominator: number;
@@ -104,6 +110,8 @@ export interface OgcOpenApiCapabilitiesObject {
   tileMatrixSetsUrl?: string;
   // The links of the landing page, to the tilesets and styles of the dataset among others
   links?: LinkType[];
+  // The conformance classes the server declares, empty when it declares none or they cannot be read
+  conformsTo?: string[];
   serverOptions: FetchServerOptions;
 }
 
@@ -219,6 +227,12 @@ export class OgcOpenApiGetCapabilities {
               // The links of the landing page are relative to it, the links of the collections to /collections
               const resolveLink = (link: OgcOpenApiCapabilitiesCollectionServiceLinkType, documentUrl: string) =>
                   ({...link, href: OgcOpenApiFetchTools.resolveUrl(link.href, documentUrl, serverOptions)});
+              // The conformance classes, read with the collections. A server without them declares no classes
+              const conformance = jsonObject.links.find((link) => isRel(link, 'conformance'));
+              const conformancePromise: Promise<string[]> = conformance ?
+                  OgcOpenApiGetCapabilities.fetchJson({serverOptions} as OgcOpenApiCapabilitiesObject, resolveLink(conformance, requestUrl).href, options)
+                      .then(data => Array.isArray(data.conformsTo) ? data.conformsTo : [], () => []) :
+                  Promise.resolve([]);
               const promiseArray = [];
               if (linkToData) {
                 const collectionsLink = resolveLink(linkToData, requestUrl);
@@ -288,7 +302,7 @@ export class OgcOpenApiGetCapabilities {
                     baseUrl,
                     tileMatrixSetsUrl: linkToTileMatrixSets ? resolveLink(linkToTileMatrixSets, requestUrl).href : undefined
                   };
-                  resolve(o);
+                  conformancePromise.then(conformsTo => resolve({...o, conformsTo}));
                 });
               } else {
                 reject("Invalid format: (property 'links' contains no links with rel=data");
@@ -484,6 +498,16 @@ export class OgcOpenApiGetCapabilities {
     const dataLinks = OgcOpenApiGetCapabilities.filterCollectionLinks(capabilities.links ? capabilities.links : [], linkType);
     const link = dataLinks.find((link) => link.type === "application/json") || dataLinks.find((link) => !link.type) || dataLinks[0];
     return link ? link.href : '';
+  }
+
+  /**
+   * Whether the server supports the collections parameter of dataset tiles (OGC API Tiles, collections selection),
+   * as its conformance classes declare: the class of the standard, or the variant of COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS
+   */
+  public static supportsCollectionSelection(capabilities: OgcOpenApiCapabilitiesObject | null) {
+    const conformsTo = capabilities && capabilities.conformsTo ? capabilities.conformsTo : [];
+    return conformsTo.indexOf(COLLECTIONS_SELECTION_CONFORMANCE) > -1 ||
+        COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS.some(variant => conformsTo.indexOf(variant) > -1);
   }
 
   /**

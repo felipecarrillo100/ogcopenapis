@@ -59,6 +59,14 @@
     },
     "file": "be9b45a5d663b463.bin"
   },
+  "https://demo.ldproxy.net/vineyards/conformance": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "697"
+    },
+    "file": "5b0cad393055fb98.json"
+  },
   "https://demo.ldproxy.net/vineyards/tileMatrixSets": {
     "status": 200,
     "headers": {

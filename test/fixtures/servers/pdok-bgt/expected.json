@@ -5,6 +5,7 @@
     "features": 5
   },
   "datasetVectorTiles": {
+    "collectionSelection": false,
     "tileMatrixSets": [
       "EuropeanETRS89_LAEAQuad",
       "NetherlandsRDNewQuad",

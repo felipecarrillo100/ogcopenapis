@@ -26,6 +26,8 @@ interface Case {
     knownIssue?: string;
     // [lon, lat], the map shows it after the layer is added
     center?: number[];
+    // Only these collections in the tiles of the dataset
+    collections?: string[];
 }
 
 // The collection option of the demo for the tilesets of the dataset
@@ -41,8 +43,8 @@ function getCases(server: TestServer): Case[] {
         cases.push({server, type: "vectorTiles", collection, tileMatrixSet, style: style ? style : GENERATED_STYLE, knownIssue});
     }
     if (server.datasetVectorTiles) {
-        const {tileMatrixSet, style, center, knownIssue} = server.datasetVectorTiles;
-        cases.push({server, type: "vectorTiles", collection: DATASET, tileMatrixSet, style: style ? style : GENERATED_STYLE, knownIssue, center});
+        const {tileMatrixSet, style, center, knownIssue, collections} = server.datasetVectorTiles;
+        cases.push({server, type: "vectorTiles", collection: DATASET, tileMatrixSet, style: style ? style : GENERATED_STYLE, knownIssue, center, collections});
     }
     return cases;
 }
@@ -61,14 +63,14 @@ describe("Test servers in the demo", () => {
         for (const c of getCases(server)) {
             // A known issue is expected to fail, the test fails once it is fixed, as a reminder to remove it
             const test = c.knownIssue ? it.fails : it;
-            const what = c.collection === DATASET ? "dataset " + c.tileMatrixSet : c.collection;
+            const what = c.collection === DATASET ? "dataset " + c.tileMatrixSet + (c.collections ? " with " + c.collections.join(", ") : "") : c.collection;
             const name = `${server.title}: ${c.type} ${what}` + (c.knownIssue ? ` (known issue: ${c.knownIssue})` : "");
             test(name, async () => {
                 demo = await openDemo(new URL(server.url).host);
                 await demo.load();
                 await demo.connect(server.url, c.type);
                 expect(await demo.status()).toMatch(/collections/);
-                await demo.addLayer(c.collection, {tileMatrixSet: c.tileMatrixSet, style: c.style});
+                await demo.addLayer(c.collection, {tileMatrixSet: c.tileMatrixSet, style: c.style, collections: c.collections});
                 expect(await demo.status()).toMatch(/^Added/);
                 if (c.center) await demo.zoomTo(c.center, CENTER_SIZE);
                 await demo.waitForData();

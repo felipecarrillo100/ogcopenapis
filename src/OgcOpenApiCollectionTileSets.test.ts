@@ -404,3 +404,54 @@ describe('OgcOpenApiGetCapabilities JSON-FG', () => {
         vi.restoreAllMocks();
     });
 });
+
+describe('OgcOpenApiGetCapabilities collections selection', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const withConformance = (conformsTo?: string[]) => ({...server("https://example.com/"), conformsTo});
+
+    it('Supported when the server declares the conformance class of the standard', () => {
+        expect(OgcOpenApiGetCapabilities.supportsCollectionSelection(withConformance(["http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collections-selection"]))).toBe(true);
+    });
+
+    it('Supported when the server declares the variant name of ldproxy, collection-selection', () => {
+        expect(OgcOpenApiGetCapabilities.supportsCollectionSelection(withConformance(["http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collection-selection"]))).toBe(true);
+    });
+
+    it('Not supported otherwise', () => {
+        expect(OgcOpenApiGetCapabilities.supportsCollectionSelection(withConformance(["http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core"]))).toBe(false);
+        expect(OgcOpenApiGetCapabilities.supportsCollectionSelection(withConformance(undefined))).toBe(false);
+        expect(OgcOpenApiGetCapabilities.supportsCollectionSelection(null)).toBe(false);
+    });
+
+    function serve(documents: { [url: string]: object }) {
+        return vi.spyOn(globalThis, "fetch").mockImplementation((input) =>
+            Promise.resolve(new Response(JSON.stringify(documents[String(input)]), {status: documents[String(input)] ? 200 : 404})));
+    }
+    const landing = (links: object[]) => ({
+        "https://example.com/": {links: [{rel: "data", type: "application/json", href: "https://example.com/collections"}, ...links]},
+        "https://example.com/collections": {collections: []},
+    });
+
+    it('fromURL reads the conformance classes, from an untyped link, with an Accept header', async () => {
+        const fetchSpy = serve({
+            ...landing([{rel: "conformance", href: "https://example.com/conformance"}]),
+            "https://example.com/conformance": {conformsTo: ["http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collections-selection"]},
+        });
+        const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://example.com/");
+        expect(capabilities.conformsTo).toEqual(["http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collections-selection"]);
+        const conformanceCall = fetchSpy.mock.calls.find(call => String(call[0]) === "https://example.com/conformance");
+        expect((conformanceCall[1].headers as any).Accept).toBe("application/json");
+    });
+
+    it('fromURL declares no conformance classes without a conformance link, or when it cannot be read', async () => {
+        serve(landing([]));
+        expect((await OgcOpenApiGetCapabilities.fromURL("https://example.com/")).conformsTo).toEqual([]);
+        vi.restoreAllMocks();
+        serve(landing([{rel: "http://www.opengis.net/def/rel/ogc/1.0/conformance", href: "https://example.com/missing"}]));
+        expect((await OgcOpenApiGetCapabilities.fromURL("https://example.com/")).conformsTo).toEqual([]);
+    });
+});
