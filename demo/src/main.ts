@@ -94,8 +94,12 @@ function errorMessage(e: any) {
     return e && e.message ? e.message : typeof e === "string" || typeof e === "number" ? String(e) : "Request failed";
 }
 
-function fillSelect(select: HTMLSelectElement, options: { value: string, label: string }[], selected?: string) {
-    select.replaceChildren(...options.map(o => new Option(o.label, o.value, false, o.value === selected)));
+function fillSelect(select: HTMLSelectElement, options: { value: string, label: string, data?: Record<string, string> }[], selected?: string) {
+    select.replaceChildren(...options.map(o => {
+        const option = new Option(o.label, o.value, false, o.value === selected);
+        Object.assign(option.dataset, o.data);
+        return option;
+    }));
     select.disabled = options.length === 0;
 }
 
@@ -108,23 +112,35 @@ function updateRows() {
     $("styleRow").hidden = linkType() !== CollectionLinkType.VectorTiles;
 }
 
+// Connecting, or selecting another collection, while the lists load starts again: only the latest request fills them
+let listRequest = 0;
+let listedRequest = 0;
+const isListing = () => listedRequest !== listRequest;
+
 async function connect() {
+    const request = ++listRequest;
     capabilities = null;
+    tileMatrixSets = [];
+    collectionTileSets = [];
+    styles = [];
     fillSelect(collectionSelect, []);
     fillSelect(tmsSelect, []);
     fillSelect(styleSelect, []);
     addButton.disabled = true;
     setStatus("Connecting...");
     try {
-        capabilities = await OgcOpenApiGetCapabilities.fromURL(urlInput.value, {filterCollectionsByLinkType: linkType()});
+        const connected = await OgcOpenApiGetCapabilities.fromURL(urlInput.value, {filterCollectionsByLinkType: linkType()});
+        const connectedTileMatrixSets = isTiled() ? await OgcOpenApiGetCapabilities.fetchTileSetsInFull(connected) : [];
+        if (request !== listRequest) return;
+        capabilities = connected;
+        tileMatrixSets = connectedTileMatrixSets;
         const collections = [...capabilities.collections].sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
+        // The collections are selectable once the tile matrix sets of the server are known
         fillSelect(collectionSelect, collections.map(c => ({value: c.id, label: c.title || c.id})));
-        tileMatrixSets = isTiled() ? await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities) : [];
         setStatus(collections.length + " collections");
-        addButton.disabled = collections.length === 0;
         await updateCollection();
     } catch (e) {
-        setStatus("Could not connect: " + errorMessage(e), true);
+        if (request === listRequest) setStatus("Could not connect: " + errorMessage(e), true);
     }
 }
 
@@ -140,17 +156,19 @@ function isUsableTileMatrixSet(tileMatrixSet: TileSetData, type: CollectionLinkT
     }
 }
 
+// Adding a layer waits until the tile matrix sets and styles of the collection are listed
 async function updateCollection() {
-    await updateTileMatrixSets();
-    await updateStyles();
+    const request = ++listRequest;
+    addButton.disabled = true;
+    await Promise.all([updateTileMatrixSets(request), updateStyles(request)]);
+    if (request !== listRequest) return;
+    listedRequest = request;
+    addButton.disabled = !selectedCollection();
 }
 
 // Only the tile matrix sets the collection is tiled in, which can be fewer than the ones of the server.
-// Selecting another collection while they load starts again, only the latest selection fills the list.
-let tileSetsRequest = 0;
-
-async function updateTileMatrixSets() {
-    const request = ++tileSetsRequest;
+// A collection can have several tilesets in one tile matrix set, so an option is a tileset: its self link.
+async function updateTileMatrixSets(request: number) {
     collectionTileSets = [];
     fillSelect(tmsSelect, []);
     const collection = selectedCollection();
@@ -159,40 +177,45 @@ async function updateTileMatrixSets() {
     try {
         tileSets = await OgcOpenApiGetCapabilities.fetchCollectionTileSets(capabilities, collection, linkType());
     } catch (e) {
-        if (request === tileSetsRequest) setStatus("Could not list the tilesets of " + collection.id + ": " + errorMessage(e), true);
+        if (request === listRequest) setStatus("Could not list the tilesets of " + collection.id + ": " + errorMessage(e), true);
         return;
     }
-    const usable: { tileSet: CollectionTileSetInfo, tileMatrix: TileSetData }[] = [];
-    for (const tileSet of tileSets) {
+    const resolved = await Promise.all(tileSets.map(async tileSet => {
         try {
             const tileMatrix = await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(capabilities, tileSet, tileMatrixSets);
-            if (isUsableTileMatrixSet(tileMatrix, linkType())) usable.push({tileSet, tileMatrix});
+            return isUsableTileMatrixSet(tileMatrix, linkType()) ? {tileSet, tileMatrix} : null;
         } catch (e) {
             console.info("Skipping tileset " + tileSet.href + ": " + errorMessage(e));
+            return null;
         }
-    }
-    if (request !== tileSetsRequest) return;
-    collectionTileSets = usable;
-    const webMercator = usable.find(t => /WebMercatorQuad\/?$/.test(t.tileSet.tileMatrixSetURI || t.tileMatrix.id));
-    fillSelect(tmsSelect, usable.map(t => ({value: t.tileMatrix.id, label: t.tileMatrix.title || t.tileMatrix.id})),
-        webMercator ? webMercator.tileMatrix.id : undefined);
+    }));
+    if (request !== listRequest) return;
+    collectionTileSets = resolved.filter(t => t !== null);
+    const webMercator = collectionTileSets.find(t => /WebMercatorQuad\/?$/.test(t.tileSet.tileMatrixSetURI || t.tileMatrix.id));
+    fillSelect(tmsSelect, collectionTileSets.map(t => ({
+        value: t.tileSet.href, label: t.tileMatrix.title || t.tileMatrix.id, data: {tileMatrixSet: t.tileMatrix.id}
+    })), webMercator ? webMercator.tileSet.href : undefined);
 }
 
 function getSelectedTileSet() {
-    const selected = collectionTileSets.find(t => t.tileMatrix.id === tmsSelect.value);
+    const selected = collectionTileSets.find(t => t.tileSet.href === tmsSelect.value);
     if (!selected) throw new Error("The collection has no tileset in a supported tile matrix set");
     return selected;
 }
 
-async function updateStyles() {
+async function updateStyles(request: number) {
     styles = [];
-    if (linkType() !== CollectionLinkType.VectorTiles || !selectedCollection()) return;
-    fillSelect(styleSelect, [{value: GENERATED_STYLE, label: "Generated default style"}]);
+    fillSelect(styleSelect, []);
+    const collection = selectedCollection();
+    if (linkType() !== CollectionLinkType.VectorTiles || !collection) return;
+    let collectionStyles: OgcOpenApiStyle[] = [];
     try {
-        styles = await OgcOpenApiStyleTools.fetchStyles(capabilities, selectedCollection());
+        collectionStyles = await OgcOpenApiStyleTools.fetchStyles(capabilities, collection);
     } catch (e) {
         console.warn("No OGC API styles", e);
     }
+    if (request !== listRequest) return;
+    styles = collectionStyles;
     fillSelect(styleSelect, [
         ...styles.map(s => ({value: s.id, label: s.title})),
         {value: GENERATED_STYLE, label: "Generated default style"}
@@ -347,7 +370,7 @@ async function addLayer() {
     } catch (e) {
         setStatus("Could not add the layer: " + errorMessage(e), true);
     } finally {
-        addButton.disabled = false;
+        addButton.disabled = isListing() || !selectedCollection();
     }
 }
 
