@@ -1,0 +1,30 @@
+{
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/api?f=json": {
+    "status": 404,
+    "headers": {}
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/collections": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "file": "5a3605aa2d8515ca.json"
+  },
+  "https://api.pdok.nl/kadaster/bgt/ogc/v1/collections/bord/items?f=json&limit=5&bbox=-1.657292,48.040502,12.431727,56.11059": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/geo+json",
+      "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
+      "content-length": "1235"
+    },
+    "file": "ef6a0c7a965ede86.json"
+  },
+  "https://api.pdok.nl/lv/bgt/ogc/v1/": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "1093"
+    },
+    "file": "c332e8b3b6a8ce67.json"
+  }
+}

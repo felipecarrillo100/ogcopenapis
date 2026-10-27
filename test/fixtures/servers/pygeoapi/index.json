@@ -1,0 +1,71 @@
+{
+  "https://demo.pygeoapi.io/master/": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "3102"
+    },
+    "file": "1a2e5fecd5010803.json"
+  },
+  "https://demo.pygeoapi.io/master/TileMatrixSets/WebMercatorQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "9617"
+    },
+    "file": "d5ad4a29fce6e71e.json"
+  },
+  "https://demo.pygeoapi.io/master/TileMatrixSets/WorldCRS84Quad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "8601"
+    },
+    "file": "32f7390639366791.json"
+  },
+  "https://demo.pygeoapi.io/master/TileMatrixSets?f=json": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "2144"
+    },
+    "file": "cae8fa0a8db70626.json"
+  },
+  "https://demo.pygeoapi.io/master/collections": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "92757"
+    },
+    "file": "d39163f0f7776b37.json"
+  },
+  "https://demo.pygeoapi.io/master/collections/lakes/items?f=json&limit=5&bbox=-180,-90,180,90": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
+      "content-length": "20688"
+    },
+    "file": "3da42cc6727def07.json"
+  },
+  "https://demo.pygeoapi.io/master/collections/lakes/tiles/WebMercatorQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "906"
+    },
+    "file": "c67eb6845f28aafd.json"
+  },
+  "https://demo.pygeoapi.io/master/collections/lakes/tiles/WebMercatorQuad/12/2047/2047?f=mvt": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/vnd.mapbox-vector-tile",
+      "content-length": "14"
+    },
+    "file": "491ae090d6227c52.bin"
+  },
+  "https://demo.pygeoapi.io/master/openapi": {
+    "status": 404,
+    "headers": {}
+  }
+}

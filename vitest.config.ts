@@ -10,7 +10,7 @@ export const environmentOptions = {
 export default defineConfig({
     test: {
         ...environmentOptions,
-        include: ["src/**/*.test.ts"],
-        exclude: [...configDefaults.exclude, "src/**/*.live.test.ts"],
+        include: ["src/**/*.test.ts", "test/**/*.test.ts"],
+        exclude: [...configDefaults.exclude, "**/*.live.test.ts"],
     },
 });

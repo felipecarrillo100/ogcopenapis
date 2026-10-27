@@ -8,6 +8,7 @@
   "scripts": {
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
+    "test:record": "vitest run --config vitest.record.config.ts",
     "transpile": "tsc -p tsconfig.json",
     "copyjs": "copyfiles -u 1 \"src/**/*.js\" ./lib",
     "copycss": "copyfiles -u 1 \"src/**/*.css\" ./lib",

@@ -1,0 +1,25 @@
+{
+  "features": {
+    "collections": 5,
+    "dataUrl": "https://demo.ldproxy.net/strassen/collections/netzknoten/items?f=json&profile=jsonfg",
+    "features": 5
+  },
+  "vectorTiles": {
+    "collections": 4,
+    "template": "https://demo.ldproxy.net/strassen/collections/abschnitteaeste/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}?f=mvt",
+    "layers": [
+      {
+        "id": "abschnitteaeste",
+        "geometryDimension": 1
+      }
+    ],
+    "limits": 10,
+    "maxLevel": 14,
+    "tile": {
+      "level": 12,
+      "x": 2134,
+      "y": 2738
+    },
+    "tileBytes": 4403
+  }
+}

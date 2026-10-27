@@ -1,0 +1,122 @@
+{
+ "title": "Basisregistratie Grootschalige Topografie",
+ "description": "De Basisregistratie Grootschalige Topografie (BGT) is de gedetailleerde grootschalige basiskaart (digitaal) van Nederland, waarin de ligging van alle fysieke objecten zoals gebouwen, wegen, water, spoorlijnen en (landbouw)terreinen is geregistreerd. Lees meer over de BGT en bekijk de BGT vector tiles in de Vectortile Viewer.",
+ "keywords": [
+  {
+   "keyword": "bgt"
+  },
+  {
+   "keyword": "basisregistratie"
+  },
+  {
+   "keyword": "gebouwen"
+  },
+  {
+   "keyword": "spoorlijnen"
+  },
+  {
+   "keyword": "terreinen"
+  },
+  {
+   "keyword": "wegen"
+  },
+  {
+   "keyword": "topografie"
+  },
+  {
+   "keyword": "water"
+  },
+  {
+   "keyword": "vector tiles"
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "type": "application/json",
+   "title": "Landing page as JSON",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1?f=json"
+  },
+  {
+   "rel": "alternate",
+   "type": "text/html",
+   "title": "Landing page as HTML",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1?f=html"
+  },
+  {
+   "rel": "service-desc",
+   "type": "application/vnd.oai.openapi+json;version=3.0",
+   "title": "The JSON OpenAPI 3.0 document that describes the API offered at this endpoint",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/api?f=json"
+  },
+  {
+   "rel": "conformance",
+   "type": "application/json",
+   "title": "OGC API conformance classes implemented by the API offered at this endpoint",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/conformance?f=json"
+  },
+  {
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/conformance",
+   "type": "application/json",
+   "title": "OGC API conformance classes implemented by the API offered at this endpoint",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/conformance?f=json"
+  },
+  {
+   "rel": "license",
+   "type": "text/html",
+   "title": "CC0 1.0",
+   "href": "http://creativecommons.org/publicdomain/zero/1.0/deed.nl"
+  },
+  {
+   "rel": "preview",
+   "type": "image/png",
+   "title": "Thumbnail for the dataset shared via this API",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/resources/bgt_standaardvisualisatie.png"
+  },
+  {
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/styles",
+   "type": "application/json",
+   "title": "The set of styles shared via this API",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/styles"
+  },
+  {
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector",
+   "type": "application/json",
+   "title": "The JSON representation of the list of all tiles served from this endpoint",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/tiles"
+  },
+  {
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+   "type": "application/json",
+   "title": "Retrieve the list of shared TileMatrixSets available from this API implementation.",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/tileMatrixSets"
+  },
+  {
+   "rel": "data",
+   "type": "application/json",
+   "title": "The JSON representation of the list of all data layers (collections) served from this endpoint",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/collections"
+  },
+  {
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/data",
+   "type": "application/json",
+   "title": "The JSON representation of the list of all data layers (collections) served from this endpoint",
+   "href": "https://api.pdok.nl/kadaster/bgt/ogc/v1/collections"
+  },
+  {
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/data-meta",
+   "title": "Metadata for OGC API Features at Nationaal Georegister",
+   "href": "https://nationaalgeoregister.nl/geonetwork/srv/dut/catalog.search#/metadata/ba8b66c9-5b11-4a15-90d6-73335029061d"
+  },
+  {
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/data-meta",
+   "title": "Metadata for OGC API Tiles at Nationaal Georegister",
+   "href": "https://nationaalgeoregister.nl/geonetwork/srv/dut/catalog.search#/metadata/356fc922-f910-4874-b72a-dbb18c1bed3e"
+  },
+  {
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/data-meta",
+   "title": "Metadata for dataset at Nationaal Georegister",
+   "href": "https://nationaalgeoregister.nl/geonetwork/srv/dut/catalog.search#/metadata/2cb4769c-b56e-48fa-8685-c48f61b9a319"
+  }
+ ]
+}

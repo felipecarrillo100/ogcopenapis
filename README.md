@@ -45,6 +45,13 @@ npm run test:live
 ```
 The servers are reliable and stable,  but take in t account that changes at the server may brake some of these tests.
 
+The servers the tests use are listed in `test/servers.ts`, with an example of each kind of data they serve (features, maps,
+map tiles, vector tiles and styles). `npm run test` replays their recorded responses in `test/fixtures/servers`, and
+`npm run test:live` checks that the servers still answer as recorded. When a server changed, record its responses again:
+```
+npm run test:record
+```
+
 ## Demo
 The `demo` folder contains a minimal page to open Features, Maps, Tiles and Vector Tiles collections in a LuciadRIA map.
 It needs a LuciadRIA development license in `demo/license/luciadria_development.txt`, see [demo/README.md](demo/README.md).

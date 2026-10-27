@@ -5,7 +5,7 @@ import {environmentOptions} from "./vitest.config";
 export default defineConfig({
     test: {
         ...environmentOptions,
-        include: ["src/**/*.live.test.ts"],
+        include: ["src/**/*.live.test.ts", "test/**/*.live.test.ts"],
         testTimeout: 20000,
     },
 });

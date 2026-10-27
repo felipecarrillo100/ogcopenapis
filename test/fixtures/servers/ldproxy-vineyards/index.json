@@ -1,0 +1,86 @@
+{
+  "https://demo.ldproxy.net/vineyards/": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "1449"
+    },
+    "file": "8ec8025ab1cee769.json"
+  },
+  "https://demo.ldproxy.net/vineyards/api?f=json": {
+    "status": 404,
+    "headers": {}
+  },
+  "https://demo.ldproxy.net/vineyards/collections": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "1949"
+    },
+    "file": "98892fe0763ac345.json"
+  },
+  "https://demo.ldproxy.net/vineyards/collections/vineyards/items?f=json&limit=5&bbox=6.302134844793972,49.00870173627915,8.417903391872795,50.61389348807117": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/geo+json",
+      "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>"
+    },
+    "file": "479bccb88154f7ec.json"
+  },
+  "https://demo.ldproxy.net/vineyards/collections/vineyards/styles/default?f=mbs": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/vnd.mapbox.style+json",
+      "content-length": "809"
+    },
+    "file": "a701b83e27fe0d2a.json"
+  },
+  "https://demo.ldproxy.net/vineyards/collections/vineyards/styles?f=json": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "421"
+    },
+    "file": "311bd69b25e8434e.json"
+  },
+  "https://demo.ldproxy.net/vineyards/collections/vineyards/tiles/WebMercatorQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "1662"
+    },
+    "file": "769a7bdd5ec255ff.json"
+  },
+  "https://demo.ldproxy.net/vineyards/collections/vineyards/tiles/WebMercatorQuad/12/1392/2131?f=mvt": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/vnd.mapbox-vector-tile",
+      "content-length": "0"
+    },
+    "file": "be9b45a5d663b463.bin"
+  },
+  "https://demo.ldproxy.net/vineyards/tileMatrixSets": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "353"
+    },
+    "file": "d34a9251901af9ff.json"
+  },
+  "https://demo.ldproxy.net/vineyards/tileMatrixSets/AdV_25832": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "982"
+    },
+    "file": "d9f8af4b3676da4a.json"
+  },
+  "https://demo.ldproxy.net/vineyards/tileMatrixSets/WebMercatorQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "1326"
+    },
+    "file": "4be24c34ec8fed76.json"
+  }
+}

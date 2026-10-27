@@ -1,0 +1,16 @@
+{
+  "maps": {
+    "collections": 1,
+    "mapUrl": "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/collections/erm/map?bbox=-10018754.1713946%2C-10018754.1713946%2C0%2C0&bbox-crs=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F3857&crs=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F3857&transparent=true"
+  },
+  "mapTiles": {
+    "collections": 1,
+    "template": "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/collections/erm/styles/default/map/tiles/euro_3857/{tileMatrix}/{tileRow}/{tileCol}",
+    "tile": {
+      "level": 12,
+      "x": 2047,
+      "y": 2076
+    },
+    "tileUrl": "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/collections/erm/styles/default/map/tiles/euro_3857/12/2019/2047?transparent=true"
+  }
+}
