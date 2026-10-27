@@ -77,7 +77,11 @@ export class DemoPage {
 
     async addLayer(collection: string, options: { tileMatrixSet?: string, style?: string } = {}) {
         await this.page.selectOption("#collection", collection);
-        if (options.tileMatrixSet) await this.page.selectOption("#tms", options.tileMatrixSet);
+        if (options.tileMatrixSet) {
+            // The tile matrix sets of the collection load after it is selected
+            await this.page.waitForSelector(`#tms option[value="${options.tileMatrixSet}"]`, {state: "attached", timeout: LOAD_TIMEOUT});
+            await this.page.selectOption("#tms", options.tileMatrixSet);
+        }
         if (options.style) {
             // The styles of the collection load after it is selected
             await this.page.waitForSelector(`#style option[value="${options.style}"]`, {state: "attached", timeout: LOAD_TIMEOUT});

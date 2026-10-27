@@ -127,9 +127,13 @@ import {OgcOpenApiStyleTools} from "ogcopenapis/lib/OgcOpenApiStyleTools";
 const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://demo.ldproxy.net/daraa/", {filterCollectionsByLinkType: CollectionLinkType.VectorTiles});
 const collection = capabilities.collections.find(c => c.id === "TransportationGroundCrv");
 
-// The tile matrix set definition and the tileset of the collection for it
-const tileMatrix = (await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities)).find(t => t.id === "WebMercatorQuad");
-const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileMatrix.id, {}, CollectionLinkType.VectorTiles);
+// The tilesets of the collection: the tile matrix sets it is tiled in, which can be fewer than the ones of the server.
+// Servers give tile matrix sets their own ids (CubeWerx calls WebMercatorQuad smerc), they are matched by URI
+const tileMatrixSets = await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities);
+const tileSets = await OgcOpenApiGetCapabilities.fetchCollectionTileSets(capabilities, collection, CollectionLinkType.VectorTiles);
+const webMercator = tileSets.find(t => /WebMercatorQuad$/.test(t.tileMatrixSetURI));
+const tileMatrix = await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(capabilities, webMercator, tileMatrixSets);
+const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, webMercator, {}, CollectionLinkType.VectorTiles);
 
 const model = new OgcOpenApiVectorTilesModel({
     tileMatrix,

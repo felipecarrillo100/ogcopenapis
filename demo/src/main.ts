@@ -16,6 +16,7 @@ import {Bounds} from "@luciad/ria/shape/Bounds.js";
 
 import {
     CollectionLinkType,
+    CollectionTileSetInfo,
     OgcOpenApiCapabilitiesCollection,
     OgcOpenApiCapabilitiesObject,
     OgcOpenApiGetCapabilities,
@@ -78,7 +79,9 @@ map.layerTree.addChild(osmLayer, "bottom");
 (window as any).demo = {MapboxVectorTileSetModel, MapboxVectorTileSetLayer, MapboxStyle, OgcOpenApiStyleTools, OgcOpenApiGetCapabilities, OgcOpenApiVectorTilesModel};
 
 let capabilities: OgcOpenApiCapabilitiesObject | null = null;
+// All tile matrix sets of the server, and the tilesets of the selected collection with their tile matrix set
 let tileMatrixSets: TileSetData[] = [];
+let collectionTileSets: { tileSet: CollectionTileSetInfo, tileMatrix: TileSetData }[] = [];
 let styles: OgcOpenApiStyle[] = [];
 
 function setStatus(message: string, error = false) {
@@ -116,13 +119,10 @@ async function connect() {
         capabilities = await OgcOpenApiGetCapabilities.fromURL(urlInput.value, {filterCollectionsByLinkType: linkType()});
         const collections = [...capabilities.collections].sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
         fillSelect(collectionSelect, collections.map(c => ({value: c.id, label: c.title || c.id})));
-        if (isTiled()) {
-            tileMatrixSets = (await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities)).filter(t => isUsableTileMatrixSet(t, linkType()));
-            fillSelect(tmsSelect, tileMatrixSets.map(t => ({value: t.id, label: t.title || t.id})), "WebMercatorQuad");
-        }
+        tileMatrixSets = isTiled() ? await OgcOpenApiGetCapabilities.fetchTileSetsInFull(capabilities) : [];
         setStatus(collections.length + " collections");
         addButton.disabled = collections.length === 0;
-        await updateStyles();
+        await updateCollection();
     } catch (e) {
         setStatus("Could not connect: " + errorMessage(e), true);
     }
@@ -138,6 +138,50 @@ function isUsableTileMatrixSet(tileMatrixSet: TileSetData, type: CollectionLinkT
         console.info("Skipping tile matrix set " + tileMatrixSet.id + ": " + errorMessage(e));
         return false;
     }
+}
+
+async function updateCollection() {
+    await updateTileMatrixSets();
+    await updateStyles();
+}
+
+// Only the tile matrix sets the collection is tiled in, which can be fewer than the ones of the server.
+// Selecting another collection while they load starts again, only the latest selection fills the list.
+let tileSetsRequest = 0;
+
+async function updateTileMatrixSets() {
+    const request = ++tileSetsRequest;
+    collectionTileSets = [];
+    fillSelect(tmsSelect, []);
+    const collection = selectedCollection();
+    if (!isTiled() || !collection) return;
+    let tileSets: CollectionTileSetInfo[] = [];
+    try {
+        tileSets = await OgcOpenApiGetCapabilities.fetchCollectionTileSets(capabilities, collection, linkType());
+    } catch (e) {
+        if (request === tileSetsRequest) setStatus("Could not list the tilesets of " + collection.id + ": " + errorMessage(e), true);
+        return;
+    }
+    const usable: { tileSet: CollectionTileSetInfo, tileMatrix: TileSetData }[] = [];
+    for (const tileSet of tileSets) {
+        try {
+            const tileMatrix = await OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(capabilities, tileSet, tileMatrixSets);
+            if (isUsableTileMatrixSet(tileMatrix, linkType())) usable.push({tileSet, tileMatrix});
+        } catch (e) {
+            console.info("Skipping tileset " + tileSet.href + ": " + errorMessage(e));
+        }
+    }
+    if (request !== tileSetsRequest) return;
+    collectionTileSets = usable;
+    const webMercator = usable.find(t => /WebMercatorQuad$/.test(t.tileSet.tileMatrixSetURI || t.tileMatrix.id));
+    fillSelect(tmsSelect, usable.map(t => ({value: t.tileMatrix.id, label: t.tileMatrix.title || t.tileMatrix.id})),
+        webMercator ? webMercator.tileMatrix.id : undefined);
+}
+
+function getSelectedTileSet() {
+    const selected = collectionTileSets.find(t => t.tileMatrix.id === tmsSelect.value);
+    if (!selected) throw new Error("The collection has no tileset in a supported tile matrix set");
+    return selected;
 }
 
 async function updateStyles() {
@@ -215,8 +259,8 @@ async function createLayer(collection: OgcOpenApiCapabilitiesCollection): Promis
             return new RasterTileSetLayer(model, {label});
         }
         case CollectionLinkType.Tiles: {
-            const tileMatrix = tileMatrixSets.find(t => t.id === tmsSelect.value);
-            const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileMatrix.id, {}, CollectionLinkType.Tiles);
+            const {tileSet: tileSetInfo, tileMatrix} = getSelectedTileSet();
+            const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileSetInfo, {}, CollectionLinkType.Tiles);
             const link = tileSet.links.find(l => l.type === "image/png") || tileSet.links[0];
             const model = await OgcOpenApiTilesModel.createFromTileSet({
                 tileMatrix,
@@ -229,8 +273,8 @@ async function createLayer(collection: OgcOpenApiCapabilitiesCollection): Promis
             return new RasterTileSetLayer(model, {label});
         }
         case CollectionLinkType.VectorTiles: {
-            const tileMatrix = tileMatrixSets.find(t => t.id === tmsSelect.value);
-            const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileMatrix.id, {}, CollectionLinkType.VectorTiles);
+            const {tileSet: tileSetInfo, tileMatrix} = getSelectedTileSet();
+            const tileSet = await OgcOpenApiGetCapabilities.fetchCollectionTileSet(capabilities, collection, tileSetInfo, {}, CollectionLinkType.VectorTiles);
             const link = tileSet.links.find(l => l.type === MVT) || tileSet.links[0];
             const model = new OgcOpenApiVectorTilesModel({
                 tileMatrix,
@@ -315,7 +359,7 @@ typeSelect.onchange = () => {
     void connect();
 };
 connectButton.onclick = () => void connect();
-collectionSelect.onchange = () => void updateStyles();
+collectionSelect.onchange = () => void updateCollection();
 addButton.onclick = () => void addLayer();
 updateRows();
 addToLayerList(osmLayer);

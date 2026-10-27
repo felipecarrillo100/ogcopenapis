@@ -1,0 +1,330 @@
+{
+   "links" : [
+      {
+         "rel" : "self",
+         "type" : "application/json",
+         "title" : "The JSON representation of the available multi-layer vector tilesets for dc",
+         "href" : "/ogcapi/collections/osm:dc/tiles/?f=json"
+      },
+      {
+         "rel" : "alternate",
+         "type" : "text/plain",
+         "title" : "The ECON representation of the available multi-layer vector tilesets for dc",
+         "href" : "/ogcapi/collections/osm:dc/tiles/?f=econ"
+      },
+      {
+         "rel" : "alternate",
+         "type" : "text/html",
+         "title" : "The HTML representation of the available multi-layer vector tilesets for dc",
+         "href" : "/ogcapi/collections/osm:dc/tiles/?f=html"
+      },
+      {
+         "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tilesets-map",
+         "type" : "application/json",
+         "title" : "Map tilesets for dc (as JSON)",
+         "href" : "/ogcapi/collections/osm:dc/map/tiles?f=json"
+      },
+      {
+         "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tilesets-map",
+         "type" : "text/plain",
+         "title" : "Map tilesets for dc (as ECON)",
+         "href" : "/ogcapi/collections/osm:dc/map/tiles?f=econ"
+      },
+      {
+         "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tilesets-map",
+         "type" : "text/html",
+         "title" : "Map tilesets for dc (as HTML)",
+         "href" : "/ogcapi/collections/osm:dc/map/tiles?f=html"
+      }
+   ],
+   "tilesets" : [
+      {
+         "title" : "dc",
+         "tileMatrixSetURI" : "http://www.opengis.net/def/tilematrixset/OGC/1.0/CDB1GlobalGrid",
+         "crs" : "http://www.opengis.net/def/crs/EPSG/0/4326",
+         "dataType" : "vector",
+         "links" : [
+            {
+               "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
+               "type" : "application/json",
+               "title" : "CDB1GlobalGridTileMatrixSet definition (as JSON)",
+               "href" : "/ogcapi/tileMatrixSets/CDB1GlobalGrid"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json",
+               "title" : "CDB1GlobalGrid multi-layer vector tileset for dc (as JSON)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/CDB1GlobalGrid?f=json"
+            },
+            {
+               "rel" : "self",
+               "type" : "text/html",
+               "title" : "CDB1GlobalGrid multi-layer vector tileset for dc (as HTML)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/CDB1GlobalGrid?f=html"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json+tilejson",
+               "title" : "CDB1GlobalGrid multi-layer vector tileset for dc (in TileJSON format)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/CDB1GlobalGrid?f=tilejson"
+            }
+         ]
+      },
+      {
+         "title" : "dc",
+         "tileMatrixSetURI" : "http://www.opengis.net/def/tilematrixset/OGC/1.0/GlobalCRS84Pixel",
+         "crs" : "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+         "dataType" : "vector",
+         "links" : [
+            {
+               "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
+               "type" : "application/json",
+               "title" : "GlobalCRS84PixelTileMatrixSet definition (as JSON)",
+               "href" : "/ogcapi/tileMatrixSets/GlobalCRS84Pixel"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json",
+               "title" : "GlobalCRS84Pixel multi-layer vector tileset for dc (as JSON)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GlobalCRS84Pixel?f=json"
+            },
+            {
+               "rel" : "self",
+               "type" : "text/html",
+               "title" : "GlobalCRS84Pixel multi-layer vector tileset for dc (as HTML)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GlobalCRS84Pixel?f=html"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json+tilejson",
+               "title" : "GlobalCRS84Pixel multi-layer vector tileset for dc (in TileJSON format)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GlobalCRS84Pixel?f=tilejson"
+            }
+         ]
+      },
+      {
+         "title" : "dc",
+         "tileMatrixSetURI" : "http://www.opengis.net/def/tilematrixset/OGC/1.0/GlobalCRS84Scale",
+         "crs" : "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+         "dataType" : "vector",
+         "links" : [
+            {
+               "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
+               "type" : "application/json",
+               "title" : "GlobalCRS84ScaleTileMatrixSet definition (as JSON)",
+               "href" : "/ogcapi/tileMatrixSets/GlobalCRS84Scale"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json",
+               "title" : "GlobalCRS84Scale multi-layer vector tileset for dc (as JSON)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GlobalCRS84Scale?f=json"
+            },
+            {
+               "rel" : "self",
+               "type" : "text/html",
+               "title" : "GlobalCRS84Scale multi-layer vector tileset for dc (as HTML)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GlobalCRS84Scale?f=html"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json+tilejson",
+               "title" : "GlobalCRS84Scale multi-layer vector tileset for dc (in TileJSON format)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GlobalCRS84Scale?f=tilejson"
+            }
+         ]
+      },
+      {
+         "title" : "dc",
+         "tileMatrixSetURI" : "http://www.opengis.net/def/tilematrixset/OGC/1.0/GNOSISGlobalGrid",
+         "crs" : "http://www.opengis.net/def/crs/EPSG/0/4326",
+         "dataType" : "vector",
+         "links" : [
+            {
+               "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
+               "type" : "application/json",
+               "title" : "GNOSISGlobalGridTileMatrixSet definition (as JSON)",
+               "href" : "/ogcapi/tileMatrixSets/GNOSISGlobalGrid"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json",
+               "title" : "GNOSISGlobalGrid multi-layer vector tileset for dc (as JSON)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GNOSISGlobalGrid?f=json"
+            },
+            {
+               "rel" : "self",
+               "type" : "text/html",
+               "title" : "GNOSISGlobalGrid multi-layer vector tileset for dc (as HTML)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GNOSISGlobalGrid?f=html"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json+tilejson",
+               "title" : "GNOSISGlobalGrid multi-layer vector tileset for dc (in TileJSON format)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GNOSISGlobalGrid?f=tilejson"
+            }
+         ]
+      },
+      {
+         "title" : "dc",
+         "tileMatrixSetURI" : "http://www.opengis.net/def/tilematrixset/OGC/1.0/GoogleCRS84Quad",
+         "crs" : "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+         "dataType" : "vector",
+         "links" : [
+            {
+               "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
+               "type" : "application/json",
+               "title" : "GoogleCRS84QuadTileMatrixSet definition (as JSON)",
+               "href" : "/ogcapi/tileMatrixSets/GoogleCRS84Quad"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json",
+               "title" : "GoogleCRS84Quad multi-layer vector tileset for dc (as JSON)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GoogleCRS84Quad?f=json"
+            },
+            {
+               "rel" : "self",
+               "type" : "text/html",
+               "title" : "GoogleCRS84Quad multi-layer vector tileset for dc (as HTML)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GoogleCRS84Quad?f=html"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json+tilejson",
+               "title" : "GoogleCRS84Quad multi-layer vector tileset for dc (in TileJSON format)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/GoogleCRS84Quad?f=tilejson"
+            }
+         ]
+      },
+      {
+         "title" : "dc",
+         "tileMatrixSetURI" : "http://www.opengis.net/def/tilematrixset/OGC/1.0/ISEA9R",
+         "crs" : "http://www.opengis.net/def/crs/OGC/0/153456",
+         "dataType" : "vector",
+         "links" : [
+            {
+               "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
+               "type" : "application/json",
+               "title" : "ISEA9RTileMatrixSet definition (as JSON)",
+               "href" : "/ogcapi/tileMatrixSets/ISEA9R"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json",
+               "title" : "ISEA9R multi-layer vector tileset for dc (as JSON)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/ISEA9R?f=json"
+            },
+            {
+               "rel" : "self",
+               "type" : "text/html",
+               "title" : "ISEA9R multi-layer vector tileset for dc (as HTML)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/ISEA9R?f=html"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json+tilejson",
+               "title" : "ISEA9R multi-layer vector tileset for dc (in TileJSON format)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/ISEA9R?f=tilejson"
+            }
+         ]
+      },
+      {
+         "title" : "dc",
+         "tileMatrixSetURI" : "http://www.opengis.net/def/tilematrixset/OGC/1.0/WebMercatorQuad",
+         "crs" : "http://www.opengis.net/def/crs/EPSG/0/3857",
+         "dataType" : "vector",
+         "links" : [
+            {
+               "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
+               "type" : "application/json",
+               "title" : "WebMercatorQuadTileMatrixSet definition (as JSON)",
+               "href" : "/ogcapi/tileMatrixSets/WebMercatorQuad"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json",
+               "title" : "WebMercatorQuad multi-layer vector tileset for dc (as JSON)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/WebMercatorQuad?f=json"
+            },
+            {
+               "rel" : "self",
+               "type" : "text/html",
+               "title" : "WebMercatorQuad multi-layer vector tileset for dc (as HTML)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/WebMercatorQuad?f=html"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json+tilejson",
+               "title" : "WebMercatorQuad multi-layer vector tileset for dc (in TileJSON format)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/WebMercatorQuad?f=tilejson"
+            }
+         ]
+      },
+      {
+         "title" : "dc",
+         "tileMatrixSetURI" : "http://www.opengis.net/def/tilematrixset/OGC/1.0/WorldCRS84Quad",
+         "crs" : "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+         "dataType" : "vector",
+         "links" : [
+            {
+               "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
+               "type" : "application/json",
+               "title" : "WorldCRS84QuadTileMatrixSet definition (as JSON)",
+               "href" : "/ogcapi/tileMatrixSets/WorldCRS84Quad"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json",
+               "title" : "WorldCRS84Quad multi-layer vector tileset for dc (as JSON)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/WorldCRS84Quad?f=json"
+            },
+            {
+               "rel" : "self",
+               "type" : "text/html",
+               "title" : "WorldCRS84Quad multi-layer vector tileset for dc (as HTML)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/WorldCRS84Quad?f=html"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json+tilejson",
+               "title" : "WorldCRS84Quad multi-layer vector tileset for dc (in TileJSON format)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/WorldCRS84Quad?f=tilejson"
+            }
+         ]
+      },
+      {
+         "title" : "dc",
+         "tileMatrixSetURI" : "http://www.opengis.net/def/tilematrixset/OGC/1.0/WorldMercatorWGS84Quad",
+         "crs" : "http://www.opengis.net/def/crs/EPSG/0/3395",
+         "dataType" : "vector",
+         "links" : [
+            {
+               "rel" : "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme",
+               "type" : "application/json",
+               "title" : "WorldMercatorWGS84QuadTileMatrixSet definition (as JSON)",
+               "href" : "/ogcapi/tileMatrixSets/WorldMercatorWGS84Quad"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json",
+               "title" : "WorldMercatorWGS84Quad multi-layer vector tileset for dc (as JSON)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/WorldMercatorWGS84Quad?f=json"
+            },
+            {
+               "rel" : "self",
+               "type" : "text/html",
+               "title" : "WorldMercatorWGS84Quad multi-layer vector tileset for dc (as HTML)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/WorldMercatorWGS84Quad?f=html"
+            },
+            {
+               "rel" : "self",
+               "type" : "application/json+tilejson",
+               "title" : "WorldMercatorWGS84Quad multi-layer vector tileset for dc (in TileJSON format)",
+               "href" : "/ogcapi/collections/osm:dc/tiles/WorldMercatorWGS84Quad?f=tilejson"
+            }
+         ]
+      }
+   ]
+}
