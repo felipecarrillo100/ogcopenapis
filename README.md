@@ -88,6 +88,9 @@ dataset, in a LuciadRIA map. It needs a LuciadRIA development license in `demo/l
 npm run demo
 ```
 
+Ideas for an application on top of the library, from how other clients present OGC API data, are in
+[docs/ux-recommendations.md](docs/ux-recommendations.md).
+
 ## To use in your project
 
 Simply import the NPM package into your project, with LuciadRIA, its peer dependency:
