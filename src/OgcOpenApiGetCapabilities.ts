@@ -9,7 +9,7 @@ export interface LinkType {
   href: string;
 }
 
-interface TileMatrix {
+export interface TileMatrix {
   id: string,
   scaleDenominator: number;
   cellSize: number;
