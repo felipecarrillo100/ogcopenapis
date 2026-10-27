@@ -7,3 +7,6 @@ lib/
 demo/license/*.txt
 !demo/license/readme.txt
 demo/dist/
+
+# Screenshots of the browser tests
+test/browser/screenshots/

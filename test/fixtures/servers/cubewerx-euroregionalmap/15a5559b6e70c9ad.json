@@ -1,0 +1,1 @@
+{"tileMatrixSets":[{"id":"euro_3857","boundingBox":{"lowerLeft":[-20037508.34278924,-20037508.34278955],"upperRight":[20037508.34278955,20037508.34278924]},"links":[{"href":"https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/tileMatrixSets/euro_3857?f=json","rel":"self","type":"application/json","title":"this tile-matrix set (full definition) as JSON"}]}]}

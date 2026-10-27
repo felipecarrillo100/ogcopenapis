@@ -1,0 +1,34 @@
+{
+  "features": {
+    "collections": 13,
+    "dataUrl": "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/collections/TransportationGroundCrv/items?f=application%2Fgeo%2Bjson",
+    "features": 5
+  },
+  "maps": {
+    "collections": 15,
+    "mapUrl": "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/collections/Daraa_mosaic_2019/map?bbox=-10018754.1713946%2C-10018754.1713946%2C0%2C0&bbox-crs=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F3857&crs=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F3857&transparent=true"
+  },
+  "mapTiles": {
+    "collections": 15,
+    "template": "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/collections/Daraa_mosaic_2019/styles/default/map/tiles/smerc/{tileMatrix}/{tileRow}/{tileCol}",
+    "tile": {
+      "level": 12,
+      "x": 2459,
+      "y": 2440
+    },
+    "tileUrl": "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/collections/Daraa_mosaic_2019/styles/default/map/tiles/smerc/12/1655/2459?transparent=true"
+  },
+  "vectorTiles": {
+    "collections": 13,
+    "template": "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/collections/TransportationGroundCrv/tiles/smerc/{tileMatrix}/{tileRow}/{tileCol}",
+    "layers": [],
+    "limits": 0,
+    "maxLevel": 22,
+    "tile": {
+      "level": 12,
+      "x": 2460,
+      "y": 2443
+    },
+    "tileBytes": 7097
+  }
+}

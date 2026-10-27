@@ -1,5 +1,4 @@
-import {describe, expect, it, jest} from '@jest/globals';
-import "isomorphic-fetch";
+import {describe, expect, it, vi} from 'vitest';
 
 import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapabilities";
 import {OgcOpenApiVectorTilesModel} from "./OgcOpenApiVectorTilesModel";
@@ -82,7 +81,7 @@ describe('OgcOpenApiVectorTilesModel', () => {
 
     it('daraa TransportationGroundCrv getVectorTile below the limits is null without a request', async () => {
         const model = await createDaraaModel("TransportationGroundCrv", "WebMercatorQuad");
-        const fetchSpy = jest.spyOn(globalThis, "fetch");
+        const fetchSpy = vi.spyOn(globalThis, "fetch");
         expect(await model.getVectorTile({level: 3, x: 4, y: 4})).toBeNull();
         expect(fetchSpy).not.toHaveBeenCalled();
         fetchSpy.mockRestore();

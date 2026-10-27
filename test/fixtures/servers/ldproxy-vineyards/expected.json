@@ -1,0 +1,33 @@
+{
+  "features": {
+    "collections": 1,
+    "dataUrl": "https://demo.ldproxy.net/vineyards/collections/vineyards/items?f=json&profile=jsonfg",
+    "features": 5
+  },
+  "vectorTiles": {
+    "collections": 1,
+    "template": "https://demo.ldproxy.net/vineyards/collections/vineyards/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}?f=mvt",
+    "layers": [
+      {
+        "id": "vineyards",
+        "geometryDimension": 2
+      }
+    ],
+    "limits": 12,
+    "maxLevel": 16,
+    "tile": {
+      "level": 12,
+      "x": 2131,
+      "y": 2703
+    },
+    "tileBytes": 0,
+    "styles": {
+      "ids": [
+        "default",
+        "withTerrain"
+      ],
+      "stylesheet": "https://demo.ldproxy.net/vineyards/collections/vineyards/styles/default?f=mbs",
+      "layers": 5
+    }
+  }
+}

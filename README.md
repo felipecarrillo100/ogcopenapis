@@ -31,15 +31,35 @@ npm run build
 Then you can publish the package to npm or other repository
 
 ## To test
-Some test have been added that runs using nodejs using Jest.
-The test uses isomorphic-fetch to provide fetch in node testing with jest.
+The tests run in nodejs using Vitest, with jsdom as environment.
+
+The default tests run offline, on fixtures in `src/fixtures` and with a mocked `fetch`:
 ```
 npm run test
 ```
-Most tests use the sever-side implementations of OGC Open API from "https://demo.pygeoapi.io/master/", "https://demo.ldproxy.net/",
-"https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/", "https://maps.gnosis.earth/ogcapi/" and "https://api.pdok.nl/".
-The servers are reliable and stable,  but take in t account that changes at the server may brake some tests of this client.
-The tests of OgcOpenApiTileMatrixTools run offline, on the tile matrix sets in `src/fixtures`.
+
+The live tests (`*.live.test.ts`) use the sever-side implementations of OGC Open API from "https://demo.pygeoapi.io/master/", "https://demo.ldproxy.net/",
+"https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/", "https://maps.gnosis.earth/ogcapi/" and "https://api.pdok.nl/":
+```
+npm run test:live
+```
+The servers are reliable and stable,  but take in t account that changes at the server may brake some of these tests.
+
+The servers the tests use are listed in `test/servers.ts`, with an example of each kind of data they serve (features, maps,
+map tiles, vector tiles and styles). `npm run test` replays their recorded responses in `test/fixtures/servers`, and
+`npm run test:live` checks that the servers still answer as recorded. When a server changed, record its responses again:
+```
+npm run test:record
+```
+
+The browser tests run the demo in Chrome: for each test server and each kind of data, they add a layer and check that the
+map paints it, without failed requests or page errors. They need the LuciadRIA license in `demo/license` (see
+[demo/README.md](demo/README.md)) and Google Chrome, or another Chrome set with `CHROME_PATH`. `HEADED=1` shows the browser,
+and screenshots are saved in `test/browser/screenshots`.
+```
+npm run test:browser
+```
+Layers that are not painted yet are marked with `knownIssue` in `test/servers.ts`, the browser tests expect them to fail.
 
 ## Demo
 The `demo` folder contains a minimal page to open Features, Maps, Tiles and Vector Tiles collections in a LuciadRIA map.

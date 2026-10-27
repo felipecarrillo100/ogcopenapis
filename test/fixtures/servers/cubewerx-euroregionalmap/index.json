@@ -1,0 +1,41 @@
+{
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    },
+    "file": "1c9f1522dd5bfcd0.json"
+  },
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/api?f=json": {
+    "status": 404,
+    "headers": {}
+  },
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/collections": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    },
+    "file": "4294f47804daa3de.json"
+  },
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/collections/erm/map/tiles/euro_3857": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    },
+    "file": "21834dd7f24cd56a.json"
+  },
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/tileMatrixSets": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    },
+    "file": "15a5559b6e70c9ad.json"
+  },
+  "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/EuroRegionalMap/tileMatrixSets/euro_3857": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=UTF-8"
+    },
+    "file": "6e62e1729e637089.json"
+  }
+}

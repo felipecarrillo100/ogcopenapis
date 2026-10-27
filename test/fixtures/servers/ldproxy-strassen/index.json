@@ -1,0 +1,70 @@
+{
+  "https://demo.ldproxy.net/strassen/": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "1037"
+    },
+    "file": "0e3f2599ad035298.json"
+  },
+  "https://demo.ldproxy.net/strassen/api?f=json": {
+    "status": 404,
+    "headers": {}
+  },
+  "https://demo.ldproxy.net/strassen/collections": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "file": "2b0abf3ea9b10012.json"
+  },
+  "https://demo.ldproxy.net/strassen/collections/abschnitteaeste/tiles/WebMercatorQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "1856"
+    },
+    "file": "8f6d83abc46f18c1.json"
+  },
+  "https://demo.ldproxy.net/strassen/collections/abschnitteaeste/tiles/WebMercatorQuad/12/1357/2134?f=mvt": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/vnd.mapbox-vector-tile",
+      "content-length": "2235"
+    },
+    "file": "81450365c8764c98.bin"
+  },
+  "https://demo.ldproxy.net/strassen/collections/netzknoten/items?f=json&limit=5&bbox=5.719475455482996,50.31135979175767,9.468298285316274,53.149734402190724": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/geo+json",
+      "content-crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
+      "content-length": "809"
+    },
+    "file": "7feefa3983735b94.json"
+  },
+  "https://demo.ldproxy.net/strassen/tileMatrixSets": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "352"
+    },
+    "file": "f39ec3b5de9a4a7c.json"
+  },
+  "https://demo.ldproxy.net/strassen/tileMatrixSets/AdV_25832": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "980"
+    },
+    "file": "8a169c677b5dd8ce.json"
+  },
+  "https://demo.ldproxy.net/strassen/tileMatrixSets/WebMercatorQuad": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "content-length": "1324"
+    },
+    "file": "a4acbc428f71124b.json"
+  }
+}

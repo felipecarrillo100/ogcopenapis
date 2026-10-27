@@ -1,4 +1,4 @@
-import {describe, expect, it} from '@jest/globals';
+import {describe, expect, it} from 'vitest';
 import {OgcOpenApiMapsModel} from "./OgcOpenApiMapsModel";
 
 const MAP_URL = "https://example.com/collections/c/map";

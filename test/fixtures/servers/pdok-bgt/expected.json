@@ -1,0 +1,7 @@
+{
+  "features": {
+    "collections": 49,
+    "dataUrl": "https://api.pdok.nl/kadaster/bgt/ogc/v1/collections/bord/items?f=json",
+    "features": 5
+  }
+}
