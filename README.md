@@ -123,11 +123,13 @@ const model = new OgcOpenApiVectorTilesModel({
     tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
 });
 
-// A style of the server (OGC API Styles), or a default style when the server has none
+// A style of the server (OGC API Styles), or a default style when the server has none.
+// The default style needs the layers in the tiles: from the tileset, or read from a few tiles when the tileset does not list them
 const styles = await OgcOpenApiStyleTools.fetchStyles(capabilities, collection);
+const layers = tileSet.layers.length > 0 ? tileSet.layers : await model.discoverLayers({extent: collection.extent.spatial.bbox[0]});
 const styleJson = styles.length > 0 ?
     await OgcOpenApiStyleTools.fetchMapboxStyle(capabilities, OgcOpenApiStyleTools.pickStylesheet(styles[0], tileMatrix.id)) :
-    OgcOpenApiStyleTools.createDefaultStyle(tileSet.layers);
+    OgcOpenApiStyleTools.createDefaultStyle(layers);
 
 map.layerTree.addChild(new MapboxVectorTileSetLayer(model, {label: collection.title, style: MapboxStyle.createFromObject(styleJson)}));
 ```
@@ -136,7 +138,10 @@ About styles:
 * LuciadRIA reads the Mapbox GL encoding of OGC API Styles only, not SLD or other encodings.
 * A server can publish a stylesheet per tile matrix set, because zoom levels depend on it. `pickStylesheet` picks the one for the tile matrix set in use.
 * `fetchMapboxStyle` removes properties without a value (`"filter" : ,`), so that styles that are not valid JSON can still be used.
-* `createDefaultStyle` paints points, lines and surfaces by the `geometryDimension` of the tileset layers, without labels.
+* `createDefaultStyle` paints points, lines and surfaces by the `geometryDimension` of the layers, without labels.
+* Not all servers list the layers of a tileset (CubeWerx and pygeoapi do not), and the names of the layers in the tiles
+  differ per server: ldproxy and CubeWerx name the layer of a collection after it, pygeoapi after its source data.
+  `discoverLayers` of the vector tiles model reads them from a few tiles where the data is.
 
 Notes:
 * Only tile matrix sets that LuciadRIA can address as a quad-tree are supported, both for map tiles and vector tiles.
