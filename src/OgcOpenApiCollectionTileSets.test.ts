@@ -97,6 +97,21 @@ describe('OgcOpenApiGetCapabilities.matchTileMatrixSet', () => {
         expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(URI + "WorldCRS84Quad"), sets).id).toBe("wgs84");
     });
 
+    it('By URI, also with http or https, a trailing slash or a host in another case', () => {
+        const sets = tileMatrixSets({id: "wgs84", uri: URI + "WorldCRS84Quad"}, {id: "smerc", uri: URI + "WebMercatorQuad"});
+        const https = URI.replace("http:", "https:");
+        expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(https + "WebMercatorQuad"), sets).id).toBe("smerc");
+        expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(URI + "WebMercatorQuad/"), sets).id).toBe("smerc");
+        expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(URI.replace("www.opengis.net", "WWW.OpenGIS.net") + "WebMercatorQuad"), sets).id).toBe("smerc");
+        const httpsSets = tileMatrixSets({id: "smerc", uri: https + "WebMercatorQuad/"});
+        expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(URI + "WebMercatorQuad"), httpsSets).id).toBe("smerc");
+    });
+
+    it('Not by URI when the path differs in case, paths are case-sensitive', () => {
+        const sets = tileMatrixSets({id: "smerc", uri: URI + "WebMercatorQuad"});
+        expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(URI + "webmercatorquad"), sets)).toBeUndefined();
+    });
+
     it('By id', () => {
         expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(undefined, "WebMercatorQuad"),
             tileMatrixSets({id: "WorldCRS84Quad"}, {id: "WebMercatorQuad"})).id).toBe("WebMercatorQuad");
