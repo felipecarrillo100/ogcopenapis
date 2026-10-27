@@ -51,7 +51,7 @@ export const TEST_SERVERS: TestServer[] = [
         features: {collection: "TransportationGroundCrv"},
         maps: {collection: "Daraa_mosaic_2019"},
         mapTiles: {collection: "Daraa_mosaic_2019", tileMatrixSet: "smerc"},
-        vectorTiles: {collection: "TransportationGroundCrv", tileMatrixSet: "smerc", knownIssue: "The tileset lists no layers, so the generated style is empty"},
+        vectorTiles: {collection: "TransportationGroundCrv", tileMatrixSet: "smerc"},
     },
     {
         id: "cubewerx-euroregionalmap",
@@ -66,7 +66,7 @@ export const TEST_SERVERS: TestServer[] = [
         url: "https://demo.pygeoapi.io/master/",
         features: {collection: "lakes"},
         maps: {collection: "mapserver_world_map"},
-        vectorTiles: {collection: "lakes", tileMatrixSet: "WebMercatorQuad", knownIssue: "The tileset lists no layers, so the generated style is empty"},
+        vectorTiles: {collection: "lakes", tileMatrixSet: "WebMercatorQuad"},
     },
     {
         id: "pdok-bgt",

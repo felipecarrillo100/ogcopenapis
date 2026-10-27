@@ -65,6 +65,15 @@ class OgcOpenApiTileMatrixTools {
         return {tileMatrix: tileMatrix.id, tileRow, tileCol: tile.x};
     }
 
+    // The inverse of getOgcTile, null when the tile matrix is not part of the grid
+    public static getLuciadTile(grid: OgcOpenApiTileGrid, tileMatrixId: string, tileRow: number, tileCol: number): TileCoordinate | null {
+        const level = grid.tileMatrices.findIndex(m => m.id === tileMatrixId);
+        if (level < 0) return null;
+        const tileMatrix = grid.tileMatrices[level];
+        const y = OgcOpenApiTileMatrixTools.isBottomLeft(tileMatrix) ? tileRow : tileMatrix.matrixHeight - 1 - tileRow;
+        return {level, x: tileCol, y};
+    }
+
     public static appendQueryParameters(url: string, parameters: { [key: string]: string | number | boolean | undefined }): string {
         const query = Object.keys(parameters)
             .filter(k => parameters[k] !== undefined && parameters[k] !== null)

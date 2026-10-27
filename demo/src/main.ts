@@ -141,7 +141,7 @@ function isUsableTileMatrixSet(tileMatrixSet: TileSetData) {
 async function updateStyles() {
     styles = [];
     if (linkType() !== CollectionLinkType.VectorTiles || !selectedCollection()) return;
-    fillSelect(styleSelect, [{value: GENERATED_STYLE, label: "Generated from the tileset layers"}]);
+    fillSelect(styleSelect, [{value: GENERATED_STYLE, label: "Generated default style"}]);
     try {
         styles = await OgcOpenApiStyleTools.fetchStyles(capabilities, selectedCollection());
     } catch (e) {
@@ -149,7 +149,7 @@ async function updateStyles() {
     }
     fillSelect(styleSelect, [
         ...styles.map(s => ({value: s.id, label: s.title})),
-        {value: GENERATED_STYLE, label: "Generated from the tileset layers"}
+        {value: GENERATED_STYLE, label: "Generated default style"}
     ]);
 }
 
@@ -229,7 +229,9 @@ async function createLayer(collection: OgcOpenApiCapabilitiesCollection): Promis
                 collection: collection.id,
                 tileMatrixSetLimits: tileSet.tileMatrixSetLimits,
             });
-            const style = await createStyle(tileSet.layers, tileMatrix.id, label);
+            // Not all servers list the layers of a tileset, then they are read from the tiles
+            const layers = tileSet.layers.length > 0 ? tileSet.layers : await model.discoverLayers({extent: collection.extent?.spatial?.bbox?.[0]});
+            const style = await createStyle(layers, tileMatrix.id, label);
             return new MapboxVectorTileSetLayer(model, {label, style});
         }
     }
