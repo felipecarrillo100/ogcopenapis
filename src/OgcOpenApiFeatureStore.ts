@@ -1,10 +1,8 @@
-import {Store} from '@luciad/ria/model/store/Store';
+import {Store, StoreOperationName} from '@luciad/ria/model/store/Store';
 import {Cursor} from '@luciad/ria/model/Cursor';
 import {Feature} from '@luciad/ria/model/feature/Feature';
-import {Evented, Handle} from '@luciad/ria/util/Evented';
 import {Bounds} from '@luciad/ria/shape/Bounds';
 import {Codec, CodecDecodeOptions} from '@luciad/ria/model/codec/Codec';
-import {EventedSupport} from '@luciad/ria/util/EventedSupport';
 import {createBounds} from '@luciad/ria/shape/ShapeFactory';
 import {CoordinateReference} from '@luciad/ria/reference/CoordinateReference';
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
@@ -70,10 +68,9 @@ interface OgcOpenApiFeaturesCodecDecodeOptions extends CodecDecodeOptions {
   contentLength?: number;
 }
 
-export class OgcOpenApiFeatureStore implements Store, Evented {
+export class OgcOpenApiFeatureStore extends Store {
   private dataUrl: string;
   private codec: Codec;
-  private eventedSupport: EventedSupport;
   private baseUrl: string;
   private dataFormat: string | undefined;
   private customCrs: string | undefined;
@@ -89,6 +86,7 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
   private swapAxes: string[] | undefined;
 
   constructor(options: OgcOpenApiFeatureStoreConstructorOptions) {
+    super();
     // console.log(options);
     this.swapAxes = options.swapAxes;
     this.useCrs84Bounds = typeof options.useCrs84Bounds !== "undefined" ? options.useCrs84Bounds : false;
@@ -102,7 +100,6 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
     this.dataFormat = OgcOpenApiFeatureStore.dataFormatInQuery(this.dataUrl);
     this.customCrs = options.crs === "http://www.opengis.net/def/crs/OGC/1.3/CRS84" ? undefined : options.crs;
     this.codec = options.codec;
-    this.eventedSupport = new EventedSupport();
     this.requestHeaders = options.requestHeaders ? options.requestHeaders : {};
     const referenceName = OgcOpenApiCrsTools.getReferenceName(options.crs)
     this.reference = getReference(referenceName);
@@ -129,8 +126,8 @@ export class OgcOpenApiFeatureStore implements Store, Evented {
     }
   }
 
-  on(event: string, callback: any, context: any, options: any): Handle {
-    return this.eventedSupport.on(event, callback, context, options);
+  isOperationSupported(methodName: StoreOperationName): boolean {
+    return methodName === "get" || methodName === "spatialQuery";
   }
 
   get(id: number | string, optionsInput?: any): Promise<Feature> {

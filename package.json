@@ -30,7 +30,7 @@
     "typescript": "^4.6.3"
   },
   "dependencies": {
-    "@luciad/ria": ">=2020.0"
+    "@luciad/ria": ">=2026.1.0"
   },
   "repository": {
     "type": "git",
