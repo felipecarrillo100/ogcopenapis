@@ -200,3 +200,119 @@ button:disabled, select:disabled {
         border-bottom: 1px solid var(--border);
     }
 }
+
+/* What the capabilities tell about the selected collection */
+#collectionInfo {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+#collectionInfo p {
+    margin: 0 0 4px;
+    overflow-wrap: anywhere;
+}
+
+/* The description can be long: three lines at most */
+#collectionInfo p:first-child {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/*
+ * The balloon of a selected feature. LuciadRIA positions .lcdBalloon and fills .lcdContent, but ships no style for
+ * them (see showBalloon). The structure follows MapEvolution. Two rules matter: the width of .lcdContent, as LuciadRIA
+ * centres the arrow from the width of the frame, and the !important of the arrow, which LuciadRIA colours inline
+ * from the background of the frame.
+ */
+.lcdBalloon {
+    z-index: 400;
+}
+
+.lcdBalloon .lcdFrame {
+    position: relative;
+    background-color: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.lcdBalloon .lcdFrame > div:not([class]) {
+    border-top-color: var(--panel) !important;
+}
+
+.lcdBalloon .lcdHeader {
+    width: 100%;
+    height: 20px;
+    margin: 0;
+    border: 0;
+    padding: 0;
+}
+
+.lcdBalloon .lcdContent {
+    width: 100%;
+    max-width: 380px;
+    max-height: 320px;
+    padding: 0 12px 10px;
+    overflow: auto;
+    box-sizing: border-box;
+}
+
+.lcdBalloon .lcdClose {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.lcdBalloon .lcdClose::before,
+.lcdBalloon .lcdClose::after {
+    content: "";
+    position: absolute;
+    top: 9px;
+    left: 3px;
+    width: 14px;
+    height: 2px;
+    background: var(--muted);
+}
+
+.lcdBalloon .lcdClose::before {
+    transform: rotate(45deg);
+}
+
+.lcdBalloon .lcdClose::after {
+    transform: rotate(-45deg);
+}
+
+.featureBalloon {
+    min-width: 200px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.featureBalloon .featureTitle {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.featureBalloon table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.featureBalloon td {
+    padding: 2px 0;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+
+.featureBalloon td:first-child {
+    padding-right: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+}
