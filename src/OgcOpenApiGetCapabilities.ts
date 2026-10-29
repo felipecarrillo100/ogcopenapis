@@ -22,6 +22,22 @@ export const COLLECTIONS_SELECTION_CONFORMANCE = "http://www.opengis.net/spec/og
 // collections parameter as the standard requires. To be removed once ldproxy declares the class of the standard
 export const COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS = ["http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collection-selection"];
 
+// The conformance class of OGC API Features Part 3 for the filter parameter of the items of a collection
+export const FEATURES_FILTER_CONFORMANCE = "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter";
+// The conformance classes of CQL2 1.0 (OGC 21-065) share this prefix, the encodings and the levels of the language
+export const CQL2_CONFORMANCE_PREFIX = "http://www.opengis.net/spec/cql2/1.0/conf/";
+// The CQL2 encodings, as conformance classes name them. They are also the values of the filter-lang parameter
+export const CQL2_ENCODINGS = ["cql2-text", "cql2-json"];
+
+export interface OgcOpenApiFilterSupport {
+  // The server declares the Features Filter class of OGC API Features Part 3: the items of its collections take a filter
+  filter: boolean;
+  // The CQL2 encodings the server declares, cql2-text or cql2-json
+  encodings: string[];
+  // The other CQL2 classes the server declares, such as basic-cql2, advanced-comparison-operators or spatial-functions
+  levels: string[];
+}
+
 export interface TileMatrix {
   id: string,
   scaleDenominator: number;
@@ -448,6 +464,24 @@ export class OgcOpenApiGetCapabilities {
     const conformsTo = capabilities && capabilities.conformsTo ? capabilities.conformsTo : [];
     return conformsTo.indexOf(COLLECTIONS_SELECTION_CONFORMANCE) > -1 ||
         COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS.some(variant => conformsTo.indexOf(variant) > -1);
+  }
+
+  /**
+   * Whether, and how, the server filters features, as its conformance classes declare: the Features Filter class of
+   * OGC API Features Part 3, and the CQL2 1.0 classes by their names, in the order the server lists them. Each is
+   * reported as declared, a CQL2 encoding without the Features Filter class gives filter false. Pre-standard CQL
+   * classes (ogcapi-features-3/1.0/conf/cql-text) are not CQL2 and are left out.
+   */
+  public static getFilterSupport(capabilities: OgcOpenApiCapabilitiesObject | null): OgcOpenApiFilterSupport {
+    const conformsTo = capabilities && capabilities.conformsTo ? capabilities.conformsTo : [];
+    const cql2 = conformsTo
+        .filter(uri => uri.indexOf(CQL2_CONFORMANCE_PREFIX) === 0)
+        .map(uri => uri.substring(CQL2_CONFORMANCE_PREFIX.length));
+    return {
+      filter: conformsTo.indexOf(FEATURES_FILTER_CONFORMANCE) > -1,
+      encodings: cql2.filter(name => CQL2_ENCODINGS.indexOf(name) > -1),
+      levels: cql2.filter(name => CQL2_ENCODINGS.indexOf(name) === -1),
+    };
   }
 
   /**

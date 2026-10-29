@@ -180,6 +180,25 @@ Keep the ids of the server: `generateIDs: false`. Each feature of an OGC API Fea
 the store requests `items/{id}` with it, and LuciadRIA updates only the features that changed when the ids stay the same
 between queries. `generateIDs: true` replaces them with ids of its own on every query.
 
+#### Filters
+The store passes a server-side filter through the query (OGC API Features Part 3): `filter`, `filter-lang` and
+`filter-crs`. `getFilterSupport` says whether, and how, the server filters, as its conformance classes declare:
+```typescript
+const support = OgcOpenApiGetCapabilities.getFilterSupport(capabilities);
+// {filter: true, encodings: ["cql2-json", "cql2-text"], levels: ["advanced-comparison-operators", "basic-cql2", ...]}
+if (support.filter && support.encodings.indexOf("cql2-text") > -1) {
+    // Within the levels the server declares: like, between and in need advanced-comparison-operators
+    const cursor = await store.query({filter: "F_CODE='AP030'", "filter-lang": "cql2-text"});
+}
+```
+* `filter`: the server declares the Features Filter class of Part 3,
+  `http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter`.
+* `encodings` and `levels`: the CQL2 1.0 classes the server declares (`http://www.opengis.net/spec/cql2/1.0/conf/…`),
+  by their names. The encodings are also the values of `filter-lang`.
+* Each is reported as the server declares it. pygeoapi, for example, declares `cql2-text` and `basic-cql2` without the
+  Features Filter class: `filter` is false, and accepting the encoding alone is up to the application.
+* Pre-standard CQL classes, such as `ogcapi-features-3/1.0/conf/cql-text` (CubeWerx), are not CQL2 and are left out.
+
 ### Maps
 OgcOpenApiMapsModel extends WMSTileSetModel, use it with a RasterTileSetLayer. It requests the map as tiles, in the
 reference of the map when the collection offers it, otherwise in CRS84, which every server supports, and LuciadRIA
