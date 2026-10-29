@@ -27,13 +27,13 @@ describe('OgcOpenApiMapsModel', () => {
     });
 
     it('Requests the bbox and crs of the map', () => {
-        const model = new OgcOpenApiMapsModel({crs: WEB_MERCATOR, baseURL: MAP_URL, collection: "c", format: "image/png"});
+        const model = new OgcOpenApiMapsModel({crs: WEB_MERCATOR, baseURL: MAP_URL + "?f=png", collection: "c"});
         const url = model.getTileURL(model.getMapRoot, {level: 0, x: 0, y: 0});
         const query = getQuery(url);
         expect(url.split("?")[0]).toBe(MAP_URL);
         expect(query.get("crs")).toBe(WEB_MERCATOR);
         expect(query.get("bbox-crs")).toBe(WEB_MERCATOR);
-        expect(query.get("f")).toBe("image/png");
+        expect(query.get("f")).toBe("png");
         expect(query.get("transparent")).toBe("true");
     });
 
@@ -47,6 +47,12 @@ describe('OgcOpenApiMapsModel', () => {
     it('Overrides the f of the map link with format', () => {
         const model = new OgcOpenApiMapsModel({crs: WEB_MERCATOR, baseURL: MAP_URL + "?f=png", collection: "c", format: "jpeg"});
         expect(getQuery(model.getTileURL(model.getMapRoot, {level: 0, x: 0, y: 0})).get("f")).toBe("jpeg");
+    });
+
+    // Unlike the format of OgcOpenApiTilesModel. pygeoapi refuses f=image/png with 400, it names the format png
+    it('format is an f value, sent as it is: a media type is not translated', () => {
+        const model = new OgcOpenApiMapsModel({crs: WEB_MERCATOR, baseURL: MAP_URL + "?f=png", collection: "c", format: "image/png"});
+        expect(getQuery(model.getTileURL(model.getMapRoot, {level: 0, x: 0, y: 0})).get("f")).toBe("image/png");
     });
 
     it('Encodes the bgcolor', () => {

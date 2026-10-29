@@ -31,7 +31,8 @@ export interface OgcOpenApiTilesModelCreateOptions extends OgcOpenApiTilesModelO
     tileMatrixSetLimits?: TileMatrixLimits[];
     // The data extent in CRS:84, [minX, minY, maxX, maxY], such as the extent of the collection
     extent?: number[];
-    // The media type of the tiles, image/png by default
+    // The media type of the tiles, image/png by default, such as the type of the tile link. Unlike the format of
+    // OgcOpenApiMapsModel, which is an f value
     format?: string;
 }
 
