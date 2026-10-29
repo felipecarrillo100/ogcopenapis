@@ -187,155 +187,97 @@ export interface OgcOpenApiGetCapabilitiesFromURL {
 
 export class OgcOpenApiGetCapabilities {
 
-  public static fromURL(inputRequest: string, fromUrlOptions?: OgcOpenApiGetCapabilitiesFromURL) {
+  /**
+   * Reads the landing page of a server, its collections, the API document and the conformance classes, asking for
+   * JSON. Rejects with an Error when the landing page or the collections cannot be read, and with the error of the
+   * request as it is when it fails, an AbortError included. The API document and the conformance classes are
+   * optional: without them the capabilities have no version and declare no conformance classes.
+   */
+  public static async fromURL(inputRequest: string, fromUrlOptions?: OgcOpenApiGetCapabilitiesFromURL): Promise<OgcOpenApiCapabilitiesObject> {
     const options: OgcOpenApiGetCapabilitiesFromURL = fromUrlOptions ? fromUrlOptions : {};
-    return new Promise<OgcOpenApiCapabilitiesObject>((resolve, reject) => {
-      // The landing page, with the query it was given, such as an api key. baseUrl is without it
-      const baseUrl = OgcOpenApiFetchTools.cleanUrl(inputRequest);
-      const requestUrl = OgcOpenApiFetchTools.appendPath(inputRequest, "");
-      const serverOptions = OgcOpenApiFetchTools.createFetchOptions({originalUrl: requestUrl, proxify: options?.proxify});
+    // The landing page, with the query it was given, such as an api key. baseUrl is without it
+    const baseUrl = OgcOpenApiFetchTools.cleanUrl(inputRequest);
+    const requestUrl = OgcOpenApiFetchTools.appendPath(inputRequest, "");
+    const serverOptions = OgcOpenApiFetchTools.createFetchOptions({originalUrl: requestUrl, proxify: options.proxify});
+    // The requests before the capabilities exist
+    const server = {serverOptions} as OgcOpenApiCapabilitiesObject;
+    const getJson = (href: string, accept?: string) =>
+        OgcOpenApiGetCapabilities.fetchJson(server, href, options, accept).catch(e => {
+          throw OgcOpenApiGetCapabilities.toError(e, href);
+        });
 
-      OgcOpenApiFetchTools.fetch(requestUrl, {
-        method: 'GET',
-        credentials: options?.credentials ? "same-origin" : "omit",
-        headers: options? options.requestHeaders: {},
-      }, serverOptions).then(
-        (response) => {
-          if (response.status === 200) {
-            response.json().then((jsonObject) => {
-              if (!jsonObject.links) {
-                reject("Invalid format: (property 'links' is missing)")
-                return;
-              }
-              let linkToData = jsonObject.links.find(
-                (link: OgcOpenApiCapabilitiesCollectionServiceLinkType) =>
-                  link.rel === 'data' && link.type === 'application/json'
-              );
-              if (!linkToData)  {
-                linkToData = jsonObject.links.find((link) => link.rel === 'data' );
-              }
-              const linkToApi = jsonObject.links.find(
-                (link: OgcOpenApiCapabilitiesCollectionServiceLinkType) => {
-                  return (
-                    (link.rel === 'service-desc' || link.rel === 'service') &&
-                    link.type.indexOf('openapi+json') > -1
-                  );
-                }
-              );
-              const tilingSchemes = jsonObject.links.filter((link) => isRel(link, 'tiling-schemes'));
-              const linkToTileMatrixSets = tilingSchemes.find((link) => link.type === 'application/json') || tilingSchemes.find((link) => !link.type);
-              // The links of the landing page are relative to it, the links of the collections to /collections
-              const resolveLink = (link: OgcOpenApiCapabilitiesCollectionServiceLinkType, documentUrl: string) =>
-                  ({...link, href: OgcOpenApiFetchTools.resolveUrl(link.href, documentUrl, serverOptions)});
-              // The conformance classes, read with the collections. A server without them declares no classes
-              const conformance = jsonObject.links.find((link) => isRel(link, 'conformance'));
-              const conformancePromise: Promise<string[]> = conformance ?
-                  OgcOpenApiGetCapabilities.fetchJson({serverOptions} as OgcOpenApiCapabilitiesObject, resolveLink(conformance, requestUrl).href, options)
-                      .then(data => Array.isArray(data.conformsTo) ? data.conformsTo : [], () => []) :
-                  Promise.resolve([]);
-              const promiseArray = [];
-              if (linkToData) {
-                const collectionsLink = resolveLink(linkToData, requestUrl);
-                const collectionsPromise = OgcOpenApiGetCapabilities.fetchLinkContentAsJSON(
-                    collectionsLink,
-                    {credentials: options.credentials, requestHeaders: options.requestHeaders},
-                    serverOptions
-                );
-                promiseArray.push(collectionsPromise);
-                if (linkToApi) {
-                  const apiPromise = OgcOpenApiGetCapabilities.fetchLinkContentAsJSON(
-                      resolveLink(linkToApi, requestUrl),
-                      {credentials: options.credentials, requestHeaders: options.requestHeaders},
-                      serverOptions
-                  );
-                  promiseArray.push(apiPromise);
-                }
-                Promise.all(promiseArray).then((responses: any) => {
-                  const responseDataLink = responses[0];
-                  const responseOpenApi =
-                    responses.length >= 1 ? responses[1] : undefined;
-                  const crsArray = typeof responseDataLink.crs !== "undefined" ? { crs: responseDataLink.crs } : {};
-                  const foundCollections = responseDataLink.collections.filter( c =>
-                          options && options.filterCollectionsByLinkType ?
-                              OgcOpenApiGetCapabilities.filterCollectionLinks(c.links,options.filterCollectionsByLinkType).length > 0 : true
-                  )
-                      .map(
-                    (collection: any) => {
-                      const name =
-                        typeof collection.id !== 'undefined'
-                          ? collection.id
-                          : collection.name;
-                      const collectionCrsObject = {} as any;
-                      if (typeof collection.crs !== "undefined") collectionCrsObject.crs = collection.crs;
-                      if (typeof collection.storageCrs !== "undefined") collectionCrsObject.storageCrs = collection.storageCrs;
-                      const layer: OgcOpenApiCapabilitiesCollection = {
-                        description: collection.description,
-                        id: name,
-                        name,
-                        title: collection.title,
-                        keywords: collection.keywords
-                          ? collection.keywords
-                          : [],
-                        defaultReference: 'CRS:84',
-                        links: collection.links,
-                        outputFormats: options.filterCollectionsByLinkType ?
-                            this.filterCollectionLinks(collection.links, options.filterCollectionsByLinkType).map(link => this.detectTypeFormat(link))
-                            :
-                            collection.links.map(link => this.detectTypeFormat(link))
-                        ,
-                        extent: collection.extent,
-                        ...collectionCrsObject
-                      };
-                      return layer;
-                    }
-                  );
-                  // console.log(featureTypes);
-                  const o: OgcOpenApiCapabilitiesObject = {
-                    name: '',
-                    collections: foundCollections.map(col=>({...col, crs: col.crs ? col.crs : [], links: col.links.map(l => resolveLink(l, collectionsLink.href))})),
-                    version: responseOpenApi ? responseOpenApi.openapi : '',
-                    service: '',
-                    info: responseOpenApi ? responseOpenApi.info : {},
-                    ...crsArray,
-                    serverOptions: serverOptions,
-                    links: jsonObject.links.map(l => resolveLink(l, requestUrl)),
-                    baseUrl,
-                    tileMatrixSetsUrl: linkToTileMatrixSets ? resolveLink(linkToTileMatrixSets, requestUrl).href : undefined
-                  };
-                  conformancePromise.then(conformsTo => resolve({...o, conformsTo}));
-                });
-              } else {
-                reject("Invalid format: (property 'links' contains no links with rel=data");
-              }
-            }, ()=>{
-              reject("Not JSON")
-            });
-          } else {
-            reject(response.status);
-          }
-        },
-        (err) => {
-          reject(err);
-        }
-      );
-    });
+    const landing = await getJson(requestUrl);
+    if (!landing || !Array.isArray(landing.links)) throw new Error("Invalid format: (property 'links' is missing) in " + requestUrl);
+    const links: OgcOpenApiCapabilitiesCollectionServiceLinkType[] = landing.links;
+    const linkToData = links.find(link => link.rel === 'data' && link.type === 'application/json') || links.find(link => link.rel === 'data');
+    if (!linkToData) throw new Error("Invalid format: (property 'links' contains no links with rel=data) in " + requestUrl);
+    const linkToApi = links.find(link => (link.rel === 'service-desc' || link.rel === 'service') && (link.type || "").indexOf('openapi+json') > -1);
+    const tilingSchemes = links.filter(link => isRel(link, 'tiling-schemes'));
+    const linkToTileMatrixSets = tilingSchemes.find(link => link.type === 'application/json') || tilingSchemes.find(link => !link.type);
+    const conformance = links.find(link => isRel(link, 'conformance'));
+    // The links of the landing page are relative to it, the links of the collections to /collections
+    const resolveLink = (link: OgcOpenApiCapabilitiesCollectionServiceLinkType, documentUrl: string) =>
+        ({...link, href: OgcOpenApiFetchTools.resolveUrl(link.href, documentUrl, serverOptions)});
+    const collectionsLink = resolveLink(linkToData, requestUrl);
+
+    // The collections are required, the API document (in its own media type) and the conformance classes are not
+    const [collectionsDocument, api, conformsTo] = await Promise.all([
+      getJson(collectionsLink.href),
+      linkToApi ? getJson(resolveLink(linkToApi, requestUrl).href, linkToApi.type).catch(() => undefined) : Promise.resolve(undefined),
+      conformance ?
+          getJson(resolveLink(conformance, requestUrl).href).then(data => Array.isArray(data.conformsTo) ? data.conformsTo as string[] : [], () => [] as string[]) :
+          Promise.resolve([] as string[]),
+    ]);
+    if (!collectionsDocument || !Array.isArray(collectionsDocument.collections)) {
+      throw new Error("Invalid format: (property 'collections' is missing) in " + collectionsLink.href);
+    }
+
+    const crsArray = typeof collectionsDocument.crs !== "undefined" ? {crs: collectionsDocument.crs} : {};
+    const foundCollections = collectionsDocument.collections
+        .filter(c => options.filterCollectionsByLinkType ?
+            OgcOpenApiGetCapabilities.filterCollectionLinks(c.links, options.filterCollectionsByLinkType).length > 0 : true)
+        .map((collection: any) => {
+          const name = typeof collection.id !== 'undefined' ? collection.id : collection.name;
+          const collectionCrsObject = {} as any;
+          if (typeof collection.crs !== "undefined") collectionCrsObject.crs = collection.crs;
+          if (typeof collection.storageCrs !== "undefined") collectionCrsObject.storageCrs = collection.storageCrs;
+          const layer: OgcOpenApiCapabilitiesCollection = {
+            description: collection.description,
+            id: name,
+            name,
+            title: collection.title,
+            keywords: collection.keywords ? collection.keywords : [],
+            defaultReference: 'CRS:84',
+            links: collection.links,
+            outputFormats: options.filterCollectionsByLinkType ?
+                this.filterCollectionLinks(collection.links, options.filterCollectionsByLinkType).map(link => this.detectTypeFormat(link)) :
+                collection.links.map(link => this.detectTypeFormat(link)),
+            extent: collection.extent,
+            ...collectionCrsObject
+          };
+          return layer;
+        });
+    return {
+      name: '',
+      collections: foundCollections.map(col => ({...col, crs: col.crs ? col.crs : [], links: col.links.map(l => resolveLink(l, collectionsLink.href))})),
+      version: api ? api.openapi : '',
+      service: '',
+      info: api ? api.info : {},
+      ...crsArray,
+      serverOptions: serverOptions,
+      links: links.map(l => resolveLink(l, requestUrl)),
+      baseUrl,
+      tileMatrixSetsUrl: linkToTileMatrixSets ? resolveLink(linkToTileMatrixSets, requestUrl).href : undefined,
+      conformsTo,
+    };
   }
 
-  private static fetchLinkContentAsJSON(link: OgcOpenApiCapabilitiesCollectionServiceLinkType, options: {credentials: boolean, requestHeaders: RequestHeaders}, serverOptions?: FetchServerOptions) {
-    return new Promise((resolve) => {
-      OgcOpenApiFetchTools.fetch(link.href, {method: "GET", credentials: options.credentials ? "same-origin":"omit", headers: options.requestHeaders}, serverOptions).then(
-        (result) => {
-          if (result.status === 200) {
-            result.json().then((json) => resolve(json));
-          } else {
-            resolve(undefined);
-          }
-        },
-        () => {
-          resolve(undefined);
-        }
-      );
-    });
+  // An Error for a failed request of fromURL: the error of fetch as it is, such as an AbortError, otherwise its message
+  // and the URL. An error of fetch can come from another realm (a DOMException of jsdom is not instanceof Error), so
+  // anything with a name and a message is kept; the {error, message} of fetchJson has no name
+  private static toError(e: any, href: string): Error {
+    if (e instanceof Error || (e && typeof e.name === "string" && typeof e.message === "string")) return e;
+    return new Error((e && e.message ? e.message : String(e)) + " for " + href);
   }
 
   static filterCollectionLinks(
@@ -451,17 +393,15 @@ export class OgcOpenApiGetCapabilities {
   }
 
   // GETs a JSON document. Servers answer JSON for the Accept header, or for the f parameter that their links carry.
-  private static async fetchJson(capabilities: OgcOpenApiCapabilitiesObject, href: string, options?: {credentials?: boolean, requestHeaders?: RequestHeaders}) {
-    let result: Response;
-    try {
-      result = await OgcOpenApiFetchTools.fetch(href, {
-        method: "GET",
-        credentials: options?.credentials ? "same-origin" : "omit",
-        headers: {Accept: "application/json", ...(options?.requestHeaders ? options.requestHeaders : {})}
-      }, capabilities.serverOptions);
-    } catch (err) {
-      throw {error: true, message: err.message};
-    }
+  // accept is the media type to ask for, application/json by default; requestHeaders can replace it. A failed request
+  // rejects with the error of fetch as it is, such as an AbortError
+  private static async fetchJson(capabilities: OgcOpenApiCapabilitiesObject, href: string, options?: {credentials?: boolean, requestHeaders?: RequestHeaders},
+                                 accept = "application/json") {
+    const result = await OgcOpenApiFetchTools.fetch(href, {
+      method: "GET",
+      credentials: options?.credentials ? "same-origin" : "omit",
+      headers: {Accept: accept, ...(options?.requestHeaders ? options.requestHeaders : {})}
+    }, capabilities.serverOptions);
     if (result.status !== 200) throw {error: true, message: "Invalid response: " + result.status};
     try {
       return await result.json();

@@ -80,19 +80,13 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
                     expect(404).toBe(404);
                 })
             });
+            // An HTML page, not an OGC API landing page
             it('OgcOpenApiGetCapabilities.fromURL Not JSON', async () => {
-                return OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/",{}).then(data=>{
-                    expect(data.version).toBe("3.0.1");
-                }, (err)=>{
-                    expect(err).toEqual("Not JSON");
-                })
+                await expect(OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/", {})).rejects.toThrow("Not JSON data");
             });
+            // JSON, but not an OGC API landing page
             it('OgcOpenApiGetCapabilities.fromURL Not valid API', async () => {
-                return OgcOpenApiGetCapabilities.fromURL("https://jsonplaceholder.typicode.com/todos/",{}).then(data=>{
-                    expect(data.version).toBe("3.0.1");
-                }, (err)=>{
-                    expect(err).toEqual("Invalid format: (property 'links' is missing)");
-                })
+                await expect(OgcOpenApiGetCapabilities.fromURL("https://jsonplaceholder.typicode.com/todos/", {})).rejects.toThrow("Invalid format: (property 'links' is missing)");
             });
 
         });
