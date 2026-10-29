@@ -96,6 +96,24 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
                 expect(support.levels).toContain("basic-cql2");
             });
 
+            // ldproxy and PDOK list no queryables link in /collections: the path of the standard
+            it.each([
+                ["ldproxy", "https://demo.ldproxy.net/daraa/", "TransportationGroundCrv", "F_CODE"],
+                ["PDOK", "https://api.pdok.nl/lv/bgt/ogc/v1/", "bord", "plus_type"],
+                ["pygeoapi", "https://demo.pygeoapi.io/master/", "lakes", "scalerank"],
+                ["CubeWerx", "https://test.cubewerx.com/cubewerx/cubeserv/demo/ogcapi/Daraa/", "TransportationGroundCrv", "AOO"],
+            ])('OgcOpenApiGetCapabilities.fetchQueryables %s', async (_name, url, id, property) => {
+                const capabilities = await OgcOpenApiGetCapabilities.fromURL(url);
+                const queryables = await OgcOpenApiGetCapabilities.fetchQueryables(capabilities, capabilities.collections.find(c => c.id === id));
+                expect(queryables.properties[property].type).toMatch(/string|integer|number/);
+                expect(queryables.properties.geometry["x-ogc-role"]).toBe("primary-geometry");
+            });
+
+            it('OgcOpenApiGetCapabilities.fetchQueryables pygeoapi, a collection without features', async () => {
+                const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/");
+                expect(await OgcOpenApiGetCapabilities.fetchQueryables(capabilities, capabilities.collections.find(c => c.id === "icoads-sst"))).toBeNull();
+            });
+
         });
 
 
