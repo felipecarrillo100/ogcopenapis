@@ -1,5 +1,6 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {OgcOpenApiFeatureStore} from "./OgcOpenApiFeatureStore";
+import {type OgcOpenApiFeatureQueryResult, OgcOpenApiFeatureStore} from "./OgcOpenApiFeatureStore";
+import {Codec} from "@luciad/ria/model/codec/Codec";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
 import {createBounds} from "@luciad/ria/shape/ShapeFactory";
@@ -150,5 +151,86 @@ describe('OgcOpenApiFeatureStore request URLs', () => {
         const fetchSpy = respond(200, JSON.stringify(FEATURE));
         await storeFor("https://example.com/collections/c/items?f=json&apikey=k1").get("a/b c");
         expect(requested(fetchSpy)).toBe("https://example.com/collections/c/items/a%2Fb%20c?f=json&apikey=k1");
+    });
+});
+
+describe('OgcOpenApiFeatureStore onQueryResult', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    function createReportingStore(codec: Codec = new GeoJsonCodec({generateIDs: false})) {
+        const results: OgcOpenApiFeatureQueryResult[] = [];
+        const store = new OgcOpenApiFeatureStore({
+            dataUrl: DATA_URL, outputFormat: "application/geo+json", codec, crs: CRS84, useCrs84Bounds: true,
+            onQueryResult: result => results.push(result),
+        });
+        return {store, results};
+    }
+
+    // A codec for content GMLCodec would need a schema for: no features
+    class NoFeaturesCodec extends Codec {
+        decode() {
+            return {hasNext: () => false, next: () => null} as unknown as Cursor;
+        }
+    }
+
+    it('Reports numberMatched, numberReturned and the next link of a JSON response, with the request (ldproxy)', async () => {
+        respond(200, JSON.stringify({...COLLECTION, numberMatched: 3460, numberReturned: 1,
+            links: [{rel: "self", href: DATA_URL}, {rel: "next", href: DATA_URL + "&offset=1"}]}));
+        const {store, results} = createReportingStore();
+        const cursor = await store.query({filter: "F_CODE='AP030'", limit: 1});
+        expect(countFeatures(cursor)).toBe(1);
+        expect(results).toEqual([{
+            url: "https://example.com/collections/c/items?f=json&filter=F_CODE%3D'AP030'&limit=1",
+            query: expect.objectContaining({filter: "F_CODE='AP030'", limit: 1}),
+            numberMatched: 3460, numberReturned: 1, hasNext: true,
+        }]);
+    });
+
+    it('Leaves numberMatched out when the server gives none (PDOK), hasNext false without a next link', async () => {
+        respond(200, JSON.stringify({...COLLECTION, numberReturned: 1, links: [{rel: "self", href: DATA_URL}]}));
+        const {store, results} = createReportingStore();
+        await store.spatialQuery(bounds());
+        expect(results[0].url).toContain("bbox=");
+        expect(results[0]).not.toHaveProperty("numberMatched");
+        expect(results[0]).toMatchObject({numberReturned: 1, hasNext: false});
+    });
+
+    it('Reads the next link of the Link header too', async () => {
+        respond(200, JSON.stringify(COLLECTION), {Link: '<https://example.com/a?f=json>; rel="alternate"; type="text/html", <https://example.com/b?offset=1>; rel="next"'});
+        const {store, results} = createReportingStore();
+        await store.query();
+        expect(results[0]).toEqual({url: DATA_URL, query: expect.anything(), hasNext: true});
+    });
+
+    it('Reads the attributes of the root element of GML (CubeWerx), numberMatched="unknown" left out', async () => {
+        const gml = (matched: string) => '<?xml version="1.0"?><!-- a comment -->' +
+            '<wfs:FeatureCollection timeStamp="2026-10-29T19:08:31" numberReturned="5" numberMatched="' + matched + '" xmlns:wfs="http://www.opengis.net/wfs/2.0"></wfs:FeatureCollection>';
+        respond(200, gml("3694"), {"Content-Type": "application/gml+xml; version=3.2"});
+        const {store, results} = createReportingStore(new NoFeaturesCodec());
+        await store.query();
+        vi.restoreAllMocks();
+        respond(200, gml("unknown"), {"Content-Type": "application/gml+xml; version=3.2"});
+        await store.query();
+        expect(results.map(({url, query, ...size}) => size)).toEqual([{numberMatched: 3694, numberReturned: 5}, {numberReturned: 5}]);
+    });
+
+    it('Is not called for get, a failed query, or an aborted query', async () => {
+        const {store, results} = createReportingStore();
+        respond(200, JSON.stringify(FEATURE));
+        await store.get(1);
+        vi.restoreAllMocks();
+        respond(500, "oops");
+        await expect(store.query() as Promise<Cursor>).rejects.toThrow();
+        vi.restoreAllMocks();
+        const controller = new AbortController();
+        vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+            controller.abort();
+            return Promise.resolve(new Response(JSON.stringify(COLLECTION), {status: 200, headers: {"Content-Type": "application/geo+json"}}));
+        });
+        await store.query({}, {abortSignal: controller.signal});
+        expect(results).toEqual([]);
     });
 });

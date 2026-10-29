@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {OgcOpenApiFeatureStore} from "./OgcOpenApiFeatureStore";
+import {type OgcOpenApiFeatureQueryResult, OgcOpenApiFeatureStore} from "./OgcOpenApiFeatureStore";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec";
 import {getReference} from "@luciad/ria/reference/ReferenceProvider";
 import {createBounds} from "@luciad/ria/shape/ShapeFactory";
@@ -104,3 +104,23 @@ import {FeatureModel} from "@luciad/ria/model/feature/FeatureModel";
         })
 
 
+
+// The filtered requests of the client report on numberMatched, 29 October 2026
+describe('OgcOpenApiFeatureStore onQueryResult', () => {
+    it.each([
+        ["ldproxy", "https://demo.ldproxy.net/daraa/collections/TransportationGroundCrv/items?f=json", "F_CODE='AP030'", {numberReturned: 1000, hasNext: true}, true],
+        ["PDOK, no numberMatched", "https://api.pdok.nl/lv/bgt/ogc/v1/collections/bord/items?f=json", "plus_type='informatiebord'", {numberReturned: 1000, hasNext: true}, false],
+        ["pygeoapi, caps limit at 10", "https://demo.pygeoapi.io/master/collections/lakes/items?f=json", "scalerank=0", {numberReturned: 10, hasNext: true}, true],
+    ])('%s', async (_name, dataUrl, filter, size, matched) => {
+        const results: OgcOpenApiFeatureQueryResult[] = [];
+        const store = new OgcOpenApiFeatureStore({
+            dataUrl, outputFormat: "application/geo+json", codec: new GeoJsonCodec({generateIDs: false}),
+            crs: "http://www.opengis.net/def/crs/OGC/1.3/CRS84", onQueryResult: result => results.push(result),
+        });
+        await store.query({filter, "filter-lang": "cql2-text", limit: 1000});
+        expect(results.length).toBe(1);
+        expect(results[0]).toMatchObject(size);
+        if (matched) expect(results[0].numberMatched).toBeGreaterThan(results[0].numberReturned);
+        else expect(results[0]).not.toHaveProperty("numberMatched");
+    });
+});

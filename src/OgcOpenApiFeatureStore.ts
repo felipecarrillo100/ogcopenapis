@@ -25,6 +25,22 @@ export interface OgcOpenApiFeatureStoreConstructorOptions {
   extent?: { spatial: { bbox: any[] } };
   crs: string;
   proxify?: ProxifyFunction
+  // Called once for each query that succeeds, with what the response says about its size
+  onQueryResult?: (result: OgcOpenApiFeatureQueryResult) => void;
+}
+
+// What the response to a query says about its size (OGC API Features Part 1)
+export interface OgcOpenApiFeatureQueryResult {
+  // The request, and the query it was made from
+  url: string;
+  query: OgcOpenApiFeatureStoreQueryOptions;
+  // The number of features that match the query, left out when the server gives none (it is optional, PDOK)
+  numberMatched?: number;
+  // The number of features in the response. Servers cap limit: it can be less than limit (pygeoapi gives 10)
+  numberReturned?: number;
+  // The response links a next page. Left out when the response has no links to tell: a GML response whose Link
+  // header the browser may not read (CORS)
+  hasNext?: boolean;
 }
 
 export interface OgcOpenApiFeatureStoreQueryOptions {
@@ -86,11 +102,13 @@ export class OgcOpenApiFeatureStore extends Store {
   private credentials: boolean;
   private serverOptions: { proxy: (url: string, fetchOptions) => { fetchOptions: any; url: string }; hostname: string; complete: (url: string) => string };
   private swapAxes: string[] | undefined;
+  private onQueryResult: ((result: OgcOpenApiFeatureQueryResult) => void) | undefined;
 
   constructor(options: OgcOpenApiFeatureStoreConstructorOptions) {
     super();
     // console.log(options);
     this.swapAxes = options.swapAxes;
+    this.onQueryResult = options.onQueryResult;
     this.useCrs84Bounds = typeof options.useCrs84Bounds !== "undefined" ? options.useCrs84Bounds : false;
     this.dataUrl = options.dataUrl;
     this.outputFormat = options.outputFormat;
@@ -152,7 +170,7 @@ export class OgcOpenApiFeatureStore extends Store {
     query.f = query.f ? query.f : this.dataFormat;
     query.crs = query.crs ? query.crs : this.customCrs;
     query.limit = query.limit ? query.limit : undefined;
-    return this.fetchFeatures(this.withQuery(this.baseUrl, query), options?.abortSignal);
+    return this.fetchFeatures(this.withQuery(this.baseUrl, query), options?.abortSignal, query);
   }
 
   // The parameters of the items link, then those of the request, which replace a link parameter of the same name.
@@ -169,7 +187,8 @@ export class OgcOpenApiFeatureStore extends Store {
 
   // Fetches and decodes features. The promise always settles: it rejects with the reason when the request,
   // the response or the decoding fails, and when LuciadRIA aborts the request through abortSignal.
-  private fetchFeatures(request: string, abortSignal?: AbortSignal): Promise<Cursor> {
+  // A query is reported to onQueryResult once its features are decoded, unless it was aborted
+  private fetchFeatures(request: string, abortSignal?: AbortSignal, query?: OgcOpenApiFeatureStoreQueryOptions): Promise<Cursor> {
     // Mod starta
     const itemsAccept =
       typeof this.requestHeaders.accept !== 'undefined'
@@ -203,10 +222,13 @@ export class OgcOpenApiFeatureStore extends Store {
         const codecOptions: OgcOpenApiFeaturesCodecDecodeOptions = {
           content, contentType, contentCrs, contentLength
         };
-        if (this.codec instanceof GeoJsonCodec || this.codec instanceof GMLCodec) {
-          return this.codec.decode({...codecOptions, reference: getReference(OgcOpenApiCrsTools.getReferenceName(contentCrs))});
+        const cursor = this.codec instanceof GeoJsonCodec || this.codec instanceof GMLCodec ?
+            this.codec.decode({...codecOptions, reference: getReference(OgcOpenApiCrsTools.getReferenceName(contentCrs))}) :
+            this.codec.decode(codecOptions);
+        if (query && this.onQueryResult && !abortSignal?.aborted) {
+          this.onQueryResult({url: request, query, ...OgcOpenApiFeatureStore.getResultSize(content, contentType, response.headers.get('Link'))});
         }
-        return this.codec.decode(codecOptions);
+        return cursor;
       });
     });
   }
@@ -249,6 +271,47 @@ export class OgcOpenApiFeatureStore extends Store {
       }
     }
     return this.query(query, options);
+  }
+
+  // The size of a response: the members of a JSON response, or the attributes of the root element of GML, and the
+  // next link of the response or of its Link header
+  private static getResultSize(content: string, contentType: string, linkHeader: string | null) {
+    const size: { numberMatched?: number, numberReturned?: number, hasNext?: boolean } = {};
+    const count = (value: any) => {
+      const n = typeof value === "string" ? (/^\d+$/.test(value) ? Number(value) : undefined) : value;
+      return typeof n === "number" && isFinite(n) && n >= 0 ? n : undefined;
+    };
+    if (/json/i.test(contentType)) {
+      let data: any;
+      try {
+        data = JSON.parse(content);
+      } catch (e) {
+        data = undefined;
+      }
+      if (data && typeof data === "object") {
+        size.numberMatched = count(data.numberMatched);
+        size.numberReturned = count(data.numberReturned);
+        if (Array.isArray(data.links)) size.hasNext = data.links.some(l => l && l.rel === "next");
+      }
+    } else if (/xml/i.test(contentType)) {
+      // WFS 2.0 allows numberMatched="unknown"
+      const root = /<(?:[\w.-]+:)?FeatureCollection\b([^>]*)>/.exec(content);
+      const attribute = (name: string) => {
+        const match = root ? new RegExp("\\s" + name + "=[\"']([^\"']*)[\"']").exec(root[1]) : null;
+        return match ? count(match[1]) : undefined;
+      };
+      size.numberMatched = attribute("numberMatched");
+      size.numberReturned = attribute("numberReturned");
+    }
+    if (linkHeader) {
+      const next = linkHeader.split(/,\s*(?=<)/).some(link => {
+        const rel = /;\s*rel\s*=\s*"?([^";]*)"?/i.exec(link);
+        return rel !== null && rel[1].split(/\s+/).indexOf("next") > -1;
+      });
+      size.hasNext = size.hasNext || next;
+    }
+    for (const key of Object.keys(size)) if (typeof size[key] === "undefined") delete size[key];
+    return size;
   }
 
   private static getCRS84BoundingBox(shape: Bounds) {

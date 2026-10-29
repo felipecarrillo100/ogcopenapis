@@ -4,14 +4,14 @@
 The ogcopenapis package provides OGC API functionalities to LuciadRIA applications.
 
 Implements
-* __OGC API - Features__
+* __OGC API - Features__, with the filters and queryables of Part 3
 * __OGC API - Maps__
 * __OGC API - Tiles__, map (raster) tiles and vector tiles, of collections and of the dataset
 * __OGC API - Styles__, for vector tiles
 
 The Main Components are:
 
-* __OgcOpenApiGetCapabilities__: a helper to retrieve the capabilities of a server such as available collections, available formats, tilesets and tile matrix sets
+* __OgcOpenApiGetCapabilities__: a helper to retrieve the capabilities of a server such as available collections, available formats, tilesets and tile matrix sets, and the filter support and queryables for features
 * __OgcOpenApiFeatureStore__: a ready to use LuciadRIA store that retrieves features from an OGC API Features service
 * __OgcOpenApiMapsModel__: a ready to use model that retrieves images from an OGC API Maps service
 * __OgcOpenApiTilesModel__: a ready to use model that retrieves map tiles from an OGC API Tiles service
@@ -168,8 +168,31 @@ function createFeatureLayer(collection: OgcOpenApiCapabilitiesCollection) {
     return new FeatureLayer(model, {label: collection.title || collection.id, loadingStrategy: new LoadSpatially()});
 }
 ```
-The store requests the features in view, a query does not follow the `next` links of a response yet (no paging). It
-keeps the parameters of the items link, such as `profile` or an api key, and encodes the values of its own.
+The store requests the features in view, and a query does not follow the `next` links of a response: a map layer
+shows the features of its view, up to `limit`, without paging. Paging belongs with a table of the features, it needs
+a UI to move through the pages. The store keeps the parameters of the items link, such as `profile` or an api key, and
+encodes the values of its own.
+
+`onQueryResult` tells what the response to each query says about its size, to show for example "3,460 match, 1,000
+shown":
+```typescript
+const store = new OgcOpenApiFeatureStore({
+    // ...the options above
+    onQueryResult: ({url, query, numberMatched, numberReturned, hasNext}) => {
+        if (hasNext) console.log((numberMatched ?? "More") + " match, " + numberReturned + " shown");
+    },
+});
+```
+* It is called once for each query whose features are decoded, not for `get`, a failed query or an aborted one.
+  With `LoadSpatially` every view sends a query of its own: `numberMatched` counts the features in its `bbox`, and
+  `url` and `query` tell which request it answers.
+* `numberMatched` is left out when the server gives none, it is optional (PDOK). `numberReturned` can be less than
+  `limit`, servers cap it (pygeoapi at 10).
+* `hasNext`: the response links a next page, in its `links` or its `Link` header: not every match is shown. The store
+  does not request that page. Left out when the response has no links to tell, such as GML whose `Link` header the
+  browser cannot read (CORS).
+* The counts come from the response: the members of JSON, or the attributes of the root element of GML. Reading them
+  parses a JSON response a second time, only when `onQueryResult` is set.
 
 JSON-FG (OGC Features and Geometries JSON) needs a JSON-FG codec, which LuciadRIA does not have yet. Servers offer it as
 `application/vnd.ogc.fg+json`, or as `application/geo+json` with the JSON-FG profile (ldproxy); `isJsonFgLink` tells them
