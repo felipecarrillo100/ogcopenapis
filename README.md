@@ -113,7 +113,10 @@ const capabilities = await OgcOpenApiGetCapabilities.fromURL(serverUrl, {filterC
 // The collections, as the server lists them: id, title, extent, crs and links
 const collection = capabilities.collections.find(c => c.id === collectionId);
 ```
-Links that are relative are resolved against the document that has them.
+Links that are relative are resolved against the document that has them. `fromURL` asks for JSON with the `Accept`
+header, and rejects with an `Error` when the landing page or the collections cannot be read; a failed request rejects
+with the error of `fetch`, an `AbortError` included, so a request can be cancelled through `proxify`. The API document
+and the conformance classes are optional.
 
 All components accept `credentials` and `requestHeaders` for their requests, and `proxify`, a function that rewrites each
 request, for instance to send it through a proxy:

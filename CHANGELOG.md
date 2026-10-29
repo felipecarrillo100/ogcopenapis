@@ -8,6 +8,21 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+### Fixed
+- `fromURL` settles in every case: it stayed pending forever when the collections request failed (an HTTP error, a
+  response that is not JSON, a network error, an abort), and when a `service-desc` link had no type. Cancelling
+  through an abort signal added by `proxify` now works during the collections request too. Reported by a user of 1.1.0.
+- `fromURL` asks for JSON: `Accept: application/json` for the landing page, the collections and the conformance
+  classes, and the media type of its link for the API document. `requestHeaders` can replace it. Reported by a user of
+  1.1.0.
+
+### Changed
+- `fromURL` rejects with an `Error` whose message says what failed and where, instead of a status number or a string.
+  A failed request rejects with the error of `fetch` as it is, such as a `TypeError` or an `AbortError`. The API
+  document and the conformance classes stay optional.
+- The requests for tilesets and tile matrix sets reject with the error of `fetch` as it is when the request fails,
+  instead of an `{error, message}` object.
+
 ### Added
 - Demo: a feature limit per view, 1000 by default and editable: without it, servers answered their own default page
   of features, often only 10. Servers cap it at their own maximum. Feature layers use MapEvolution's scale levels, so
