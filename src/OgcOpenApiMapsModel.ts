@@ -21,6 +21,8 @@ interface OgcOpenApiMapsModelConstructorOptions {
     samplingMode?: RasterSamplingMode;
     credentials?: boolean;
     requestHeaders?: { [p: string]: string };
+    // The f value of the requests, as the server names its formats (pygeoapi: png), not a media type (image/png), unlike
+    // the format of OgcOpenApiTilesModel. Best left out: the f value of the map link, in baseURL, is then used
     format?: string;
     reverseAxis?: boolean;
     datetime?: string;

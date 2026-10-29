@@ -8,6 +8,8 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-29
+
 ### Fixed
 - `fromURL` settles in every case: it stayed pending forever when the collections request failed (an HTTP error, a
   response that is not JSON, a network error, an abort), and when a `service-desc` link had no type. Cancelling
@@ -15,6 +17,9 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 - `fromURL` asks for JSON: `Accept: application/json` for the landing page, the collections and the conformance
   classes, and the media type of its link for the API document. `requestHeaders` can replace it. Reported by a user of
   1.1.0.
+- The `format` of OgcOpenApiMapsModel is documented as what it is: the `f` value of the requests, as the server names
+  its formats (`png`), not a media type, unlike the `format` of OgcOpenApiTilesModel. Best left out, the map link
+  carries the `f` value; a media type gave HTTP 400 on pygeoapi. Reported by a user of 1.1.0.
 
 ### Changed
 - `fromURL` rejects with an `Error` whose message says what failed and where, instead of a status number or a string.
@@ -119,7 +124,8 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.1...v1.0.2

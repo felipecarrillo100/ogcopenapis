@@ -198,6 +198,10 @@ function createMapLayer(map: Map, collection: OgcOpenApiCapabilitiesCollection) 
     return new RasterTileSetLayer(model, {label: collection.title || collection.id});
 }
 ```
+Leave out the `format` of OgcOpenApiMapsModel: the map link carries the `f` value the server accepts, and the model keeps
+it. `format` replaces that value as it is, so it must be an `f` value as the server names its formats (pygeoapi: `png`),
+not a media type. pygeoapi refuses `f=image/png`. This differs from the `format` of OgcOpenApiTilesModel below, which is
+a media type (`image/png`).
 
 ### Tilesets
 Map tiles and vector tiles start from the tilesets: of a collection, or of the dataset (`collection` null), all its
