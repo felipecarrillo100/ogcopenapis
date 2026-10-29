@@ -8,7 +8,7 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
-## [1.2.0] - 2026-10-29
+## [1.2.0] - 2026-10-30
 
 ### Added
 - `getFilterSupport(capabilities)`: whether, and how, the server filters features, as its conformance classes declare.
@@ -21,6 +21,10 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
   queryables link of the collection, or the path of the standard when `/collections` lists none (ldproxy, PDOK).
   Resolves `null` for a collection without features and for a 404, rejects with an `Error` otherwise. Requested by a
   user of 1.1.1.
+- `onQueryResult` option of OgcOpenApiFeatureStore: called once for each query with what its response says about its
+  size, `numberMatched` (left out when the server gives none), `numberReturned` and `hasNext` (a next link, in the
+  response or its `Link` header), with the `url` and `query` of the request. From JSON and from the root element of
+  GML. Not called for `get`, a failed query or an aborted one. Requested by a user of 1.1.1.
 - Demo: a URL that is not the landing page of an OGC API gets a message in plain words: an HTML page ("the server did
   not answer JSON") or JSON without its links ("not the landing page of an OGC API").
 

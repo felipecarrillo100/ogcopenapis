@@ -75,13 +75,15 @@ Most valuable first. Each names where the idea comes from and what the library n
    (`filterCollectionLinks`, `outputFormats`).
 2. **Collection details.** Description, keywords, number of features, spatial extent drawn on a small map, temporal
    extent, last updated, a link to the schema. *From:* PDOK, ldproxy. *Library:* mostly available in the capabilities
-   (`extent`, `keywords`, `description`); the number of features needs `numberMatched` of an items request.
+   (`extent`, `keywords`, `description`); the number of features is `numberMatched` of an items request (`onQueryResult`).
 3. **Inspecting features.** Click a feature for its properties, with the titles of the collection schema; a table of
    the features linked to the map. *From:* ldproxy, pygeoapi. *Library:* the features are available; the schema
    (`/collections/{id}/schema`) is not read yet.
 4. **Querying features.** A filter editor built from the queryables, sorting, a page size with a warning, paging,
-   "only what is in view", and a CRS choice. *From:* ldproxy, QGIS, pygeoapi. *Library:* needs paging (`next` links)
-   and the queryables (`/collections/{id}/queryables`); filters can already be passed to `query`.
+   "only what is in view", and a CRS choice. *From:* ldproxy, QGIS, pygeoapi. *Library:* filters can be passed to `query`;
+   the queryables (`fetchQueryables`), filter support (`getFilterSupport`) and `numberMatched` (`onQueryResult`) are
+   available since 1.2.0. Paging is for the table of the features only, map layers do not page; it needs the `next`
+   links followed.
 5. **A layer tree from the style.** The layers of a Mapbox style as a tree, grouped, with legend symbols and
    checkboxes. *From:* ldproxy's style viewer. *Library:* the style JSON is available (`fetchMapboxStyle`); the tree
    and the legend symbols are application work.
@@ -101,9 +103,11 @@ Most valuable first. Each names where the idea comes from and what the library n
 
 ## Library work these depend on
 
-- Paging of features: follow the `next` links of a response.
-- Queryables and schema of a collection: `/collections/{id}/queryables` and `/collections/{id}/schema`.
-- The number of features: `numberMatched` of an items response.
+- Paging of features, for a table of the features: follow the `next` links of a response. Map layers do not page,
+  they show the features of their view up to `limit`.
+- The schema of a collection: `/collections/{id}/schema`.
+- Done in 1.2.0: the queryables (`fetchQueryables`), filter support (`getFilterSupport`), the number of features
+  (`onQueryResult`: `numberMatched`, `numberReturned`, `hasNext`).
 
 ## For the demo
 
@@ -131,7 +135,7 @@ reprojection. No other client does that; the features below build on it.
 | # | Feature | Value | What it brings | Cost | Why it is a killer feature |
 |---|---|---|---|---|---|
 | 1 | **Catalog that starts from the collection** | ★★★★★ | A searchable list of servers and collections. Each collection shows what it offers (features, map, map tiles, vector tiles, styles, dataset tiles), and one click adds the best representation for the map. | **M**. Library: ready (`filterCollectionLinks`, `outputFormats`, `hasDatasetTileSets`). Application: the catalog UI and the choice of representation. | Users find data without knowing the parts of OGC API. QGIS and ArcGIS Pro split the same data over different dialogs per type; no client presents every part of a collection in one place. |
-| 2 | **Query builder: filters, sorting, time and paging** | ★★★★★ | Filters built from the queryables of a collection (CQL2), sorting, a datetime range, a page size and paging, applied on the server. | **L**. Library: queryables, paging (`next` links), `numberMatched`, a CQL2 text builder. Application: the editor. | Large datasets become explorable without downloading them: the server does the work. ldproxy offers it only on its own pages and QGIS only for Features; no web map client offers it. |
+| 2 | **Query builder: filters, sorting, time and paging** | ★★★★★ | Filters built from the queryables of a collection (CQL2), sorting, a datetime range, a page size and paging, applied on the server. | **L**. Library: paging (`next` links) for the table; queryables, filter support and `numberMatched` are done (1.2.0); a CQL2 text builder. Application: the editor. | Large datasets become explorable without downloading them: the server does the work. ldproxy offers it only on its own pages and QGIS only for Features; no web map client offers it. |
 | 3 | **Feature inspection and attribute table** | ★★★★★ | Click a feature for its properties under the titles of the collection schema; a table of the features in view, linked to the map: select a row to highlight the feature and the other way round. | **M**. Library: read the schema (`/collections/{id}/schema`), **S**. Application: the table and its link to the selection. | The basic tool of every GIS. The server pages and the desktop clients have it, the web map clients do not. The demo's balloon is the first step. |
 | 4 | **Layer tree and legend from the style** | ★★★★★ | The layers of an OGC API style as a tree, grouped as the style groups them, each with its legend symbol and a checkbox to show or hide it. | **M**. Library: ready (`fetchMapboxStyle`). Application: the tree, legend symbols from the paint properties, and hiding layers by restyling. | It makes server styles understandable and controllable: one checkbox for "Railway" instead of a whole layer. Only ldproxy's own pages do it, and only for its own server. |
 | 5 | **3D view** | ★★★★ | The same layers on a 3D globe, with terrain: features, raster and vector tiles draped on it. | **M**. Library: test the models on a 3D map. Application: a 2D/3D switch. | LuciadRIA's strength. OGC API clients on the web are 2D; QGIS and ArcGIS Pro need a separate 3D view. It also prepares for 3D OGC APIs (3D GeoVolumes). |
