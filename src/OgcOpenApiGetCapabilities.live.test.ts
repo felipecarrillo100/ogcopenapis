@@ -89,6 +89,13 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
                 await expect(OgcOpenApiGetCapabilities.fromURL("https://jsonplaceholder.typicode.com/todos/", {})).rejects.toThrow("Invalid format: (property 'links' is missing)");
             });
 
+            it('OgcOpenApiGetCapabilities.getFilterSupport ldproxy filters in both CQL2 encodings', async () => {
+                const support = OgcOpenApiGetCapabilities.getFilterSupport(await OgcOpenApiGetCapabilities.fromURL("https://demo.ldproxy.net/daraa/"));
+                expect(support.filter).toBe(true);
+                expect(support.encodings).toEqual(expect.arrayContaining(["cql2-text", "cql2-json"]));
+                expect(support.levels).toContain("basic-cql2");
+            });
+
         });
 
 

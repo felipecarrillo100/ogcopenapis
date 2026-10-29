@@ -8,7 +8,14 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-29
+
 ### Added
+- `getFilterSupport(capabilities)`: whether, and how, the server filters features, as its conformance classes declare.
+  `filter` for the Features Filter class of OGC API Features Part 3 (`FEATURES_FILTER_CONFORMANCE`), and the CQL2 1.0
+  `encodings` (`cql2-text`, `cql2-json`) and `levels` (`basic-cql2`, `advanced-comparison-operators`, …) by their
+  names. Each as declared: a CQL2 encoding without the Features Filter class gives `filter` false (pygeoapi).
+  Requested by a user of 1.1.1.
 - Demo: a URL that is not the landing page of an OGC API gets a message in plain words: an HTML page ("the server did
   not answer JSON") or JSON without its links ("not the landing page of an OGC API").
 
@@ -128,7 +135,8 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.2...v1.0.3
