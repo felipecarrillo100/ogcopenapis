@@ -122,6 +122,9 @@ function errorMessage(e: any) {
     if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
         return "the server cannot be reached: it may be offline, not allow requests from this site (CORS), or be blocked by a network filter";
     }
+    // A URL that is not the landing page of an OGC API, typed by mistake: an HTML page, or JSON without its links
+    if (/^Not JSON data/.test(message)) return "the server did not answer JSON: is this the landing page of an OGC API?";
+    if (/property 'links' is missing|no links with rel=data/.test(message)) return "this is not the landing page of an OGC API";
     return message;
 }
 

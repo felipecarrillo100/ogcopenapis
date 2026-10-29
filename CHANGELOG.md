@@ -8,6 +8,10 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+### Added
+- Demo: a URL that is not the landing page of an OGC API gets a message in plain words: an HTML page ("the server did
+  not answer JSON") or JSON without its links ("not the landing page of an OGC API").
+
 ## [1.1.1] - 2026-10-29
 
 ### Fixed
