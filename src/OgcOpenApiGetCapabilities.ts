@@ -38,6 +38,20 @@ export interface OgcOpenApiFilterSupport {
   levels: string[];
 }
 
+// The queryables of a collection (OGC API Features Part 3): a JSON Schema, as the server sends it. Each property has
+// a JSON Schema of its own, with type, format, title, enum or x-ogc-role among others
+export interface OgcOpenApiQueryables {
+  $schema?: string;
+  $id?: string;
+  type?: string;
+  title?: string;
+  properties?: { [name: string]: { [keyword: string]: any } };
+  [keyword: string]: any;
+}
+
+// The media types of a queryables document, in the order they are preferred
+const QUERYABLES_MEDIA_TYPES = ["application/schema+json", "application/json"];
+
 export interface TileMatrix {
   id: string,
   scaleDenominator: number;
@@ -482,6 +496,58 @@ export class OgcOpenApiGetCapabilities {
       encodings: cql2.filter(name => CQL2_ENCODINGS.indexOf(name) > -1),
       levels: cql2.filter(name => CQL2_ENCODINGS.indexOf(name) === -1),
     };
+  }
+
+  /**
+   * Fetches the queryables of a collection (OGC API Features Part 3), the properties a filter can use: a JSON Schema,
+   * as the server sends it. Resolves null for a collection that has none: a collection without features, or a
+   * queryables request that answers 404. Rejects with an Error otherwise, and with the error of the request as it is
+   * when it fails, an AbortError included.
+   */
+  public static async fetchQueryables(
+      capabilities: OgcOpenApiCapabilitiesObject | null,
+      collection: OgcOpenApiCapabilitiesCollection,
+      options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
+  ): Promise<OgcOpenApiQueryables | null> {
+    if (capabilities === null) throw new Error("No capabilities to fetch the queryables of " + collection.id);
+    const href = OgcOpenApiGetCapabilities.getQueryablesHref(capabilities, collection);
+    if (!href) return null;
+    let response: Response;
+    try {
+      response = await OgcOpenApiFetchTools.fetch(href, {
+        method: "GET",
+        credentials: options?.credentials ? "same-origin" : "omit",
+        headers: {Accept: QUERYABLES_MEDIA_TYPES.join(", "), ...(options?.requestHeaders ? options.requestHeaders : {})}
+      }, capabilities.serverOptions);
+    } catch (e) {
+      throw OgcOpenApiGetCapabilities.toError(e, href);
+    }
+    if (response.status === 404) return null;
+    if (response.status !== 200) throw new Error("Invalid response: " + response.status + " for " + href);
+    let data: any;
+    try {
+      data = await response.json();
+    } catch (e) {
+      throw new Error("Not JSON data for " + href);
+    }
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Invalid format: (not a JSON Schema) in " + href);
+    return data;
+  }
+
+  // The queryables link of the collection, in JSON. Some servers (ldproxy, PDOK) list it only in the collection
+  // document, not in /collections: then the path of the standard, /collections/{collectionId}/queryables, for a
+  // collection with features. Other collections have no queryables, '' then
+  private static getQueryablesHref(capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection) {
+    const links = collection.links ? collection.links : [];
+    const queryables = links.filter(l => isRel(l, "queryables"));
+    const link = QUERYABLES_MEDIA_TYPES.map(type => queryables.find(l => l.type === type)).find(l => l) ||
+        queryables.find(l => !l.type);
+    if (link) return link.href;
+    if (OgcOpenApiGetCapabilities.filterCollectionLinks(links, CollectionLinkType.Items).length === 0) return '';
+    // The self link keeps its query, such as f=json (PDOK)
+    const self = links.find(l => l.rel === "self" && (!l.type || l.type === "application/json"));
+    const collectionHref = self ? self.href : capabilities.baseUrl + "collections/" + encodeURIComponent(collection.id);
+    return OgcOpenApiFetchTools.appendPath(collectionHref, "queryables");
   }
 
   /**

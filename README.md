@@ -199,6 +199,23 @@ if (support.filter && support.encodings.indexOf("cql2-text") > -1) {
   Features Filter class: `filter` is false, and accepting the encoding alone is up to the application.
 * Pre-standard CQL classes, such as `ogcapi-features-3/1.0/conf/cql-text` (CubeWerx), are not CQL2 and are left out.
 
+The properties a filter can use are the queryables of the collection, a JSON Schema. `fetchQueryables` returns it as
+the server sends it, to interpret in the application:
+```typescript
+const queryables = await OgcOpenApiGetCapabilities.fetchQueryables(capabilities, collection);
+if (queryables) {
+    for (const [name, schema] of Object.entries(queryables.properties || {})) {
+        // F_CODE {type: "string", title: "Feature Type Code", enum: ["AN010", ...], "x-ogc-role": "type"}
+        console.log(name, schema.type, schema.format, schema.title, schema.enum);
+    }
+}
+```
+* It requests the queryables link of the collection, JSON Schema or JSON, with `Accept: application/schema+json,
+  application/json`. ldproxy and PDOK list that link only in the collection document, not in `/collections`: then
+  it requests the path of the standard, `/collections/{collectionId}/queryables`.
+* It resolves `null` for a collection without features, without a request, and when the server answers 404.
+* The geometry is a queryable too, with `"x-ogc-role": "primary-geometry"` and a `format` such as `geometry-point`.
+
 ### Maps
 OgcOpenApiMapsModel extends WMSTileSetModel, use it with a RasterTileSetLayer. It requests the map as tiles, in the
 reference of the map when the collection offers it, otherwise in CRS84, which every server supports, and LuciadRIA

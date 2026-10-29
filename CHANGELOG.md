@@ -16,6 +16,11 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
   `encodings` (`cql2-text`, `cql2-json`) and `levels` (`basic-cql2`, `advanced-comparison-operators`, …) by their
   names. Each as declared: a CQL2 encoding without the Features Filter class gives `filter` false (pygeoapi).
   Requested by a user of 1.1.1.
+- `fetchQueryables(capabilities, collection, options?)`: the queryables of a collection (OGC API Features Part 3), the
+  JSON Schema of the properties a filter can use, as the server sends it (`OgcOpenApiQueryables`). It requests the
+  queryables link of the collection, or the path of the standard when `/collections` lists none (ldproxy, PDOK).
+  Resolves `null` for a collection without features and for a 404, rejects with an `Error` otherwise. Requested by a
+  user of 1.1.1.
 - Demo: a URL that is not the landing page of an OGC API gets a message in plain words: an HTML page ("the server did
   not answer JSON") or JSON without its links ("not the landing page of an OGC API").
 
