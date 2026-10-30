@@ -8,6 +8,15 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-30
+
+### Fixed
+- The `keywords` of a collection are always strings, as declared (`string[]`) and as OGC API Common Part 2 defines
+  them. `fromURL` passed the value of the server as it was: PDOK sends each keyword as an object, `{"keyword": "bak"}`,
+  which an application showed as `[object Object]`, the demo too. Strings are kept as they are; a keyword object of OGC
+  Web Services Common is read as its `keyword`, a shape that is not in the standard; anything else is left out.
+  Reported by a user of 1.2.0.
+
 ## [1.2.0] - 2026-10-30
 
 ### Added
@@ -144,7 +153,8 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.0.3...v1.1.0

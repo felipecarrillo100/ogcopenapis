@@ -118,6 +118,10 @@ header, and rejects with an `Error` when the landing page or the collections can
 with the error of `fetch`, an `AbortError` included, so a request can be cancelled through `proxify`. The API document
 and the conformance classes are optional.
 
+The `keywords` of a collection are always strings, as OGC API Common Part 2 defines them, and a server's strings are
+kept as they are. A keyword sent as an object with a string `keyword`, the shape of OGC Web Services Common that PDOK
+sends (`{"keyword": "bak"}`), is read as that string; this is not in the standard. Anything else is left out.
+
 All components accept `credentials` and `requestHeaders` for their requests, and `proxify`, a function that rewrites each
 request, for instance to send it through a proxy:
 ```typescript

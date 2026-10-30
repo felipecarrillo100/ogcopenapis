@@ -109,6 +109,17 @@ import {CollectionLinkType, OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapa
                 expect(queryables.properties.geometry["x-ogc-role"]).toBe("primary-geometry");
             });
 
+            // PDOK sends keyword objects of OWS Common, pygeoapi strings as OGC API Common Part 2 defines them
+            it.each([
+                ["PDOK", "https://api.pdok.nl/lv/bgt/ogc/v1/", "wegdeel", "wegdeel"],
+                ["pygeoapi", "https://demo.pygeoapi.io/master/", "obs", "observations"],
+            ])('OgcOpenApiGetCapabilities.fromURL keywords are strings, %s', async (_name, url, id, keyword) => {
+                const capabilities = await OgcOpenApiGetCapabilities.fromURL(url);
+                const keywords = capabilities.collections.find(c => c.id === id).keywords;
+                expect(keywords).toContain(keyword);
+                expect(keywords.every(k => typeof k === "string")).toBe(true);
+            });
+
             it('OgcOpenApiGetCapabilities.fetchQueryables pygeoapi, a collection without features', async () => {
                 const capabilities = await OgcOpenApiGetCapabilities.fromURL("https://demo.pygeoapi.io/master/");
                 expect(await OgcOpenApiGetCapabilities.fetchQueryables(capabilities, capabilities.collections.find(c => c.id === "icoads-sst"))).toBeNull();
