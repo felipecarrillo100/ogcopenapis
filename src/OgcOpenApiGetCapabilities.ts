@@ -276,7 +276,7 @@ export class OgcOpenApiGetCapabilities {
             id: name,
             name,
             title: collection.title,
-            keywords: collection.keywords ? collection.keywords : [],
+            keywords: OgcOpenApiGetCapabilities.readKeywords(collection.keywords),
             defaultReference: 'CRS:84',
             links: collection.links,
             outputFormats: options.filterCollectionsByLinkType ?
@@ -300,6 +300,17 @@ export class OgcOpenApiGetCapabilities {
       tileMatrixSetsUrl: linkToTileMatrixSets ? resolveLink(linkToTileMatrixSets, requestUrl).href : undefined,
       conformsTo,
     };
+  }
+
+  // The keywords of a collection, always strings. OGC API Common Part 2 defines keywords as an array of strings, kept
+  // as they are. Also accepted, not in the standard: a keyword as an object with a string keyword, the shape of OGC Web
+  // Services Common that PDOK sends ({"keyword": "bak"}), read as that string. Anything else is left out, and a value
+  // that is not an array gives no keywords
+  private static readKeywords(keywords: any): string[] {
+    if (!Array.isArray(keywords)) return [];
+    return keywords
+        .map(k => typeof k === "string" ? k : k && typeof k === "object" && typeof k.keyword === "string" ? k.keyword : undefined)
+        .filter(k => typeof k === "string" && k !== "");
   }
 
   // An Error for a failed request of fromURL: the error of fetch as it is, such as an AbortError, otherwise its message

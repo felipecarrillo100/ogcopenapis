@@ -1,6 +1,6 @@
 {
   "name": "ogcopenapis",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "OGC API Features, Maps, Tiles and Styles for LuciadRIA",
   "type": "module",
   "exports": {

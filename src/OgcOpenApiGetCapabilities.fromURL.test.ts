@@ -120,3 +120,38 @@ describe('OgcOpenApiGetCapabilities.fromURL asks for JSON', () => {
         expect(accepts["https://x.test/"]).toBe("application/geo+json");
     });
 });
+
+describe('OgcOpenApiGetCapabilities.fromURL keywords', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const keywordsOf = async (keywords: any) => {
+        standard({"https://x.test/collections": json({collections: [{id: "c", title: "C", links: [], ...(typeof keywords === "undefined" ? {} : {keywords})}]})});
+        return (await OgcOpenApiGetCapabilities.fromURL("https://x.test/")).collections[0].keywords;
+    };
+
+    it('Keeps keywords that are strings, as OGC API Common Part 2 defines them (pygeoapi)', async () => {
+        expect(await keywordsOf(["observations", "monitoring"])).toEqual(["observations", "monitoring"]);
+    });
+
+    it('Reads a keyword object of OWS Common as its keyword, the shape PDOK sends', async () => {
+        expect(await keywordsOf([{keyword: "bak"}, {keyword: "afvalbak", codeSpace: "x"}])).toEqual(["bak", "afvalbak"]);
+    });
+
+    it('Reads each keyword on its own: both shapes in one array', async () => {
+        expect(await keywordsOf(["roads", {keyword: "wegdeel"}])).toEqual(["roads", "wegdeel"]);
+    });
+
+    it('Leaves out what is not a non-empty string or a keyword object, without changing the others', async () => {
+        expect(await keywordsOf([" roads ", "", null, 7, {}, {keyword: 3}, {code: "x"}, ["nested"], {keyword: "bak"}])).toEqual([" roads ", "bak"]);
+    });
+
+    it('No keywords when the value is not an array, or there is none', async () => {
+        expect(await keywordsOf("roads, rivers")).toEqual([]);
+        expect(await keywordsOf({keyword: "bak"})).toEqual([]);
+        expect(await keywordsOf(null)).toEqual([]);
+        expect(await keywordsOf(undefined)).toEqual([]);
+    });
+});
