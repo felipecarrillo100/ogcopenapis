@@ -8,6 +8,15 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-11-03
+
+### Fixed
+- `OgcOpenApiVectorTilesModel` asks for Mapbox Vector Tiles with the `Accept` header (`MVT_MEDIA_TYPE`). A tile link
+  may have no media type, as on CubeWerx: OGC API Tiles (OGC 20-057, 7.1.1) has the client select the encoding by
+  content negotiation, and the model sent no `Accept`, so the format was left to the server. An `Accept` in
+  `requestHeaders` is kept.
+- Demo: a vector tileset without an MVT link uses its tile link without a media type before its first link.
+
 ## [1.2.1] - 2026-10-30
 
 ### Fixed

@@ -9,6 +9,8 @@ import {OgcOpenApiMvtTools} from "./OgcOpenApiMvtTools.js";
 import {type FetchServerOptions, OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
 import {type OgcOpenApiTileGrid, OgcOpenApiTileMatrixTools} from "./OgcOpenApiTileMatrixTools.js";
 
+export const MVT_MEDIA_TYPE = "application/vnd.mapbox-vector-tile";
+
 export interface OgcOpenApiVectorTilesModelOptions {
     tileMatrix: TileSetData;
     baseURL: string;
@@ -67,7 +69,7 @@ export class OgcOpenApiVectorTilesModel extends MapboxVectorTileSetModel {
         return OgcOpenApiFetchTools.fetch(tileUrl, {
             method: "GET",
             credentials: this.credentials ? "same-origin" : "omit",
-            headers: this.requestHeaders ? this.requestHeaders : {},
+            headers: this.getTileHeaders(),
             signal
         }, this.serverOptions).then(response => {
             // Servers answer a tile without data with 204, 404 or an empty 200
@@ -121,6 +123,13 @@ export class OgcOpenApiVectorTilesModel extends MapboxVectorTileSetModel {
             const y = Math.floor((center.y - bounds.y) / (bounds.height / rows));
             return {level, x: Math.min(Math.max(x, 0), columns - 1), y: Math.min(Math.max(y, 0), rows - 1)};
         });
+    }
+
+    // A tile link may have no type: the client selects the encoding by content negotiation (OGC 20-057, 7.1.1).
+    // The Accept of requestHeaders, if any, is kept
+    private getTileHeaders(): { [p: string]: string } {
+        const headers = this.requestHeaders ? this.requestHeaders : {};
+        return Object.keys(headers).some(key => key.toLowerCase() === "accept") ? headers : {Accept: MVT_MEDIA_TYPE, ...headers};
     }
 
     // Whether the tile is inside the tileMatrixSetLimits, all tiles are when there are no limits
