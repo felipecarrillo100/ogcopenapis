@@ -6,6 +6,8 @@ export default defineConfig({
     test: {
         ...environmentOptions,
         include: [".package-check/*.package.test.ts"],
+        // The first import loads all of LuciadRIA natively, uncached: it took up to 42 s, beyond the default 5 s
+        testTimeout: 120000,
         server: {
             deps: {
                 // Never transformed by Vite: loaded by Node, as a dependency of an application is
