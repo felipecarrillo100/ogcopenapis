@@ -478,7 +478,8 @@ async function createTileLayer(tileSet: CollectionTileSet, tileMatrix: TileSetDa
         });
         return new RasterTileSetLayer(model, {label});
     }
-    const link = tileSet.links.find(l => l.type === MVT) || tileSet.links[0];
+    // A tile link without type is negotiated, the model asks for MVT
+    const link = tileSet.links.find(l => l.type === MVT) || tileSet.links.find(l => !l.type) || tileSet.links[0];
     const model = new OgcOpenApiVectorTilesModel({
         tileMatrix,
         baseURL: link.href,

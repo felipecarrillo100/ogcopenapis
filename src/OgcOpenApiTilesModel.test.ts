@@ -131,3 +131,35 @@ describe('The tiles of the dataset, limited to some collections', () => {
         expect(String(fetchSpy.mock.calls[0][0])).toBe("https://example.com/tiles/WebMercatorQuad/2/0/1?f=mvt&collections=roads");
     });
 });
+
+describe('OgcOpenApiVectorTilesModel asks for Mapbox Vector Tiles', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    // CubeWerx gives its tile links no type
+    const BASE_URL = "https://example.com/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}";
+    const requestTile = async (requestHeaders?: { [p: string]: string }) => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(new Response(null, {status: 204})));
+        const model = new OgcOpenApiVectorTilesModel({tileMatrix: WEB_MERCATOR_QUAD, collection: "roads", baseURL: BASE_URL, requestHeaders});
+        await model.getVectorTile({level: 2, x: 1, y: 3});
+        return new Headers(fetchSpy.mock.calls[0][1].headers);
+    };
+
+    it('Sends the MVT media type in the Accept header', async () => {
+        expect((await requestTile()).get("Accept")).toBe("application/vnd.mapbox-vector-tile");
+    });
+
+    it('Keeps the other request headers', async () => {
+        const headers = await requestTile({Authorization: "Bearer x"});
+        expect(headers.get("Accept")).toBe("application/vnd.mapbox-vector-tile");
+        expect(headers.get("Authorization")).toBe("Bearer x");
+    });
+
+    it('Keeps the Accept of the request headers, in any case', async () => {
+        expect((await requestTile({Accept: "application/x-protobuf"})).get("Accept")).toBe("application/x-protobuf");
+        vi.restoreAllMocks();
+        expect((await requestTile({accept: "application/x-protobuf"})).get("Accept")).toBe("application/x-protobuf");
+    });
+});
