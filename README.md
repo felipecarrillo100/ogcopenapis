@@ -266,6 +266,29 @@ it. `format` replaces that value as it is, so it must be an `f` value as the ser
 not a media type. pygeoapi refuses `f=image/png`. This differs from the `format` of OgcOpenApiTilesModel below, which is
 a media type (`image/png`).
 
+Some servers offer a collection's map only per style (OGC API Maps, Styled Map class, OGC 20-058 clause 21): the
+collection has no map link, its styles have one each, at `…/styles/{styleId}/map`. GeoServer 2.28 does so.
+`mayOfferStyledMap` tells such a collection without a request; `fetchMapStyles` reads its styles, the default one first,
+and a map link of a style is the `baseURL` of the model as above:
+```typescript
+import {OgcOpenApiStyleTools} from "ogcopenapis/OgcOpenApiStyleTools";
+
+async function createStyledMapLayer(map: Map, capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection, styleId?: string) {
+    if (!OgcOpenApiGetCapabilities.mayOfferStyledMap(capabilities, collection)) throw new Error("Collection " + collection.id + " has no styled map");
+    // Read when the collection is chosen: one request per collection
+    const styles = await OgcOpenApiStyleTools.fetchMapStyles(capabilities, collection);
+    const style = styles.find(s => s.id === styleId) || styles[0];
+    if (!style) throw new Error("Collection " + collection.id + " has no map");
+    const link = style.mapLinks.find(l => l.type === "image/png") || style.mapLinks[0];
+    const crs = (collection.crs || []).find(c => OgcOpenApiCrsTools.getReferenceName(c) === map.reference.identifier) || CRS84;
+    const model = new OgcOpenApiMapsModel({crs, baseURL: link.href, collection: collection.id});
+    return new RasterTileSetLayer(model, {label: (collection.title || collection.id) + " (" + style.title + ")"});
+}
+```
+`mayOfferStyledMap` needs the server to declare a conformance class of OGC API Maps Part 1, with `https` as OGC 20-058
+Table 1 writes it or with `http` as GeoServer does, so that the styles of a vector tiles server are not taken for maps.
+A collection with a map link gives false: its map is the one of that link.
+
 ### Tilesets
 Map tiles and vector tiles start from the tilesets: of a collection, or of the dataset (`collection` null), all its
 collections in each tile. Each tileset is in one tile matrix set. Servers give tile matrix sets their own ids (CubeWerx

@@ -1,0 +1,132 @@
+{
+    "styles": [
+        {
+            "id": "raster",
+            "title": "Opaque Raster",
+            "links": [
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fpng",
+                    "rel": "map",
+                    "type": "image/png",
+                    "title": "Map for basicauth:bluemarble and style raster as image/png"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fpng8",
+                    "rel": "map",
+                    "type": "image/png8",
+                    "title": "Map for basicauth:bluemarble and style raster as image/png8"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fpng%3Bmode%3D8bit",
+                    "rel": "map",
+                    "type": "image/png;mode=8bit",
+                    "title": "Map for basicauth:bluemarble and style raster as image/png;mode=8bit"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fgeotiff",
+                    "rel": "map",
+                    "type": "image/geotiff",
+                    "title": "Map for basicauth:bluemarble and style raster as image/geotiff"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fgeotiff8",
+                    "rel": "map",
+                    "type": "image/geotiff8",
+                    "title": "Map for basicauth:bluemarble and style raster as image/geotiff8"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Ftiff",
+                    "rel": "map",
+                    "type": "image/tiff",
+                    "title": "Map for basicauth:bluemarble and style raster as image/tiff"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Ftiff8",
+                    "rel": "map",
+                    "type": "image/tiff8",
+                    "title": "Map for basicauth:bluemarble and style raster as image/tiff8"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fgif",
+                    "rel": "map",
+                    "type": "image/gif",
+                    "title": "Map for basicauth:bluemarble and style raster as image/gif"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fjpeg",
+                    "rel": "map",
+                    "type": "image/jpeg",
+                    "title": "Map for basicauth:bluemarble and style raster as image/jpeg"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fvnd.jpeg-png",
+                    "rel": "map",
+                    "type": "image/vnd.jpeg-png",
+                    "title": "Map for basicauth:bluemarble and style raster as image/vnd.jpeg-png"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fvnd.jpeg-png8",
+                    "rel": "map",
+                    "type": "image/vnd.jpeg-png8",
+                    "title": "Map for basicauth:bluemarble and style raster as image/vnd.jpeg-png8"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=application%2Fpdf",
+                    "rel": "map",
+                    "type": "application/pdf",
+                    "title": "Map for basicauth:bluemarble and style raster as application/pdf"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fsvg",
+                    "rel": "map",
+                    "type": "image/svg",
+                    "title": "Map for basicauth:bluemarble and style raster as image/svg"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=image%2Fsvg%2Bxml",
+                    "rel": "map",
+                    "type": "image/svg+xml",
+                    "title": "Map for basicauth:bluemarble and style raster as image/svg+xml"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=text%2Fhtml",
+                    "rel": "map",
+                    "type": "text/html",
+                    "title": "Map for basicauth:bluemarble and style raster as text/html"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=application%2Fjson",
+                    "rel": "map",
+                    "type": "application/json",
+                    "title": "Map for basicauth:bluemarble and style raster as application/json"
+                },
+                {
+                    "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map?f=application%2Fyaml",
+                    "rel": "map",
+                    "type": "application/yaml",
+                    "title": "Map for basicauth:bluemarble and style raster as application/yaml"
+                }
+            ]
+        }
+    ],
+    "links": [
+        {
+            "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles?f=application%2Fjson",
+            "rel": "self",
+            "type": "application/json",
+            "title": "This document"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles?f=application%2Fyaml",
+            "rel": "alternate",
+            "type": "application/yaml",
+            "title": "This document as application/yaml"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles?f=text%2Fhtml",
+            "rel": "alternate",
+            "type": "text/html",
+            "title": "This document as text/html"
+        }
+    ]
+}

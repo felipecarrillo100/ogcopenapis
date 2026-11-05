@@ -8,6 +8,23 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-05
+
+### Added
+- Maps of a collection that offers its map only per style (OGC API Maps, Styled Map class, OGC 20-058 clause 21), as
+  GeoServer 2.28 does: the collection has no map link, each of its styles has map links, at `…/styles/{styleId}/map`.
+  `OgcOpenApiGetCapabilities.mayOfferStyledMap` tells such a collection without a request: no map link, a styles link,
+  and a conformance class of OGC API Maps Part 1 declared, with `https` (OGC 20-058 Table 1) or `http` (GeoServer).
+  `OgcOpenApiStyleTools.fetchMapStyles` lists the styles that have a map, the default one first, with their map links;
+  a map link of a style is the `baseURL` of `OgcOpenApiMapsModel`. A collection with a map link is read as before.
+  Requested by a user of 1.2.2.
+
+### Fixed
+- `fromURL` reads a landing page whose collections link has the relation in full,
+  `http://www.opengis.net/def/rel/ogc/1.0/data`, as GeoServer's OGC API Tiles and Maps give it. It rejected it with
+  "no links with rel=data": only the short `data` was read, while the other relations of the landing page were read in
+  both forms. Reported by a user of 1.2.2.
+
 ## [1.2.2] - 2026-11-03
 
 ### Fixed
@@ -162,7 +179,9 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.2...v1.3.0
+[1.2.2]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.0...v1.1.1

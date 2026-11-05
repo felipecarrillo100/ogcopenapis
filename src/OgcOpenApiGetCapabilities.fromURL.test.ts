@@ -1,5 +1,6 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {OgcOpenApiGetCapabilities} from "./OgcOpenApiGetCapabilities";
+import GeoServerTilesLanding from "./fixtures/landing-geoserver-tiles.json";
 
 // fromURL settles in every case, reported by a user of 1.1.0: it stayed pending when the collections could not be read
 const LANDING = {links: [
@@ -153,5 +154,53 @@ describe('OgcOpenApiGetCapabilities.fromURL keywords', () => {
         expect(await keywordsOf({keyword: "bak"})).toEqual([]);
         expect(await keywordsOf(null)).toEqual([]);
         expect(await keywordsOf(undefined)).toEqual([]);
+    });
+});
+
+// The relation of the collections link, in full or short: GeoServer's Tiles and Maps give only the full one, reported by
+// a user of 1.2.2
+describe('OgcOpenApiGetCapabilities.fromURL data link', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const OGC_DATA = "http://www.opengis.net/def/rel/ogc/1.0/data";
+    const collectionsOf = async (dataLinks: object[]) => {
+        standard({"https://x.test/": json({links: [...dataLinks, ...LANDING.links.slice(1)]})});
+        return (await OgcOpenApiGetCapabilities.fromURL("https://x.test/")).collections.map(c => c.id);
+    };
+
+    it('Reads the collections of a data link with the short relation (pygeoapi, GNOSIS)', async () => {
+        expect(await collectionsOf([{rel: "data", type: "application/json", href: "https://x.test/collections"}])).toEqual(["c"]);
+    });
+
+    it('Reads the collections of a data link with the full relation only (GeoServer Tiles and Maps)', async () => {
+        expect(await collectionsOf([{rel: OGC_DATA, type: "application/json", href: "https://x.test/collections"}])).toEqual(["c"]);
+    });
+
+    it('Reads the collections when both relations are given (PDOK, CubeWerx)', async () => {
+        expect(await collectionsOf([
+            {rel: "data", type: "application/json", href: "https://x.test/collections"},
+            {rel: OGC_DATA, type: "application/json", href: "https://x.test/collections"},
+        ])).toEqual(["c"]);
+    });
+
+    it('Prefers the JSON data link, whichever relation it has', async () => {
+        expect(await collectionsOf([
+            {rel: OGC_DATA, type: "text/html", href: "https://x.test/collections.html"},
+            {rel: "data", type: "application/yaml", href: "https://x.test/collections.yaml"},
+            {rel: OGC_DATA, type: "application/json", href: "https://x.test/collections"},
+        ])).toEqual(["c"]);
+    });
+
+    it('Reads the landing page of GeoServer 2.28.6 OGC API Tiles', async () => {
+        const accepts = serve({
+            "http://localhost:8094/geoserver/ogc/tiles/v1/": json(GeoServerTilesLanding),
+            "http://localhost:8094/geoserver/ogc/tiles/v1/collections?f=application%2Fjson": json(COLLECTIONS),
+        });
+        const capabilities = await OgcOpenApiGetCapabilities.fromURL("http://localhost:8094/geoserver/ogc/tiles/v1/");
+        expect(capabilities.collections.map(c => c.id)).toEqual(["c"]);
+        expect(Object.keys(accepts)).toContain("http://localhost:8094/geoserver/ogc/tiles/v1/collections?f=application%2Fjson");
     });
 });

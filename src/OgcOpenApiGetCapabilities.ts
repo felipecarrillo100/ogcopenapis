@@ -22,6 +22,10 @@ export const COLLECTIONS_SELECTION_CONFORMANCE = "http://www.opengis.net/spec/og
 // collections parameter as the standard requires. To be removed once ldproxy declares the class of the standard
 export const COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS = ["http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collection-selection"];
 
+// The conformance classes of OGC API Maps Part 1 share this prefix. OGC 20-058 Table 1 writes them with https, servers
+// also declare them with http (GeoServer 2.28): both are accepted, by mayOfferStyledMap only
+export const MAPS_CONFORMANCE_PREFIXES = ["https://www.opengis.net/spec/ogcapi-maps-1/", "http://www.opengis.net/spec/ogcapi-maps-1/"];
+
 // The conformance class of OGC API Features Part 3 for the filter parameter of the items of a collection
 export const FEATURES_FILTER_CONFORMANCE = "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter";
 // The conformance classes of CQL2 1.0 (OGC 21-065) share this prefix, the encodings and the levels of the language
@@ -239,7 +243,9 @@ export class OgcOpenApiGetCapabilities {
     const landing = await getJson(requestUrl);
     if (!landing || !Array.isArray(landing.links)) throw new Error("Invalid format: (property 'links' is missing) in " + requestUrl);
     const links: OgcOpenApiCapabilitiesCollectionServiceLinkType[] = landing.links;
-    const linkToData = links.find(link => link.rel === 'data' && link.type === 'application/json') || links.find(link => link.rel === 'data');
+    // In full or short, like the other OGC relations: GeoServer's Tiles and Maps give only the full one
+    const dataLinks = links.filter(link => isRel(link, 'data'));
+    const linkToData = dataLinks.find(link => link.type === 'application/json') || dataLinks[0];
     if (!linkToData) throw new Error("Invalid format: (property 'links' contains no links with rel=data) in " + requestUrl);
     const linkToApi = links.find(link => (link.rel === 'service-desc' || link.rel === 'service') && (link.type || "").indexOf('openapi+json') > -1);
     const tilingSchemes = links.filter(link => isRel(link, 'tiling-schemes'));
@@ -489,6 +495,20 @@ export class OgcOpenApiGetCapabilities {
     const conformsTo = capabilities && capabilities.conformsTo ? capabilities.conformsTo : [];
     return conformsTo.indexOf(COLLECTIONS_SELECTION_CONFORMANCE) > -1 ||
         COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS.some(variant => conformsTo.indexOf(variant) > -1);
+  }
+
+  /**
+   * Whether a collection may offer its map only per style (OGC API Maps, Styled Map class, OGC 20-058 clause 21): it
+   * has no map link of its own, it links its styles, and the server declares a conformance class of OGC API Maps Part 1.
+   * GeoServer 2.28 does so. Makes no request: OgcOpenApiStyleTools.fetchMapStyles reads the styles, and finds whether
+   * they have maps. A collection with a map link gives false, its map is the one of that link
+   */
+  public static mayOfferStyledMap(capabilities: OgcOpenApiCapabilitiesObject | null, collection: OgcOpenApiCapabilitiesCollection) {
+    const conformsTo = capabilities && capabilities.conformsTo ? capabilities.conformsTo : [];
+    const links = collection.links ? collection.links : [];
+    return OgcOpenApiGetCapabilities.filterCollectionLinks(links, CollectionLinkType.Map).length === 0 &&
+        OgcOpenApiGetCapabilities.filterCollectionLinks(links, CollectionLinkType.Styles).length > 0 &&
+        conformsTo.some(uri => MAPS_CONFORMANCE_PREFIXES.some(prefix => uri.indexOf(prefix) === 0));
   }
 
   /**
