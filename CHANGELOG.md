@@ -8,6 +8,42 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-05
+
+### Added
+- Maps of a collection that offers its map only per style (OGC API Maps, Styled Map class, OGC 20-058 clause 21), as
+  GeoServer 2.28 does: the collection has no map link, each of its styles has map links, at `…/styles/{styleId}/map`.
+  `OgcOpenApiGetCapabilities.mayOfferStyledMap` tells such a collection without a request: no map link, a styles link,
+  and a conformance class of OGC API Maps Part 1 declared.
+  `OgcOpenApiStyleTools.fetchMapStyles` lists the styles that have a map, the default one first, with their map links;
+  a map link of a style is the `baseURL` of `OgcOpenApiMapsModel`. A collection with a map link is read as before.
+  Requested by a user of 1.2.2.
+
+### Fixed
+- OGC URIs (`www.opengis.net`) are read with `http` or `https`: conformance classes, link relations and the JSON-FG
+  profile. OGC standards write them both ways, OGC API Tiles (OGC 20-057) and Features with `http`, OGC API Maps
+  (OGC 20-058) with `https`, and servers follow either. Only `http` was read, so the map of a GeoServer 3.0 collection,
+  linked with `https://www.opengis.net/def/rel/ogc/1.0/map`, was not found. Only the scheme may differ: the `/0`
+  version alias and CURIEs (`[ogcapi-maps-1:core]`) are not taken as the same URI. `isSameOgcUri` compares two OGC
+  URIs so. `MAPS_CONFORMANCE_PREFIXES`, new in this release, is `MAPS_CONFORMANCE_PREFIX`.
+- `fromURL` reads a landing page whose collections link has the relation in full,
+  `http://www.opengis.net/def/rel/ogc/1.0/data`, as GeoServer's OGC API Tiles and Maps give it. It rejected it with
+  "no links with rel=data": only the short `data` was read, while the other relations of the landing page were read in
+  both forms. Reported by a user of 1.2.2.
+- The definition of a tile matrix set is checked against OGC 2D TMS 2.0 (OGC 17-083r4), the version OGC API Tiles
+  1.0 uses, and a definition that fails says what it lacks, for example
+  `Tile matrix set EPSG:900913 has no crs (supportedCRS is OGC 2D TMS 1.0, not read)`. It said only
+  `TileSet has invalid data`.
+  - Each tile matrix must have the properties TMS 2.0 requires: `id`, `scaleDenominator`, `cellSize`,
+    `pointOfOrigin`, `tileWidth`, `tileHeight`, `matrixWidth` and `matrixHeight`. A tile matrix without `cellSize` was
+    accepted, and gave wrong bounds.
+  - The `id` of the tile matrix set is optional, as in TMS 2.0. It was required. Without it, the id of the server's
+    list of tile matrix sets is used, otherwise the `uri` of the definition.
+  - A definition included in a tileset is checked the same way.
+  - The OGC 2D TMS 1.0 encoding (`supportedCRS`, no `cellSize`), which GeoServer 2.28 serves, is still not read. It is
+    named in the message. OpenLayers and GDAL don't read it either.
+  Reported by a user of 1.3.0 (pre-release).
+
 ## [1.2.2] - 2026-11-03
 
 ### Fixed
@@ -162,7 +198,9 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.2...v1.3.0
+[1.2.2]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.1.0...v1.1.1

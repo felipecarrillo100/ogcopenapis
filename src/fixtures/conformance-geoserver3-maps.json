@@ -1,0 +1,59 @@
+{
+  "conformsTo": [
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/core",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/collection-map",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/styled-map",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/html",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/api-operations",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/png",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/jpeg",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/dataset-map",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/collections-selection",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/spatial-subsetting",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/scaling",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/display-resolution",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/datetime",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/crs",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/background",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/orientation",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/tiff",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/svg",
+    "https://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/general-subsetting",
+    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
+    "http://geoserver.org/spec/ogcapi-maps/1.0/conf/map-filter",
+    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/queryables",
+    "http://geoserver.org/spec/ecql/1.0/req/ecql-text",
+    "http://www.opengis.net/spec/cql2/1.0/conf/cql2-text",
+    "http://www.opengis.net/spec/cql2/1.0/conf/cql2-json",
+    "http://www.opengis.net/spec/cql2/1.0/conf/basic-cql2",
+    "http://www.opengis.net/spec/cql2/1.0/conf/advanced-comparison-operators",
+    "http://www.opengis.net/spec/cql2/1.0/conf/arithmetic",
+    "http://www.opengis.net/spec/cql2/1.0/conf/property-property",
+    "http://www.opengis.net/spec/cql2/1.0/conf/basic-spatial-functions",
+    "http://www.opengis.net/spec/cql2/1.0/conf/spatial-functions",
+    "http://geoserver.org/spec/ogcapi-maps/1.0/conf/featureinfo",
+    "http://geoserver.org/spec/ogcapi-maps/1.0/conf/legend"
+  ],
+  "links": [
+    {
+      "href": "http://localhost:8097/geoserver/ogc/maps/v1/conformance?f=application%2Fjson",
+      "rel": "self",
+      "title": "This document",
+      "type": "application/json"
+    },
+    {
+      "href": "http://localhost:8097/geoserver/ogc/maps/v1/conformance?f=application%2Fyaml",
+      "rel": "alternate",
+      "title": "This document as application/yaml",
+      "type": "application/yaml"
+    },
+    {
+      "href": "http://localhost:8097/geoserver/ogc/maps/v1/conformance?f=text%2Fhtml",
+      "rel": "alternate",
+      "title": "This document as text/html",
+      "type": "text/html"
+    }
+  ]
+}

@@ -266,6 +266,29 @@ it. `format` replaces that value as it is, so it must be an `f` value as the ser
 not a media type. pygeoapi refuses `f=image/png`. This differs from the `format` of OgcOpenApiTilesModel below, which is
 a media type (`image/png`).
 
+Some servers offer a collection's map only per style (OGC API Maps, Styled Map class, OGC 20-058 clause 21): the
+collection has no map link, its styles have one each, at `…/styles/{styleId}/map`. GeoServer 2.28 does so.
+`mayOfferStyledMap` tells such a collection without a request; `fetchMapStyles` reads its styles, the default one first,
+and a map link of a style is the `baseURL` of the model as above:
+```typescript
+import {OgcOpenApiStyleTools} from "ogcopenapis/OgcOpenApiStyleTools";
+
+async function createStyledMapLayer(map: Map, capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection, styleId?: string) {
+    if (!OgcOpenApiGetCapabilities.mayOfferStyledMap(capabilities, collection)) throw new Error("Collection " + collection.id + " has no styled map");
+    // Read when the collection is chosen: one request per collection
+    const styles = await OgcOpenApiStyleTools.fetchMapStyles(capabilities, collection);
+    const style = styles.find(s => s.id === styleId) || styles[0];
+    if (!style) throw new Error("Collection " + collection.id + " has no map");
+    const link = style.mapLinks.find(l => l.type === "image/png") || style.mapLinks[0];
+    const crs = (collection.crs || []).find(c => OgcOpenApiCrsTools.getReferenceName(c) === map.reference.identifier) || CRS84;
+    const model = new OgcOpenApiMapsModel({crs, baseURL: link.href, collection: collection.id});
+    return new RasterTileSetLayer(model, {label: (collection.title || collection.id) + " (" + style.title + ")"});
+}
+```
+`mayOfferStyledMap` needs the server to declare a conformance class of OGC API Maps Part 1, so that the styles of a
+vector tiles server are not taken for maps. A collection with a map link gives false: its map is the one of that link.
+GeoServer 3.0 gives each collection a map link of its own, as well as maps per style.
+
 ### Tilesets
 Map tiles and vector tiles start from the tilesets: of a collection, or of the dataset (`collection` null), all its
 collections in each tile. Each tileset is in one tile matrix set. Servers give tile matrix sets their own ids (CubeWerx
@@ -464,6 +487,15 @@ which MapEvolution uses) do. The WKT of epsg.io that the demo uses has no `AXIS`
 * Tile matrix sets with a bottomLeft corner of origin are not in WMTS 1.0, `createFromTileSet` supports them as quad-trees only.
 * `variableMatrixWidths` (coalesced tile matrices) is not supported.
 * A tileset can include its tile matrix set instead of linking it, `fetchTileMatrixSetOfTileSet` uses it then.
+* OGC URIs (`www.opengis.net`: conformance classes, link relations, profiles) are read with `http` or `https`. OGC
+  standards write them both ways (OGC API Tiles and Features with `http`, OGC API Maps with `https`), and servers follow
+  either. Only the scheme may differ: the `/0` version alias and CURIEs are not read. `isSameOgcUri` compares two so.
+* Tile matrix sets are read in the OGC 2D TMS 2.0 encoding (OGC 17-083r4), the one OGC API Tiles 1.0 uses. A
+  definition without what TMS 2.0 requires (`crs`, `tileMatrices`, and of each tile matrix `id`, `scaleDenominator`,
+  `cellSize`, `pointOfOrigin`, `tileWidth`, `tileHeight`, `matrixWidth`, `matrixHeight`) is left out, with a message that
+  names what it lacks. The TMS 1.0 encoding (`supportedCRS`, no `cellSize`) is not read: GeoServer 2.28 and 3.0 serve
+  it, so their OGC API Tiles can't be used. GeoServer's WMTS (`/geoserver/gwc/service/wmts`) serves the same tiles, from
+  the same GeoWebCache layers, and LuciadRIA reads it with its own WMTS model.
 * Levels that are not in the `tileMatrixSetLimits` of a tileset have no tiles. PDOK tiles BGT at one level only,
   RD level 12: nothing shows until the map is zoomed in to about 1 m per pixel, and LuciadRIA over-zooms beyond it.
 * LuciadRIA 2026.1.1 paints nothing for a vector tiles model with `minLevel > 0`. OgcOpenApiVectorTilesModel therefore starts at

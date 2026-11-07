@@ -1,0 +1,96 @@
+{
+    "title": "Tiles Service",
+    "description": "",
+    "links": [
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/?f=application%2Fjson",
+            "rel": "self",
+            "type": "application/json",
+            "title": "This document"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/?f=application%2Fyaml",
+            "rel": "alternate",
+            "type": "application/yaml",
+            "title": "This document as application/yaml"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/?f=text%2Fhtml",
+            "rel": "alternate",
+            "type": "text/html",
+            "title": "This document as text/html"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/openapi?f=application%2Fvnd.oai.openapi%2Bjson%3Bversion%3D3.0",
+            "rel": "service-desc",
+            "type": "application/vnd.oai.openapi+json;version=3.0",
+            "title": "API definition for this endpoint as application/vnd.oai.openapi+json;version=3.0"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/openapi?f=application%2Fyaml",
+            "rel": "service-desc",
+            "type": "application/yaml",
+            "title": "API definition for this endpoint as application/yaml"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/openapi?f=text%2Fhtml",
+            "rel": "service-doc",
+            "type": "text/html",
+            "title": "API definition for this endpoint as text/html"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/conformance?f=application%2Fjson",
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/conformance",
+            "type": "application/json",
+            "title": "Conformance declaration as application/json"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/conformance?f=application%2Fyaml",
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/conformance",
+            "type": "application/yaml",
+            "title": "Conformance declaration as application/yaml"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/conformance?f=text%2Fhtml",
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/conformance",
+            "type": "text/html",
+            "title": "Conformance declaration as text/html"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/collections?f=application%2Fjson",
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/data",
+            "type": "application/json",
+            "title": "Tiled collections metadata as application/json"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/collections?f=application%2Fyaml",
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/data",
+            "type": "application/yaml",
+            "title": "Tiled collections metadata as application/yaml"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/collections?f=text%2Fhtml",
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/data",
+            "type": "text/html",
+            "title": "Tiled collections metadata as text/html"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/tileMatrixSets?f=application%2Fjson",
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+            "type": "application/json",
+            "title": "Tile matrix set list as application/json"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/tileMatrixSets?f=application%2Fyaml",
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+            "type": "application/yaml",
+            "title": "Tile matrix set list as application/yaml"
+        },
+        {
+            "href": "http://localhost:8094/geoserver/ogc/tiles/v1/tileMatrixSets?f=text%2Fhtml",
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes",
+            "type": "text/html",
+            "title": "Tile matrix set list as text/html"
+        }
+    ]
+}

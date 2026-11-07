@@ -22,6 +22,23 @@ export const COLLECTIONS_SELECTION_CONFORMANCE = "http://www.opengis.net/spec/og
 // collections parameter as the standard requires. To be removed once ldproxy declares the class of the standard
 export const COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS = ["http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/collection-selection"];
 
+// The conformance classes of OGC API Maps Part 1 share this prefix, as OGC 20-058 Table 1 writes it, with https
+export const MAPS_CONFORMANCE_PREFIX = "https://www.opengis.net/spec/ogcapi-maps-1/";
+
+// OGC URIs (www.opengis.net: conformance classes, link relations, profiles) are written with http by some OGC standards
+// and with https by others: OGC API Tiles (20-057) and Features write http, OGC API Maps (20-058) writes https, and
+// servers follow either (GeoServer 3.0: https://www.opengis.net/def/rel/ogc/1.0/map). Both schemes name the same URI and
+// are accepted wherever an OGC URI is compared. Nothing else is taken as equal: not the /0 version alias, nor CURIEs
+const OGC_URI_START = /^https?:\/\/www\.opengis\.net\//i;
+const normalizeOgcUri = (uri: string) => uri.replace(OGC_URI_START, "http://www.opengis.net/");
+export const isSameOgcUri = (a: string | undefined, b: string | undefined) =>
+    typeof a === "string" && typeof b === "string" && normalizeOgcUri(a) === normalizeOgcUri(b);
+// The rest of the URI after an OGC prefix, in http or https; undefined when it doesn't start with the prefix
+const afterOgcPrefix = (uri: string, prefix: string) => {
+  const normalized = normalizeOgcUri(uri), normalizedPrefix = normalizeOgcUri(prefix);
+  return normalized.indexOf(normalizedPrefix) === 0 ? normalized.substring(normalizedPrefix.length) : undefined;
+};
+
 // The conformance class of OGC API Features Part 3 for the filter parameter of the items of a collection
 export const FEATURES_FILTER_CONFORMANCE = "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter";
 // The conformance classes of CQL2 1.0 (OGC 21-065) share this prefix, the encodings and the levels of the language
@@ -48,6 +65,9 @@ export interface OgcOpenApiQueryables {
   properties?: { [name: string]: { [keyword: string]: any } };
   [keyword: string]: any;
 }
+
+// The numbers OGC 2D TMS 2.0 requires of a tile matrix (tileMatrix.json), besides its id and pointOfOrigin
+const TILE_MATRIX_NUMBERS = ["scaleDenominator", "cellSize", "tileWidth", "tileHeight", "matrixWidth", "matrixHeight"];
 
 // The media types of a queryables document, in the order they are preferred
 const QUERYABLES_MEDIA_TYPES = ["application/schema+json", "application/json"];
@@ -183,9 +203,11 @@ const CollectionLinkTypeAlternatives = {
   [CollectionLinkType.VectorTiles]: ["http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector", "tilesets-vector"],
 }
 
-// OGC API link relations are given in full or, by older servers, short: tiling-scheme or http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme
+// OGC API link relations are given in full or, by older servers, short: tiling-scheme or http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme.
+// In full, with http or https (isSameOgcUri)
 const OGC_REL = "http://www.opengis.net/def/rel/ogc/1.0/";
-const isRel = (link: LinkType, rel: string) => link.rel === OGC_REL + rel || link.rel === rel;
+const isRel = (link: LinkType, rel: string) => isSameOgcUri(link.rel, OGC_REL + rel) || link.rel === rel;
+const isOneOfRels = (link: LinkType, rels: string[]) => rels.some(rel => isSameOgcUri(link.rel, rel) || link.rel === rel);
 
 const CollectionLinkTypeDefaultFormat = {
   [CollectionLinkType.Map]: "image/png",
@@ -239,7 +261,9 @@ export class OgcOpenApiGetCapabilities {
     const landing = await getJson(requestUrl);
     if (!landing || !Array.isArray(landing.links)) throw new Error("Invalid format: (property 'links' is missing) in " + requestUrl);
     const links: OgcOpenApiCapabilitiesCollectionServiceLinkType[] = landing.links;
-    const linkToData = links.find(link => link.rel === 'data' && link.type === 'application/json') || links.find(link => link.rel === 'data');
+    // In full or short, like the other OGC relations: GeoServer's Tiles and Maps give only the full one
+    const dataLinks = links.filter(link => isRel(link, 'data'));
+    const linkToData = dataLinks.find(link => link.type === 'application/json') || dataLinks[0];
     if (!linkToData) throw new Error("Invalid format: (property 'links' contains no links with rel=data) in " + requestUrl);
     const linkToApi = links.find(link => (link.rel === 'service-desc' || link.rel === 'service') && (link.type || "").indexOf('openapi+json') > -1);
     const tilingSchemes = links.filter(link => isRel(link, 'tiling-schemes'));
@@ -331,7 +355,7 @@ export class OgcOpenApiGetCapabilities {
       case CollectionLinkType.Styles:
       case CollectionLinkType.Tiles:
       case CollectionLinkType.VectorTiles:
-        return links.filter((link: any) => CollectionLinkTypeAlternatives[linkType].some(e=>e===link.rel));
+        return links.filter((link: any) => isOneOfRels(link, CollectionLinkTypeAlternatives[linkType]));
       default:
         return [];
     }
@@ -354,7 +378,7 @@ export class OgcOpenApiGetCapabilities {
   public static isJsonFgLink(link: LinkType) {
     const type = link.type ? link.type.toLowerCase() : "";
     const profiles = Array.isArray(link.profile) ? link.profile : link.profile ? [link.profile] : [];
-    return type.indexOf(JSON_FG_MEDIA_TYPE) === 0 || profiles.indexOf(JSON_FG_PROFILE) > -1;
+    return type.indexOf(JSON_FG_MEDIA_TYPE) === 0 || profiles.some(profile => isSameOgcUri(profile, JSON_FG_PROFILE));
   }
 
   // JSON-FG is reported as JSON-FG also when the server types it application/geo+json with the JSON-FG profile
@@ -362,7 +386,7 @@ export class OgcOpenApiGetCapabilities {
     if (link.type && OgcOpenApiGetCapabilities.isJsonFgLink(link) && link.type.indexOf(JSON_FG_MEDIA_TYPE) !== 0) return JSON_FG_MEDIA_TYPE;
     if (link.type) return link.type;
     for (const key in CollectionLinkTypeAlternatives) {
-      if (CollectionLinkTypeAlternatives.hasOwnProperty(key) && CollectionLinkTypeAlternatives[key].some(e=>e===link.rel)) {
+      if (CollectionLinkTypeAlternatives.hasOwnProperty(key) && isOneOfRels(link, CollectionLinkTypeAlternatives[key])) {
         if (CollectionLinkTypeDefaultFormat[key]) return CollectionLinkTypeDefaultFormat[key];
         break;
       }
@@ -487,8 +511,22 @@ export class OgcOpenApiGetCapabilities {
    */
   public static supportsCollectionSelection(capabilities: OgcOpenApiCapabilitiesObject | null) {
     const conformsTo = capabilities && capabilities.conformsTo ? capabilities.conformsTo : [];
-    return conformsTo.indexOf(COLLECTIONS_SELECTION_CONFORMANCE) > -1 ||
-        COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS.some(variant => conformsTo.indexOf(variant) > -1);
+    return [COLLECTIONS_SELECTION_CONFORMANCE, ...COLLECTIONS_SELECTION_CONFORMANCE_VARIANTS]
+        .some(uri => conformsTo.some(declared => isSameOgcUri(declared, uri)));
+  }
+
+  /**
+   * Whether a collection may offer its map only per style (OGC API Maps, Styled Map class, OGC 20-058 clause 21): it
+   * has no map link of its own, it links its styles, and the server declares a conformance class of OGC API Maps Part 1,
+   * in https or http. GeoServer 2.28 does so. Makes no request: OgcOpenApiStyleTools.fetchMapStyles reads the styles, and finds whether
+   * they have maps. A collection with a map link gives false, its map is the one of that link
+   */
+  public static mayOfferStyledMap(capabilities: OgcOpenApiCapabilitiesObject | null, collection: OgcOpenApiCapabilitiesCollection) {
+    const conformsTo = capabilities && capabilities.conformsTo ? capabilities.conformsTo : [];
+    const links = collection.links ? collection.links : [];
+    return OgcOpenApiGetCapabilities.filterCollectionLinks(links, CollectionLinkType.Map).length === 0 &&
+        OgcOpenApiGetCapabilities.filterCollectionLinks(links, CollectionLinkType.Styles).length > 0 &&
+        conformsTo.some(uri => afterOgcPrefix(uri, MAPS_CONFORMANCE_PREFIX) !== undefined);
   }
 
   /**
@@ -500,10 +538,10 @@ export class OgcOpenApiGetCapabilities {
   public static getFilterSupport(capabilities: OgcOpenApiCapabilitiesObject | null): OgcOpenApiFilterSupport {
     const conformsTo = capabilities && capabilities.conformsTo ? capabilities.conformsTo : [];
     const cql2 = conformsTo
-        .filter(uri => uri.indexOf(CQL2_CONFORMANCE_PREFIX) === 0)
-        .map(uri => uri.substring(CQL2_CONFORMANCE_PREFIX.length));
+        .map(uri => afterOgcPrefix(uri, CQL2_CONFORMANCE_PREFIX))
+        .filter((name): name is string => name !== undefined);
     return {
-      filter: conformsTo.indexOf(FEATURES_FILTER_CONFORMANCE) > -1,
+      filter: conformsTo.some(uri => isSameOgcUri(uri, FEATURES_FILTER_CONFORMANCE)),
       encodings: cql2.filter(name => CQL2_ENCODINGS.indexOf(name) > -1),
       levels: cql2.filter(name => CQL2_ENCODINGS.indexOf(name) === -1),
     };
@@ -682,8 +720,11 @@ export class OgcOpenApiGetCapabilities {
   // A tileset can include the definition of its tile matrix set instead of linking it
   private static getInlineTileMatrixSet(tileSet: any): TileSetData | undefined {
     const tileMatrixSet = tileSet ? tileSet.tileMatrixSet : undefined;
-    return tileMatrixSet && typeof tileMatrixSet.id !== "undefined" && Array.isArray(tileMatrixSet.tileMatrices) && tileMatrixSet.crs ?
-        tileMatrixSet : undefined;
+    if (!tileMatrixSet || OgcOpenApiGetCapabilities.getTileMatrixSetProblem(tileMatrixSet)) return undefined;
+    if (typeof tileMatrixSet.id !== "undefined") return tileMatrixSet;
+    // id is optional in OGC 2D TMS 2.0: the id the tileset gives, otherwise the uri of the definition as it is
+    const id = tileSet.tileMatrixSetId || tileMatrixSet.uri || tileSet.tileMatrixSetURI;
+    return id ? {...tileMatrixSet, id} : undefined;
   }
 
   /**
@@ -730,7 +771,35 @@ export class OgcOpenApiGetCapabilities {
     const jsonLink = tileset.links.find(l => l.type === "application/json") || tileset.links.find(l => !l.type) || tileset.links[0];
     if (!jsonLink) throw {error: true, message: "Tile matrix set " + tileset.id + " has no link"};
     const data: TileSetData = await OgcOpenApiGetCapabilities.fetchJson(capabilities, jsonLink.href, options);
-    if (typeof data.id === "undefined" || !data.tileMatrices || !data.crs) throw {error: true, message: "TileSet has invalid data"};
-    return data;
+    const problem = OgcOpenApiGetCapabilities.getTileMatrixSetProblem(data);
+    if (problem) {
+      const name = data && typeof data.id !== "undefined" ? data.id : tileset.id;
+      throw {error: true, message: "Tile matrix set " + (typeof name !== "undefined" ? name + " " : "") + problem + " in " + jsonLink.href};
+    }
+    if (typeof data.id !== "undefined") return data;
+    // id is optional in OGC 2D TMS 2.0: the id of the server's list of tile matrix sets, otherwise its uri as it is
+    const id = tileset.id || data.uri;
+    return id ? {...data, id} : data;
+  }
+
+  /**
+   * What a tile matrix set lacks of what OGC 2D TMS 2.0 (OGC 17-083r4, the version OGC API Tiles uses) requires and
+   * the tools compute with: crs and tileMatrices, and of each tile matrix its id, scaleDenominator, cellSize,
+   * pointOfOrigin, tileWidth, tileHeight, matrixWidth and matrixHeight. undefined when nothing is missing. The id of the
+   * tile matrix set is optional. supportedCRS, of OGC 2D TMS 1.0, is named in the problem but not read
+   */
+  private static getTileMatrixSetProblem(data: any): string | undefined {
+    if (!data || typeof data !== "object") return "is not a JSON object";
+    if (!data.crs) return "has no crs" + (data.supportedCRS ? " (supportedCRS is OGC 2D TMS 1.0, not read)" : "");
+    if (!Array.isArray(data.tileMatrices)) return "has no tileMatrices";
+    for (let index = 0; index < data.tileMatrices.length; index++) {
+      const matrix = data.tileMatrices[index];
+      if (!matrix || typeof matrix !== "object") return "has tile matrix " + index + " that is not a JSON object";
+      const missing = TILE_MATRIX_NUMBERS.filter(key => typeof matrix[key] !== "number" || !isFinite(matrix[key]));
+      if (typeof matrix.id === "undefined") missing.unshift("id");
+      if (!Array.isArray(matrix.pointOfOrigin) || matrix.pointOfOrigin.length < 2) missing.push("pointOfOrigin");
+      if (missing.length > 0) return "has tile matrix " + (typeof matrix.id !== "undefined" ? matrix.id : index) + " without " + missing.join(", ");
+    }
+    return undefined;
   }
 }

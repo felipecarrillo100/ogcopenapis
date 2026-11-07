@@ -19,7 +19,14 @@ export interface OgcOpenApiStyle {
     mapboxStylesheets: LinkType[];
 }
 
-const DEFAULT_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"];
+export interface OgcOpenApiMapStyle {
+    id: string;
+    title: string;
+    // The map links of this style, one per format (OGC API Maps, Styled Map class): …/styles/{styleId}/map
+    mapLinks: LinkType[];
+}
+
+const DEFAULT_COLORS =["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"];
 
 class OgcOpenApiStyleTools {
 
@@ -65,6 +72,47 @@ class OgcOpenApiStyleTools {
                 }, () => reject({error: true, message: "Not JSON data"}));
             }, err => reject({error: true, message: err.message}));
         });
+    }
+
+    /**
+     * Lists the styles of a collection that have a map (OGC API Maps, Styled Map class, OGC 20-058 clause 21), or with
+     * collection null the styles of the dataset. The default style of the styles document comes first, then the others
+     * in the server's order. For a collection that offers its map only per style, as GeoServer's do
+     * (OgcOpenApiGetCapabilities.mayOfferStyledMap): a map link of a style is the baseURL of an OgcOpenApiMapsModel.
+     * Resolves an empty list for a collection without styles (404). Rejects with an Error otherwise, and with the error
+     * of the request as it is when it fails, an AbortError included.
+     */
+    public static async fetchMapStyles(
+        capabilities: OgcOpenApiCapabilitiesObject,
+        collection: OgcOpenApiCapabilitiesCollection | null,
+        options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
+    ): Promise<OgcOpenApiMapStyle[]> {
+        const href = OgcOpenApiStyleTools.withJsonFormat(OgcOpenApiStyleTools.getStylesHref(capabilities, collection));
+        const response = await OgcOpenApiFetchTools.fetch(href, {
+            method: "GET",
+            credentials: options?.credentials ? "same-origin" : "omit",
+            headers: {...(options?.requestHeaders ? options.requestHeaders : {}), Accept: "application/json"}
+        }, capabilities.serverOptions);
+        if (response.status === 404) return [];
+        if (response.status !== 200) throw new Error("Invalid response: " + response.status + " in " + href);
+        let data: any;
+        try {
+            data = await response.json();
+        } catch (e) {
+            throw new Error("Not JSON data in " + href);
+        }
+        const styles: OgcOpenApiMapStyle[] = (Array.isArray(data?.styles) ? data.styles : [])
+            .filter(style => style && typeof style.id === "string")
+            .map(style => ({
+                id: style.id,
+                title: style.title ? style.title : style.id,
+                mapLinks: OgcOpenApiGetCapabilities.filterCollectionLinks(Array.isArray(style.links) ? style.links : [], CollectionLinkType.Map)
+                    // Relative to the styles document
+                    .map(l => ({...l, href: OgcOpenApiFetchTools.resolveUrl(l.href, href, capabilities.serverOptions)}))
+            }))
+            .filter(style => style.mapLinks.length > 0);
+        const defaultStyle = styles.find(style => style.id === data.default);
+        return defaultStyle ? [defaultStyle, ...styles.filter(style => style !== defaultStyle)] : styles;
     }
 
     /**

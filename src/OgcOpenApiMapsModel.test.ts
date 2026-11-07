@@ -68,3 +68,16 @@ describe('OgcOpenApiMapsModel', () => {
         expect(getQuery(url).get("subset")).toBe("time(\"2020\"),elevation(0)");
     });
 });
+
+// A collection that offers its map only per style, as GeoServer 2.28.6 does: the map link of a style is the baseURL
+describe('OgcOpenApiMapsModel with the map link of a style', () => {
+
+    it('Requests the styled map, with the f value of its link', () => {
+        const styled = "http://localhost:8094/geoserver/ogc/maps/v1/collections/basicauth%3Abluemarble/styles/raster/map";
+        const model = new OgcOpenApiMapsModel({crs: WEB_MERCATOR, baseURL: styled + "?f=image%2Fpng", collection: "basicauth:bluemarble"});
+        const url = model.getTileURL(model.getMapRoot, {level: 0, x: 0, y: 0});
+        expect(url.split("?")[0]).toBe(styled);
+        expect(getQuery(url).get("f")).toBe("image/png");
+        expect(getQuery(url).get("crs")).toBe(WEB_MERCATOR);
+    });
+});
