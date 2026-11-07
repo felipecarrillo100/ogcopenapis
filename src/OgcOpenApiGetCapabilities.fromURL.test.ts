@@ -179,6 +179,10 @@ describe('OgcOpenApiGetCapabilities.fromURL data link', () => {
         expect(await collectionsOf([{rel: OGC_DATA, type: "application/json", href: "https://x.test/collections"}])).toEqual(["c"]);
     });
 
+    it('Reads the collections of a data link with the full relation in https', async () => {
+        expect(await collectionsOf([{rel: "https://www.opengis.net/def/rel/ogc/1.0/data", type: "application/json", href: "https://x.test/collections"}])).toEqual(["c"]);
+    });
+
     it('Reads the collections when both relations are given (PDOK, CubeWerx)', async () => {
         expect(await collectionsOf([
             {rel: "data", type: "application/json", href: "https://x.test/collections"},

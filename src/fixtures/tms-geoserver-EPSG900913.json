@@ -1,0 +1,66 @@
+{
+  "id": "EPSG:900913",
+  "links": [
+    {
+      "href": "http://localhost:8094/geoserver/ogc/tiles/v1/tileMatrixSets/EPSG%3A900913?f=application%2Fjson",
+      "rel": "self",
+      "type": "application/json",
+      "title": "This document"
+    },
+    {
+      "href": "http://localhost:8094/geoserver/ogc/tiles/v1/tileMatrixSets/EPSG%3A900913?f=application%2Fyaml",
+      "rel": "alternate",
+      "type": "application/yaml",
+      "title": "This document as application/yaml"
+    },
+    {
+      "href": "http://localhost:8094/geoserver/ogc/tiles/v1/tileMatrixSets/EPSG%3A900913?f=text%2Fhtml",
+      "rel": "alternate",
+      "type": "text/html",
+      "title": "This document as text/html"
+    }
+  ],
+  "title": "This well-known scale set has been defined to be compatible with Google Maps and Microsoft Live Map projections and zoom levels. Level 0 allows representing the whole world in a single 256x256 pixels. The next level represents the whole world in 2x2 tiles of 256x256 pixels and so on in powers of 2. Scale denominator is only accurate near the equator.",
+  "supportedCRS": "http://www.opengis.net/def/crs/EPSG/0/900913",
+  "tileMatrices": [
+    {
+      "id": "EPSG:900913:0",
+      "scaleDenominator": 559082263.9508929,
+      "cornerOfOrigin": "topLeft",
+      "pointOfOrigin": [
+        -20037508.34,
+        20037508.0
+      ],
+      "tileWidth": 256,
+      "tileHeight": 256,
+      "matrixWidth": 1,
+      "matrixHeight": 1
+    },
+    {
+      "id": "EPSG:900913:1",
+      "scaleDenominator": 279541131.97544646,
+      "cornerOfOrigin": "topLeft",
+      "pointOfOrigin": [
+        -20037508.34,
+        20037508.0
+      ],
+      "tileWidth": 256,
+      "tileHeight": 256,
+      "matrixWidth": 2,
+      "matrixHeight": 2
+    },
+    {
+      "id": "EPSG:900913:2",
+      "scaleDenominator": 139770565.98772323,
+      "cornerOfOrigin": "topLeft",
+      "pointOfOrigin": [
+        -20037508.34,
+        20037508.0
+      ],
+      "tileWidth": 256,
+      "tileHeight": 256,
+      "matrixWidth": 4,
+      "matrixHeight": 4
+    }
+  ]
+}

@@ -358,7 +358,11 @@ describe('OgcOpenApiGetCapabilities tile matrix set in the tileset', () => {
         vi.restoreAllMocks();
     });
 
-    const inline = {id: "Custom", crs: "http://www.opengis.net/def/crs/EPSG/0/3857", tileMatrices: [{id: "0"}]};
+    // A complete definition: one that OGC 2D TMS 2.0 does not allow is not used
+    const inline = {id: "Custom", crs: "http://www.opengis.net/def/crs/EPSG/0/3857", tileMatrices: [{
+        id: "0", scaleDenominator: 559082264.028717, cellSize: 156543.033928041, pointOfOrigin: [-20037508.3427892, 20037508.3427892],
+        tileWidth: 256, tileHeight: 256, matrixWidth: 1, matrixHeight: 1,
+    }]};
 
     it('Uses the tile matrix set of the tileset summary without a request', async () => {
         const fetchSpy = respondWith({tilesets: [{links: [{rel: "self", type: "application/json", href: "https://example.com/tiles/Custom"}], tileMatrixSet: inline}]});
