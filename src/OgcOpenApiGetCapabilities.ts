@@ -664,7 +664,15 @@ export class OgcOpenApiGetCapabilities {
    * servers give with their own ids (CubeWerx: WebMercatorQuad is smerc), then by id.
    */
   public static matchTileMatrixSet(tileSet: CollectionTileSetInfo, tileMatrixSets: TileSetData[]): TileSetData | undefined {
-    const lastSegment = (url: string) => url.split("?")[0].replace(/\/$/, "").split("/").pop();
+    // A path segment is percent-encoded (RFC 3986): GeoServer links EPSG:900913 as EPSG%3A900913
+    const lastSegment = (url: string) => {
+      const segment = url.split("?")[0].replace(/\/$/, "").split("/").pop();
+      try {
+        return decodeURIComponent(segment);
+      } catch (e) {
+        return segment;
+      }
+    };
     const byUri = tileSet.tileMatrixSetURI ? tileMatrixSets.find(t => OgcOpenApiGetCapabilities.sameUri(t.uri, tileSet.tileMatrixSetURI)) : undefined;
     if (byUri) return byUri;
     const ids = [tileSet.tileMatrixSetId,

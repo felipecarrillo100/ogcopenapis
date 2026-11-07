@@ -8,6 +8,14 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-08
+
+### Fixed
+- The tile matrix set of a tileset is matched by the last segment of its `tileMatrixSetURI` or tiling-scheme link
+  percent-decoded (RFC 3986). GeoServer links `EPSG:900913` as `…/tileMatrixSets/EPSG%3A900913`, which did not match
+  the id `EPSG:900913`: the definition was then fetched again from the tiling-scheme link, or, with no such link,
+  `fetchTileMatrixSetOfTileSet` rejected with `No tile matrix set for …`. A malformed encoding is compared as it is.
+
 ## [1.3.0] - 2026-11-05
 
 ### Added
@@ -198,7 +206,8 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.0...v1.2.1

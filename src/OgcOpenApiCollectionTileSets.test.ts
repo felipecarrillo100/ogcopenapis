@@ -127,6 +127,17 @@ describe('OgcOpenApiGetCapabilities.matchTileMatrixSet', () => {
             tileMatrixSets({id: "WebMercatorQuad"})).id).toBe("WebMercatorQuad");
     });
 
+    it('By the last part of the URI or the tiling-scheme link, percent-decoded (GeoServer)', () => {
+        const sets = tileMatrixSets({id: "EPSG:4326"}, {id: "EPSG:900913"});
+        const geoserver = "http://localhost:8080/geoserver/ogc/tiles/v1/tileMatrixSets/";
+        expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(geoserver + "EPSG%3A900913"), sets).id).toBe("EPSG:900913");
+        expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(undefined, undefined, geoserver + "EPSG%3A4326?f=application%2Fjson"), sets).id).toBe("EPSG:4326");
+    });
+
+    it('A malformed percent-encoding is compared as it is', () => {
+        expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(URI + "Bad%E0%A4%A"), tileMatrixSets({id: "Bad%E0%A4%A"})).id).toBe("Bad%E0%A4%A");
+    });
+
     it('No tile matrix set of the server for the tileset', () => {
         expect(OgcOpenApiGetCapabilities.matchTileMatrixSet(tileSet(URI + "GNOSISGlobalGrid"), tileMatrixSets({id: "WebMercatorQuad"}))).toBeUndefined();
     });
