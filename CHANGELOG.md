@@ -8,6 +8,20 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-08
+
+### Security
+- `requestHeaders` and `credentials` go only to the origin of the server, the origin of the URL given to `fromURL`.
+  Until 1.4.0 they went with every request the library made, also to links of the server's documents on another
+  origin, so that a password or token given for one server reached any host its collections, queryables, styles,
+  stylesheets, tilesets or tile matrix sets named. A request to another origin is now sent without the headers of the
+  app, but with `Accept`, and with `credentials: "same-origin"`. The origin is the one of the link, before `proxify`;
+  `http` and `https` are different origins. Reported by a user of 1.4.0.
+
+### Added
+- `credentialsOrigins`, an option of `fromURL`: other origins than the server's that may receive `requestHeaders` and
+  `credentials`, for a server whose documents link to another host that needs the same login.
+
 ## [1.4.0] - 2026-11-08
 
 ### Added
@@ -230,7 +244,8 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.2...v1.3.0
