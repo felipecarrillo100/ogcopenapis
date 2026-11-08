@@ -38,7 +38,7 @@ describe('OgcOpenApiGetCapabilities.fetchTileset checks OGC 2D TMS 2.0', () => {
 
     it('Rejects the definition of GeoServer 2.28.6, naming supportedCRS of OGC 2D TMS 1.0', async () => {
         serveDefinition(GeoServerEPSG900913);
-        await expect(OgcOpenApiGetCapabilities.fetchTileset(server(), meta("EPSG:900913"))).rejects.toEqual({
+        await expect(OgcOpenApiGetCapabilities.fetchTileset(server(), meta("EPSG:900913"))).rejects.toMatchObject({
             error: true,
             message: "Tile matrix set EPSG:900913 has no crs (supportedCRS is OGC 2D TMS 1.0, not read) in " + base + "tileMatrixSets/EPSG:900913?f=json",
         });
@@ -46,7 +46,7 @@ describe('OgcOpenApiGetCapabilities.fetchTileset checks OGC 2D TMS 2.0', () => {
 
     it('Names the tile matrix and the numbers it lacks: GeoServer with a crs still has no cellSize', async () => {
         serveDefinition({...GeoServerEPSG900913, crs: "http://www.opengis.net/def/crs/EPSG/0/3857"});
-        await expect(OgcOpenApiGetCapabilities.fetchTileset(server(), meta("EPSG:900913"))).rejects.toEqual({
+        await expect(OgcOpenApiGetCapabilities.fetchTileset(server(), meta("EPSG:900913"))).rejects.toMatchObject({
             error: true,
             message: "Tile matrix set EPSG:900913 has tile matrix EPSG:900913:0 without cellSize in " + base + "tileMatrixSets/EPSG:900913?f=json",
         });
@@ -57,7 +57,7 @@ describe('OgcOpenApiGetCapabilities.fetchTileset checks OGC 2D TMS 2.0', () => {
         delete matrix.id;
         delete matrix.pointOfOrigin;
         serveDefinition({...PygeoapiWebMercatorQuad, tileMatrices: [PygeoapiWebMercatorQuad.tileMatrices[1], {...matrix, tileWidth: "256"}]});
-        await expect(OgcOpenApiGetCapabilities.fetchTileset(server(), meta("WebMercatorQuad"))).rejects.toEqual({
+        await expect(OgcOpenApiGetCapabilities.fetchTileset(server(), meta("WebMercatorQuad"))).rejects.toMatchObject({
             error: true,
             message: "Tile matrix set WebMercatorQuad has tile matrix 1 without id, tileWidth, pointOfOrigin in " + base + "tileMatrixSets/WebMercatorQuad?f=json",
         });
@@ -67,7 +67,7 @@ describe('OgcOpenApiGetCapabilities.fetchTileset checks OGC 2D TMS 2.0', () => {
         const {tileMatrices, ...withoutMatrices} = PygeoapiWebMercatorQuad;
         serveDefinition(withoutMatrices);
         await expect(OgcOpenApiGetCapabilities.fetchTileset(server(), meta("WebMercatorQuad"))).rejects
-            .toEqual({error: true, message: "Tile matrix set WebMercatorQuad has no tileMatrices in " + base + "tileMatrixSets/WebMercatorQuad?f=json"});
+            .toMatchObject({error: true, message: "Tile matrix set WebMercatorQuad has no tileMatrices in " + base + "tileMatrixSets/WebMercatorQuad?f=json"});
     });
 
     it('Accepts a definition without id, optional in TMS 2.0: the id of the list of tile matrix sets', async () => {
@@ -113,6 +113,6 @@ describe('OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet with the definit
     it('Does not use a definition that is not TMS 2.0', async () => {
         tileSetWith(GeoServerEPSG900913);
         await expect(OgcOpenApiGetCapabilities.fetchTileMatrixSetOfTileSet(server(), summary, [])).rejects
-            .toEqual({error: true, message: "No tile matrix set for " + summary.href});
+            .toMatchObject({error: true, message: "No tile matrix set for " + summary.href});
     });
 });

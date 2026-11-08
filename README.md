@@ -114,9 +114,9 @@ const capabilities = await OgcOpenApiGetCapabilities.fromURL(serverUrl, {filterC
 const collection = capabilities.collections.find(c => c.id === collectionId);
 ```
 Links that are relative are resolved against the document that has them. `fromURL` asks for JSON with the `Accept`
-header, and rejects with an `Error` when the landing page or the collections cannot be read; a failed request rejects
-with the error of `fetch`, an `AbortError` included, so a request can be cancelled through `proxify`. The API document
-and the conformance classes are optional.
+header, and rejects with an `OgcOpenApiError` when the landing page or the collections cannot be read; a request that
+fails without an answer rejects with the error of `fetch`, an `AbortError` included, so a request can be cancelled
+through `proxify`. The API document and the conformance classes are optional.
 
 The `keywords` of a collection are always strings, as OGC API Common Part 2 defines them, and a server's strings are
 kept as they are. A keyword sent as an object with a string `keyword`, the shape of OGC Web Services Common that PDOK
@@ -127,6 +127,24 @@ request, for instance to send it through a proxy:
 ```typescript
 const proxify = (url: string, fetchOptions: RequestInit) => ({url: "https://proxy.example.com/?url=" + encodeURIComponent(url), fetchOptions});
 const capabilities = await OgcOpenApiGetCapabilities.fromURL(serverUrl, {proxify});
+```
+`credentials` means what it means in LuciadRIA, which loads the map and tile images: `true` sends the credentials,
+cookies among them, also to another origin (`"include"`), and `false` or unset only to the same origin (`"same-origin"`,
+what `fetch` does by default). A login in a header, such as HTTP Basic or a bearer token, goes in `requestHeaders`.
+
+What the library fetches itself rejects with an `OgcOpenApiError` when the server answers with a status it does not
+accept, or when the answer cannot be used. Its `status` is the HTTP status, its `url` the request, and its `problem` the
+details the server gives in `application/problem+json` (RFC 9457), such as `detail`. A request that fails without an
+answer, a network error or an `AbortError`, rejects with the error of `fetch`:
+```typescript
+import {OgcOpenApiError} from "ogcopenapis/OgcOpenApiError";
+
+try {
+    await OgcOpenApiGetCapabilities.fromURL(serverUrl, {requestHeaders: {Authorization: "Basic " + btoa(user + ":" + password)}});
+} catch (e) {
+    if (e instanceof OgcOpenApiError && (e.status === 401 || e.status === 403)) askForCredentials(e.problem?.detail);
+    else throw e;
+}
 ```
 
 The examples below share these imports and constants:

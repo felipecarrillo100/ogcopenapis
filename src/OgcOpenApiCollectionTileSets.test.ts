@@ -227,7 +227,7 @@ describe('OgcOpenApiGetCapabilities.fetchTileSetsInFull', () => {
 
     it('Rejects with the error when no definition can be read', async () => {
         respondByUrl({[base + "tileMatrixSets"]: {status: 200, json: list}});
-        await expect(OgcOpenApiGetCapabilities.fetchTileSetsInFull(server(base))).rejects.toEqual({error: true, message: "Invalid response: 404"});
+        await expect(OgcOpenApiGetCapabilities.fetchTileSetsInFull(server(base))).rejects.toMatchObject({error: true, message: "Invalid response: 404"});
     });
 
     it('Requests a definition by its link as given, with its query and an Accept header', async () => {

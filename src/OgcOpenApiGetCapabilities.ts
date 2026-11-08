@@ -1,4 +1,5 @@
 import {type FetchServerOptions, OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
+import {OgcOpenApiError} from "./OgcOpenApiError.js";
 const SCALE_DENOMINATOR_TOLERANCE = 1e-8;
 
 type RequestHeaders = {[headerName: string]: string;} | null
@@ -259,12 +260,12 @@ export class OgcOpenApiGetCapabilities {
         });
 
     const landing = await getJson(requestUrl);
-    if (!landing || !Array.isArray(landing.links)) throw new Error("Invalid format: (property 'links' is missing) in " + requestUrl);
+    if (!landing || !Array.isArray(landing.links)) throw new OgcOpenApiError("Invalid format: (property 'links' is missing) in " + requestUrl, {url: requestUrl});
     const links: OgcOpenApiCapabilitiesCollectionServiceLinkType[] = landing.links;
     // In full or short, like the other OGC relations: GeoServer's Tiles and Maps give only the full one
     const dataLinks = links.filter(link => isRel(link, 'data'));
     const linkToData = dataLinks.find(link => link.type === 'application/json') || dataLinks[0];
-    if (!linkToData) throw new Error("Invalid format: (property 'links' contains no links with rel=data) in " + requestUrl);
+    if (!linkToData) throw new OgcOpenApiError("Invalid format: (property 'links' contains no links with rel=data) in " + requestUrl, {url: requestUrl});
     const linkToApi = links.find(link => (link.rel === 'service-desc' || link.rel === 'service') && (link.type || "").indexOf('openapi+json') > -1);
     const tilingSchemes = links.filter(link => isRel(link, 'tiling-schemes'));
     const linkToTileMatrixSets = tilingSchemes.find(link => link.type === 'application/json') || tilingSchemes.find(link => !link.type);
@@ -283,7 +284,7 @@ export class OgcOpenApiGetCapabilities {
           Promise.resolve([] as string[]),
     ]);
     if (!collectionsDocument || !Array.isArray(collectionsDocument.collections)) {
-      throw new Error("Invalid format: (property 'collections' is missing) in " + collectionsLink.href);
+      throw new OgcOpenApiError("Invalid format: (property 'collections' is missing) in " + collectionsLink.href, {url: collectionsLink.href});
     }
 
     const crsArray = typeof collectionsDocument.crs !== "undefined" ? {crs: collectionsDocument.crs} : {};
@@ -337,12 +338,13 @@ export class OgcOpenApiGetCapabilities {
         .filter(k => typeof k === "string" && k !== "");
   }
 
-  // An Error for a failed request of fromURL: the error of fetch as it is, such as an AbortError, otherwise its message
-  // and the URL. An error of fetch can come from another realm (a DOMException of jsdom is not instanceof Error), so
-  // anything with a name and a message is kept; the {error, message} of fetchJson has no name
+  // An Error for a failed request of fromURL: an OgcOpenApiError of fetchJson with the URL added to its message, the
+  // error of fetch as it is, such as an AbortError, otherwise its message and the URL. An error of fetch can come from
+  // another realm (a DOMException of jsdom is not instanceof Error), so anything with a name and a message is kept
   private static toError(e: any, href: string): Error {
+    if (e instanceof OgcOpenApiError) return new OgcOpenApiError(e.message + " for " + href, {status: e.status, url: e.url ? e.url : href, problem: e.problem});
     if (e instanceof Error || (e && typeof e.name === "string" && typeof e.message === "string")) return e;
-    return new Error((e && e.message ? e.message : String(e)) + " for " + href);
+    return new OgcOpenApiError((e && e.message ? e.message : String(e)) + " for " + href, {url: href});
   }
 
   static filterCollectionLinks(
@@ -445,10 +447,10 @@ export class OgcOpenApiGetCapabilities {
   }
 
   private static async fetchTileSets(capabilities: OgcOpenApiCapabilitiesObject | null, options?:{credentials?:boolean, requestHeaders?: RequestHeaders}): Promise<TileSetMeta[]> {
-    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    if (capabilities === null) throw new OgcOpenApiError("No capabilities");
     const url = capabilities.tileMatrixSetsUrl ? capabilities.tileMatrixSetsUrl : capabilities.baseUrl + "tileMatrixSets";
     const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, url, options);
-    if (!data.tileMatrixSets) throw {error: true, message: "tileMatrixSets not defined"};
+    if (!data.tileMatrixSets) throw new OgcOpenApiError("tileMatrixSets not defined", {url});
     const resolve = (href: string) => OgcOpenApiFetchTools.resolveUrl(href, url, capabilities.serverOptions);
     return data.tileMatrixSets.map(tml => ({
       ...tml,
@@ -464,14 +466,14 @@ export class OgcOpenApiGetCapabilities {
                                  accept = "application/json") {
     const result = await OgcOpenApiFetchTools.fetch(href, {
       method: "GET",
-      credentials: options?.credentials ? "same-origin" : "omit",
+      credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
       headers: {Accept: accept, ...(options?.requestHeaders ? options.requestHeaders : {})}
     }, capabilities.serverOptions);
-    if (result.status !== 200) throw {error: true, message: "Invalid response: " + result.status};
+    if (result.status !== 200) throw await OgcOpenApiError.fromResponse(result, "Invalid response: " + result.status, href);
     try {
       return await result.json();
     } catch (err) {
-      throw {error: true, message: "Not JSON data"};
+      throw new OgcOpenApiError("Not JSON data", {url: href});
     }
   }
 
@@ -558,28 +560,28 @@ export class OgcOpenApiGetCapabilities {
       collection: OgcOpenApiCapabilitiesCollection,
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
   ): Promise<OgcOpenApiQueryables | null> {
-    if (capabilities === null) throw new Error("No capabilities to fetch the queryables of " + collection.id);
+    if (capabilities === null) throw new OgcOpenApiError("No capabilities to fetch the queryables of " + collection.id);
     const href = OgcOpenApiGetCapabilities.getQueryablesHref(capabilities, collection);
     if (!href) return null;
     let response: Response;
     try {
       response = await OgcOpenApiFetchTools.fetch(href, {
         method: "GET",
-        credentials: options?.credentials ? "same-origin" : "omit",
+        credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
         headers: {Accept: QUERYABLES_MEDIA_TYPES.join(", "), ...(options?.requestHeaders ? options.requestHeaders : {})}
       }, capabilities.serverOptions);
     } catch (e) {
       throw OgcOpenApiGetCapabilities.toError(e, href);
     }
     if (response.status === 404) return null;
-    if (response.status !== 200) throw new Error("Invalid response: " + response.status + " for " + href);
+    if (response.status !== 200) throw await OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status + " for " + href, href);
     let data: any;
     try {
       data = await response.json();
     } catch (e) {
-      throw new Error("Not JSON data for " + href);
+      throw new OgcOpenApiError("Not JSON data for " + href, {url: href});
     }
-    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Invalid format: (not a JSON Schema) in " + href);
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new OgcOpenApiError("Invalid format: (not a JSON Schema) in " + href, {url: href});
     return data;
   }
 
@@ -616,9 +618,9 @@ export class OgcOpenApiGetCapabilities {
       linkType: CollectionLinkType = CollectionLinkType.Tiles,
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
   ): Promise<CollectionTileSetInfo[]> {
-    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    if (capabilities === null) throw new OgcOpenApiError("No capabilities");
     const href = OgcOpenApiGetCapabilities.getTileSetsHref(collection, linkType);
-    if (href === '') throw {error: true, message: "Collection " + collection.id + " has no " + linkType + " link"};
+    if (href === '') throw new OgcOpenApiError("Collection " + collection.id + " has no " + linkType + " link");
     return OgcOpenApiGetCapabilities.fetchTileSetList(capabilities, href, options);
   }
 
@@ -631,15 +633,15 @@ export class OgcOpenApiGetCapabilities {
       linkType: CollectionLinkType = CollectionLinkType.Tiles,
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
   ): Promise<CollectionTileSetInfo[]> {
-    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    if (capabilities === null) throw new OgcOpenApiError("No capabilities");
     const href = OgcOpenApiGetCapabilities.getDatasetTileSetsHref(capabilities, linkType);
-    if (href === '') throw {error: true, message: "The dataset has no " + linkType + " link"};
+    if (href === '') throw new OgcOpenApiError("The dataset has no " + linkType + " link");
     return OgcOpenApiGetCapabilities.fetchTileSetList(capabilities, href, options);
   }
 
   private static async fetchTileSetList(capabilities: OgcOpenApiCapabilitiesObject, href: string, options?: {credentials?: boolean, requestHeaders?: RequestHeaders}) {
     const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, href, options);
-    if (!Array.isArray(data.tilesets)) throw {error: true, message: "Response has no tilesets"};
+    if (!Array.isArray(data.tilesets)) throw new OgcOpenApiError("Response has no tilesets", {url: href});
     const tileSets: CollectionTileSetInfo[] = [];
     for (const tileSet of data.tilesets) {
       const links: LinkType[] = tileSet.links ? tileSet.links : [];
@@ -699,7 +701,7 @@ export class OgcOpenApiGetCapabilities {
       tileMatrixSets: TileSetData[],
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
   ): Promise<TileSetData> {
-    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    if (capabilities === null) throw new OgcOpenApiError("No capabilities");
     if (tileSet.tileMatrixSet) return tileSet.tileMatrixSet;
     let identified = tileSet;
     if (!tileSet.tileMatrixSetURI && !tileSet.tileMatrixSetId && !tileSet.tilingSchemeHref) {
@@ -709,7 +711,7 @@ export class OgcOpenApiGetCapabilities {
     const match = OgcOpenApiGetCapabilities.matchTileMatrixSet(identified, tileMatrixSets);
     if (match) return match;
     if (!identified.tilingSchemeHref) {
-      throw {error: true, message: "No tile matrix set for " + (identified.tileMatrixSetURI || identified.href)};
+      throw new OgcOpenApiError("No tile matrix set for " + (identified.tileMatrixSetURI || identified.href));
     }
     return OgcOpenApiGetCapabilities.fetchTileset(capabilities, {id: identified.tileMatrixSetId, title: "", links: [{rel: "self", type: "application/json", title: "", href: identified.tilingSchemeHref}]}, options);
   }
@@ -748,7 +750,7 @@ export class OgcOpenApiGetCapabilities {
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders},
       linkType: CollectionLinkType = CollectionLinkType.Tiles
   ): Promise<CollectionTileSet> {
-    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    if (capabilities === null) throw new OgcOpenApiError("No capabilities");
     const tileSetsHref = currentCollection ?
         OgcOpenApiGetCapabilities.getTileSetsHref(currentCollection, linkType) :
         OgcOpenApiGetCapabilities.getDatasetTileSetsHref(capabilities, linkType);
@@ -756,7 +758,7 @@ export class OgcOpenApiGetCapabilities {
     // pygeoapi answers 500 without f=json or an Accept header
     const data = await OgcOpenApiGetCapabilities.fetchJson(capabilities, tileInfoUrl, options);
     const links = data.links ? data.links.filter(l => l.rel === "item" || l.rel === "items").map(a => ({...a, href: OgcOpenApiFetchTools.resolveUrl(a.href, tileInfoUrl, capabilities.serverOptions)})) : [];
-    if (links.length === 0) throw {error: true, message: "Invalid"};
+    if (links.length === 0) throw new OgcOpenApiError("Invalid", {url: tileInfoUrl});
     return {
       dataType: data.dataType,
       links,
@@ -775,14 +777,14 @@ export class OgcOpenApiGetCapabilities {
       tileset: TileSetMeta,
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
   ): Promise<TileSetData> {
-    if (capabilities === null) throw {error: true, message: "No capabilities"};
+    if (capabilities === null) throw new OgcOpenApiError("No capabilities");
     const jsonLink = tileset.links.find(l => l.type === "application/json") || tileset.links.find(l => !l.type) || tileset.links[0];
-    if (!jsonLink) throw {error: true, message: "Tile matrix set " + tileset.id + " has no link"};
+    if (!jsonLink) throw new OgcOpenApiError("Tile matrix set " + tileset.id + " has no link");
     const data: TileSetData = await OgcOpenApiGetCapabilities.fetchJson(capabilities, jsonLink.href, options);
     const problem = OgcOpenApiGetCapabilities.getTileMatrixSetProblem(data);
     if (problem) {
       const name = data && typeof data.id !== "undefined" ? data.id : tileset.id;
-      throw {error: true, message: "Tile matrix set " + (typeof name !== "undefined" ? name + " " : "") + problem + " in " + jsonLink.href};
+      throw new OgcOpenApiError("Tile matrix set " + (typeof name !== "undefined" ? name + " " : "") + problem + " in " + jsonLink.href, {url: jsonLink.href});
     }
     if (typeof data.id !== "undefined") return data;
     // id is optional in OGC 2D TMS 2.0: the id of the server's list of tile matrix sets, otherwise its uri as it is

@@ -8,6 +8,7 @@ import {CoordinateReference} from '@luciad/ria/reference/CoordinateReference.js'
 import {getReference} from "@luciad/ria/reference/ReferenceProvider.js";
 import {createTransformation} from "@luciad/ria/transformation/TransformationFactory.js";
 import {OgcOpenApiCrsTools} from "./OgcOpenApiCrsTools.js";
+import {OgcOpenApiError} from "./OgcOpenApiError.js";
 import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec.js";
 import {GMLCodec} from "@luciad/ria/model/codec/GMLCodec.js";
 import type {ProxifyFunction} from "./OgcOpenApiGetCapabilities.js";
@@ -202,12 +203,12 @@ export class OgcOpenApiFeatureStore extends Store {
     const headers = { ...this.requestHeaders, Accept: accept };
     return OgcOpenApiFetchTools.fetch(request, {
       method: 'GET',
-      credentials: this.credentials ? "same-origin": "omit",
+      credentials: OgcOpenApiFetchTools.toFetchCredentials(this.credentials),
       headers,
       signal: abortSignal,
-    }, this.serverOptions).then((response) => {
+    }, this.serverOptions).then(async (response) => {
       if (response.status !== 200) {
-        throw new Error("Invalid response: " + response.status + " for " + request);
+        throw await OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status + " for " + request, request);
       }
       return response.text().then((content) => {
         let contentType = response.headers.get('Content-Type');
