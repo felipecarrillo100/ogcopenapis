@@ -31,6 +31,15 @@ class OgcOpenApiFetchTools {
         }
     }
 
+    /**
+     * The fetch mode of the credentials option, as LuciadRIA gives it to the images it loads: true includes the
+     * credentials, cookies among them, also for another origin; false or unset only for the same origin, which is
+     * also what fetch does without a mode.
+     */
+    public static toFetchCredentials(credentials?: boolean): RequestCredentials {
+        return credentials ? "include" : "same-origin";
+    }
+
     public static fetch(input: string, options: RequestInit, serverOptions: FetchServerOptions) {
         const fullUrl = serverOptions.complete(input);
         const result = serverOptions.proxy(fullUrl, options)

@@ -8,6 +8,30 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-08
+
+### Added
+- `OgcOpenApiError` (`ogcopenapis/OgcOpenApiError`), what the library rejects with when a request it makes itself
+  fails or its answer cannot be used: `status`, the HTTP status, so that an app can tell a 401 or 403 and ask for
+  credentials; `url`, the request; and `problem`, the details of an `application/problem+json` answer (RFC 9457), such
+  as `detail`, the server's reason. It covers `fromURL`, `fetchQueryables`, the tilesets and tile matrix sets, the
+  styles and stylesheets, the items of `OgcOpenApiFeatureStore` and the tiles of `OgcOpenApiVectorTilesModel`. The map
+  and tile images are loaded by LuciadRIA, which reports their failures. Requested by a user of 1.3.1 (and of 1.2.0,
+  for the problem details).
+
+### Changed
+- `credentials` means what it means in LuciadRIA: `true` is the fetch mode `"include"`, `false` or unset
+  `"same-origin"`. Until 1.3.1 the library's own requests used `"same-origin"` and `"omit"`, while LuciadRIA loaded the
+  images of the same layer with `"include"` and `"same-origin"`, so one option meant two things, and a login by cookie
+  never reached the server. **Unset or `false` now sends same-origin cookies**, as `fetch` does by default. A login in
+  a header (`requestHeaders`) is not affected. Requested by a user of 1.2.2.
+- The failures that were plain `{error: true, message}` objects, and those that were an `Error`, are an
+  `OgcOpenApiError`: an `Error`, with `error: true` and the same messages. Spread or `JSON.stringify` of an error no
+  longer shows its `message`, as for any `Error`.
+- `OgcOpenApiStyleTools.fetchStyles` rejects with the error of `fetch` when the request fails without an answer, an
+  `AbortError` included, as the other requests do, instead of an object with its message; without capabilities it
+  rejects with an `OgcOpenApiError` instead of `undefined`.
+
 ## [1.3.1] - 2026-11-08
 
 ### Fixed
@@ -206,7 +230,8 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 See the [git history](https://github.com/felipecarrillo100/ogcopenapis/commits/main).
 
-[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/felipecarrillo100/ogcopenapis/compare/v1.2.1...v1.2.2

@@ -7,6 +7,7 @@ import {createTransformation} from "@luciad/ria/transformation/TransformationFac
 import type {ProxifyFunction, TileMatrixLimits, TileSetData, TileSetLayer} from "./OgcOpenApiGetCapabilities.js";
 import {OgcOpenApiMvtTools} from "./OgcOpenApiMvtTools.js";
 import {type FetchServerOptions, OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
+import {OgcOpenApiError} from "./OgcOpenApiError.js";
 import {type OgcOpenApiTileGrid, OgcOpenApiTileMatrixTools} from "./OgcOpenApiTileMatrixTools.js";
 
 export const MVT_MEDIA_TYPE = "application/vnd.mapbox-vector-tile";
@@ -68,13 +69,13 @@ export class OgcOpenApiVectorTilesModel extends MapboxVectorTileSetModel {
         const tileUrl = OgcOpenApiTileMatrixTools.appendQueryParameters(targetUrl, this.requestParameters ? this.requestParameters : {});
         return OgcOpenApiFetchTools.fetch(tileUrl, {
             method: "GET",
-            credentials: this.credentials ? "same-origin" : "omit",
+            credentials: OgcOpenApiFetchTools.toFetchCredentials(this.credentials),
             headers: this.getTileHeaders(),
             signal
-        }, this.serverOptions).then(response => {
+        }, this.serverOptions).then(async response => {
             // Servers answer a tile without data with 204, 404 or an empty 200
             if (response.status === 204 || response.status === 404) return null;
-            if (response.status !== 200) throw new Error("Invalid response: " + response.status + " for " + tileUrl);
+            if (response.status !== 200) throw await OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status + " for " + tileUrl, tileUrl);
             return response.arrayBuffer().then(content => content.byteLength > 0 ? content : null);
         });
     }

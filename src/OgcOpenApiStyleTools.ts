@@ -7,6 +7,7 @@ import {
     type TileSetLayer
 } from "./OgcOpenApiGetCapabilities.js";
 import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
+import {OgcOpenApiError} from "./OgcOpenApiError.js";
 
 export const MAPBOX_STYLE_TYPE = "application/vnd.mapbox.style+json";
 
@@ -41,13 +42,13 @@ class OgcOpenApiStyleTools {
     ) {
         return new Promise<OgcOpenApiStyle[]>((resolve, reject) => {
             if (capabilities === null) {
-                reject();
+                reject(new OgcOpenApiError("No capabilities"));
                 return;
             }
             const href = OgcOpenApiStyleTools.withJsonFormat(OgcOpenApiStyleTools.getStylesHref(capabilities, collection));
             OgcOpenApiFetchTools.fetch(href, {
                 method: "GET",
-                credentials: options?.credentials ? "same-origin" : "omit",
+                credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
                 headers: {...(options?.requestHeaders ? options.requestHeaders : {}), Accept: "application/json"}
             }, capabilities.serverOptions).then(response => {
                 // A collection without styles
@@ -56,7 +57,7 @@ class OgcOpenApiStyleTools {
                     return;
                 }
                 if (response.status !== 200) {
-                    reject({error: true, message: "Invalid response: " + response.status});
+                    OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status, href).then(reject);
                     return;
                 }
                 response.json().then(data => {
@@ -69,8 +70,8 @@ class OgcOpenApiStyleTools {
                             // Relative to the styles document
                             .map(l => ({...l, href: OgcOpenApiFetchTools.resolveUrl(l.href, href, capabilities.serverOptions)}))
                     })).filter(style => style.mapboxStylesheets.length > 0));
-                }, () => reject({error: true, message: "Not JSON data"}));
-            }, err => reject({error: true, message: err.message}));
+                }, () => reject(new OgcOpenApiError("Not JSON data", {url: href})));
+            }, reject);
         });
     }
 
@@ -90,16 +91,16 @@ class OgcOpenApiStyleTools {
         const href = OgcOpenApiStyleTools.withJsonFormat(OgcOpenApiStyleTools.getStylesHref(capabilities, collection));
         const response = await OgcOpenApiFetchTools.fetch(href, {
             method: "GET",
-            credentials: options?.credentials ? "same-origin" : "omit",
+            credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
             headers: {...(options?.requestHeaders ? options.requestHeaders : {}), Accept: "application/json"}
         }, capabilities.serverOptions);
         if (response.status === 404) return [];
-        if (response.status !== 200) throw new Error("Invalid response: " + response.status + " in " + href);
+        if (response.status !== 200) throw await OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status + " in " + href, href);
         let data: any;
         try {
             data = await response.json();
         } catch (e) {
-            throw new Error("Not JSON data in " + href);
+            throw new OgcOpenApiError("Not JSON data in " + href, {url: href});
         }
         const styles: OgcOpenApiMapStyle[] = (Array.isArray(data?.styles) ? data.styles : [])
             .filter(style => style && typeof style.id === "string")
@@ -149,10 +150,10 @@ class OgcOpenApiStyleTools {
     ) {
         return OgcOpenApiFetchTools.fetch(stylesheet.href, {
             method: "GET",
-            credentials: options?.credentials ? "same-origin" : "omit",
+            credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
             headers: {...(options?.requestHeaders ? options.requestHeaders : {}), Accept: MAPBOX_STYLE_TYPE}
-        }, capabilities.serverOptions).then(response => {
-            if (response.status !== 200) throw new Error("Invalid response: " + response.status);
+        }, capabilities.serverOptions).then(async response => {
+            if (response.status !== 200) throw await OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status, stylesheet.href);
             return response.text();
         }).then(text => OgcOpenApiStyleTools.parseMapboxStyle(text));
     }
