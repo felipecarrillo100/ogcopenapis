@@ -132,6 +132,16 @@ const capabilities = await OgcOpenApiGetCapabilities.fromURL(serverUrl, {proxify
 cookies among them, also to another origin (`"include"`), and `false` or unset only to the same origin (`"same-origin"`,
 what `fetch` does by default). A login in a header, such as HTTP Basic or a bearer token, goes in `requestHeaders`.
 
+`requestHeaders` and `credentials` go only to the origin of the server, the origin of the URL given to `fromURL`. A link
+of the server to another origin is requested without them, with `Accept` only and `credentials: "same-origin"`, so
+that a password given for one server never reaches a host its documents name. `http` and `https` are different
+origins. Other origins that may receive them are listed in `credentialsOrigins`:
+```typescript
+const capabilities = await OgcOpenApiGetCapabilities.fromURL(serverUrl, {requestHeaders, credentialsOrigins: ["https://data.example.com"]});
+```
+The models send them to the URLs the application gives them. The style of `OgcOpenApiVectorTilesModel` (`styleUrl`)
+is loaded by LuciadRIA with `requestHeaders`, and so are the URLs that style names.
+
 What the library fetches itself rejects with an `OgcOpenApiError` when the server answers with a status it does not
 accept, or when the answer cannot be used. Its `status` is the HTTP status, its `url` the request, and its `problem` the
 details the server gives in `application/problem+json` (RFC 9457), such as `detail`. A request that fails without an

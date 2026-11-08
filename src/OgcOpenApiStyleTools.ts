@@ -50,7 +50,7 @@ class OgcOpenApiStyleTools {
                 method: "GET",
                 credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
                 headers: {...(options?.requestHeaders ? options.requestHeaders : {}), Accept: "application/json"}
-            }, capabilities.serverOptions).then(response => {
+            }, capabilities.serverOptions, options?.requestHeaders).then(response => {
                 // A collection without styles
                 if (response.status === 404) {
                     resolve([]);
@@ -93,7 +93,7 @@ class OgcOpenApiStyleTools {
             method: "GET",
             credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
             headers: {...(options?.requestHeaders ? options.requestHeaders : {}), Accept: "application/json"}
-        }, capabilities.serverOptions);
+        }, capabilities.serverOptions, options?.requestHeaders);
         if (response.status === 404) return [];
         if (response.status !== 200) throw await OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status + " in " + href, href);
         let data: any;
@@ -152,7 +152,7 @@ class OgcOpenApiStyleTools {
             method: "GET",
             credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
             headers: {...(options?.requestHeaders ? options.requestHeaders : {}), Accept: MAPBOX_STYLE_TYPE}
-        }, capabilities.serverOptions).then(async response => {
+        }, capabilities.serverOptions, options?.requestHeaders).then(async response => {
             if (response.status !== 200) throw await OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status, stylesheet.href);
             return response.text();
         }).then(text => OgcOpenApiStyleTools.parseMapboxStyle(text));

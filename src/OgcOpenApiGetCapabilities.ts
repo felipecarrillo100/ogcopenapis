@@ -235,7 +235,10 @@ export interface OgcOpenApiGetCapabilitiesFromURL {
   requestHeaders?: {
     [headerName: string]: string;
   } | null;
-  proxify?: ProxifyFunction
+  proxify?: ProxifyFunction;
+  // Other origins than the server's that may receive requestHeaders and credentials, such as "https://data.example.com".
+  // The links of the server to any other origin are requested without them
+  credentialsOrigins?: string[];
 }
 
 export class OgcOpenApiGetCapabilities {
@@ -251,7 +254,7 @@ export class OgcOpenApiGetCapabilities {
     // The landing page, with the query it was given, such as an api key. baseUrl is without it
     const baseUrl = OgcOpenApiFetchTools.cleanUrl(inputRequest);
     const requestUrl = OgcOpenApiFetchTools.appendPath(inputRequest, "");
-    const serverOptions = OgcOpenApiFetchTools.createFetchOptions({originalUrl: requestUrl, proxify: options.proxify});
+    const serverOptions = OgcOpenApiFetchTools.createFetchOptions({originalUrl: requestUrl, proxify: options.proxify, credentialsOrigins: options.credentialsOrigins});
     // The requests before the capabilities exist
     const server = {serverOptions} as OgcOpenApiCapabilitiesObject;
     const getJson = (href: string, accept?: string) =>
@@ -468,7 +471,7 @@ export class OgcOpenApiGetCapabilities {
       method: "GET",
       credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
       headers: {Accept: accept, ...(options?.requestHeaders ? options.requestHeaders : {})}
-    }, capabilities.serverOptions);
+    }, capabilities.serverOptions, options?.requestHeaders);
     if (result.status !== 200) throw await OgcOpenApiError.fromResponse(result, "Invalid response: " + result.status, href);
     try {
       return await result.json();
@@ -569,7 +572,7 @@ export class OgcOpenApiGetCapabilities {
         method: "GET",
         credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
         headers: {Accept: QUERYABLES_MEDIA_TYPES.join(", "), ...(options?.requestHeaders ? options.requestHeaders : {})}
-      }, capabilities.serverOptions);
+      }, capabilities.serverOptions, options?.requestHeaders);
     } catch (e) {
       throw OgcOpenApiGetCapabilities.toError(e, href);
     }

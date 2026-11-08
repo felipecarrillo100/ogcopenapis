@@ -149,3 +149,124 @@ describe('A failed request rejects with an OgcOpenApiError that has the HTTP sta
         expect(notJson.status).toBeUndefined();
     });
 });
+
+describe('The requestHeaders and credentials of the app go only to the server\'s origin', () => {
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    // The server links its collections, queryables, styles and a stylesheet on another origin (report 15)
+    const SERVER = "https://server.test/ogcapi/";
+    const OTHER = "https://other.test";
+    const DOCUMENTS = {
+        [SERVER]: {links: [{rel: "data", href: OTHER + "/collections", type: "application/json"}]},
+        [OTHER + "/collections"]: {collections: [{id: "roads", links: [
+            {rel: "items", href: SERVER + "collections/roads/items", type: "application/geo+json"},
+            {rel: "http://www.opengis.net/def/rel/ogc/1.0/queryables", href: OTHER + "/roads/queryables", type: "application/schema+json"},
+            {rel: "http://www.opengis.net/def/rel/ogc/1.0/styles", href: OTHER + "/roads/styles", type: "application/json"},
+        ]}]},
+        [OTHER + "/roads/queryables"]: {type: "object", properties: {}},
+        [OTHER + "/roads/styles?f=json"]: {styles: []},
+        [OTHER + "/roads/styles/night"]: {version: 8, sources: {}, layers: []},
+    };
+    const APP = {requestHeaders: {Authorization: "Basic dXNlcjpwYXNz", "x-api-key": "k"}, credentials: true};
+
+    type Sent = { url: string, authorization: string | null, apiKey: string | null, accept: string | null, credentials: RequestCredentials };
+    function serveDocuments(documents: { [url: string]: object } = DOCUMENTS) {
+        const sent: Sent[] = [];
+        vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+            const url = String(input);
+            const headers = new Headers(init?.headers);
+            sent.push({url, authorization: headers.get("Authorization"), apiKey: headers.get("X-Api-Key"), accept: headers.get("Accept"), credentials: init?.credentials});
+            return url in documents ? new Response(JSON.stringify(documents[url]), {status: 200}) : new Response("", {status: 404});
+        });
+        return sent;
+    }
+
+    async function readAll(options: object) {
+        const capabilities = await OgcOpenApiGetCapabilities.fromURL(SERVER, options);
+        const roads = capabilities.collections.find(c => c.id === "roads");
+        await OgcOpenApiGetCapabilities.fetchQueryables(capabilities, roads, options);
+        await OgcOpenApiStyleTools.fetchStyles(capabilities, roads, options);
+        await OgcOpenApiStyleTools.fetchMapboxStyle(capabilities, {rel: "stylesheet", type: "", title: "", href: OTHER + "/roads/styles/night"}, options);
+    }
+
+    it('Sends them to the server, not to the other origin its links name, and keeps Accept', async () => {
+        const sent = serveDocuments();
+        await readAll(APP);
+        const server = sent.filter(s => s.url.startsWith(SERVER));
+        const other = sent.filter(s => s.url.startsWith(OTHER));
+        expect(server.length).toBeGreaterThan(0);
+        expect(other.length).toBe(4);
+        for (const s of server) expect(s).toMatchObject({authorization: APP.requestHeaders.Authorization, apiKey: "k", credentials: "include"});
+        for (const s of other) {
+            expect(s).toMatchObject({authorization: null, apiKey: null, credentials: "same-origin"});
+            expect(s.accept).toBeTruthy();
+        }
+    });
+
+    it('Removes the headers of the app in any letter case, and keeps an Accept of the app', async () => {
+        const sent = serveDocuments();
+        await readAll({requestHeaders: {AUTHORIZATION: "Bearer t", "X-API-KEY": "k", Accept: "application/json"}});
+        for (const s of sent.filter(s => s.url.startsWith(OTHER))) {
+            expect(s).toMatchObject({authorization: null, apiKey: null});
+        }
+        expect(sent.find(s => s.url === OTHER + "/collections").accept).toBe("application/json");
+    });
+
+    it('Sends them to the origins in credentialsOrigins', async () => {
+        const sent = serveDocuments();
+        await readAll({...APP, credentialsOrigins: [OTHER]});
+        for (const s of sent) expect(s).toMatchObject({authorization: APP.requestHeaders.Authorization, credentials: "include"});
+    });
+
+    it('http is another origin than https: a link of the server to http gets no credentials', async () => {
+        const sent = serveDocuments({
+            [SERVER]: {links: [{rel: "data", href: "http://server.test/ogcapi/collections", type: "application/json"}]},
+            "http://server.test/ogcapi/collections": {collections: []},
+        });
+        await OgcOpenApiGetCapabilities.fromURL(SERVER, APP);
+        expect(sent.map(s => [s.url, s.authorization])).toEqual([
+            [SERVER, APP.requestHeaders.Authorization],
+            ["http://server.test/ogcapi/collections", null],
+        ]);
+    });
+
+    it('Decides on the origin of the link, not on the one proxify sends it to', async () => {
+        const sent = serveDocuments(Object.fromEntries(Object.entries(DOCUMENTS).map(([url, body]) => ["https://proxy.test/?url=" + encodeURIComponent(url), body])));
+        const proxify = (url: string, fetchOptions: RequestInit) => ({url: "https://proxy.test/?url=" + encodeURIComponent(url), fetchOptions});
+        await readAll({...APP, proxify});
+        const origin = (s: Sent) => new URL(decodeURIComponent(s.url.split("url=")[1])).origin;
+        expect(sent.filter(s => origin(s) === "https://server.test").every(s => s.authorization !== null)).toBe(true);
+        expect(sent.filter(s => origin(s) === OTHER).every(s => s.authorization === null)).toBe(true);
+    });
+
+    it('A relative proxy path is the server\'s', async () => {
+        const sent = serveDocuments({
+            "/proxy/ogcapi/": {links: [{rel: "data", href: "/proxy/ogcapi/collections", type: "application/json"}]},
+            "/proxy/ogcapi/collections": {collections: []},
+        });
+        await OgcOpenApiGetCapabilities.fromURL("/proxy/ogcapi/", APP);
+        expect(sent.length).toBe(2);
+        for (const s of sent) expect(s.authorization).toBe(APP.requestHeaders.Authorization);
+    });
+
+    it('The models send them to the URLs the app gives', async () => {
+        const sent = serveDocuments({});
+        await REQUESTS.OgcOpenApiFeatureStore(true).catch(() => undefined);
+        const store = new OgcOpenApiFeatureStore({
+            dataUrl: OTHER + "/collections/roads/items?f=json", outputFormat: "application/geo+json", codec: new GeoJsonCodec({generateIDs: false}),
+            crs: "http://www.opengis.net/def/crs/OGC/1.3/CRS84", useCrs84Bounds: true, credentials: true, requestHeaders: APP.requestHeaders,
+        });
+        await store.get(7).catch(() => undefined);
+        const tiles = new OgcOpenApiVectorTilesModel({
+            tileMatrix: WebMercatorQuadJson as unknown as TileSetData, collection: "roads", credentials: true, requestHeaders: APP.requestHeaders,
+            baseURL: OTHER + "/collections/roads/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}",
+        });
+        await tiles.getVectorTile({level: 2, x: 1, y: 3}).catch(() => undefined);
+        const fromApp = sent.filter(s => s.url.startsWith(OTHER));
+        expect(fromApp.length).toBe(2);
+        for (const s of fromApp) expect(s).toMatchObject({authorization: APP.requestHeaders.Authorization, credentials: "include"});
+    });
+});

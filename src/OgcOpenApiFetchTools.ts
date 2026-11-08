@@ -3,12 +3,16 @@ import type {ProxifyFunction} from "./OgcOpenApiGetCapabilities.js";
 interface ExtFetchOptions {
     originalUrl: string;
     complete?: (url: string) => string;
-    proxify?: ProxifyFunction
+    proxify?: ProxifyFunction;
+    // Other origins than the one of originalUrl that may receive the credentials of the app
+    credentialsOrigins?: string[];
 }
 export interface FetchServerOptions {
     proxy: (url: string, fetchOptions) => { fetchOptions: any; url: string };
     hostname: string;
-    complete: (url: string) => string
+    complete: (url: string) => string;
+    // The origins that receive the requestHeaders and credentials of the app: the server's, and credentialsOrigins
+    trustedOrigins?: string[];
 }
 
 // Stand-ins for the braces of URL templates while resolving, URL keeps them as they are
@@ -19,8 +23,12 @@ class OgcOpenApiFetchTools {
 
     public static createFetchOptions(options: ExtFetchOptions) {
         const hostname = this.getHostURL(options.originalUrl);
+        const appOrigin = hostname ? hostname : typeof globalThis.location !== "undefined" ? globalThis.location.origin : "";
+        const trustedOrigins = [appOrigin, ...(options.credentialsOrigins ? options.credentialsOrigins : [])]
+            .map(origin => OgcOpenApiFetchTools.getOrigin(origin)).filter(origin => !!origin);
         return {
             hostname: hostname,
+            trustedOrigins,
             complete: typeof options.complete === "function" ? options.complete : (url: string) => {
                 return this.addHostURL(url, hostname)
             },
@@ -40,10 +48,46 @@ class OgcOpenApiFetchTools {
         return credentials ? "include" : "same-origin";
     }
 
-    public static fetch(input: string, options: RequestInit, serverOptions: FetchServerOptions) {
+    /**
+     * Fetches input, completed with the host of the server and through its proxify. requestHeaders are the headers of
+     * the app in options.headers: they and the credentials are sent only to the trusted origins of serverOptions, the
+     * server's own and the credentialsOrigins of the app. A request to another origin, which a link of the server can
+     * name, is sent without them, but with Accept, and with credentials "same-origin". The origin is the one of the
+     * link, before proxify, which is the app's own routing. A URL without an origin, behind a relative proxy path, is
+     * the server's.
+     */
+    public static fetch(input: string, options: RequestInit, serverOptions: FetchServerOptions, requestHeaders?: {[name: string]: string} | null) {
         const fullUrl = serverOptions.complete(input);
-        const result = serverOptions.proxy(fullUrl, options)
+        const fetchOptions = requestHeaders && !OgcOpenApiFetchTools.isTrusted(fullUrl, serverOptions) ?
+            OgcOpenApiFetchTools.withoutAppCredentials(options, requestHeaders) : options;
+        const result = serverOptions.proxy(fullUrl, fetchOptions)
         return fetch(result.url, result.fetchOptions);
+    }
+
+    private static isTrusted(url: string, serverOptions: FetchServerOptions) {
+        const origin = OgcOpenApiFetchTools.getOrigin(url);
+        // Server options made without createFetchOptions trust the origin of their host
+        const trusted = serverOptions.trustedOrigins ? serverOptions.trustedOrigins : [OgcOpenApiFetchTools.getOrigin(serverOptions.hostname)];
+        return origin === "" || trusted.indexOf(origin) > -1;
+    }
+
+    private static withoutAppCredentials(options: RequestInit, requestHeaders: {[name: string]: string}): RequestInit {
+        const appHeaders = Object.keys(requestHeaders).map(name => name.toLowerCase()).filter(name => name !== "accept");
+        const headers = {};
+        new Headers(options.headers).forEach((value, name) => {
+            if (appHeaders.indexOf(name) === -1) headers[name] = value;
+        });
+        return {...options, headers, credentials: "same-origin"};
+    }
+
+    // The origin of an absolute http(s) URL, as the browser compares it (scheme, host and port), "" for another URL
+    private static getOrigin(url: string) {
+        if (!/^https?:\/\//i.test(url)) return "";
+        try {
+            return new URL(url).origin;
+        } catch (e) {
+            return "";
+        }
     }
 
     /**
