@@ -1,0 +1,78 @@
+{
+  "support": {
+    "conformance": {
+      "createReplaceDelete": true,
+      "update": true
+    },
+    "allow": {
+      "items": [
+        "HEAD",
+        "POST",
+        "GET",
+        "OPTIONS"
+      ]
+    },
+    "suggested": [
+      "add"
+    ],
+    "issues": [
+      "The server declares update, but OPTIONS does not allow PATCH"
+    ],
+    "patch": false
+  },
+  "created": {
+    "id": 9,
+    "coordinates": [
+      4.7,
+      50.88
+    ],
+    "properties": {
+      "name": "recorded-write",
+      "category": "cafe",
+      "rating": 3,
+      "updated_at": "2026-11-09T05:31:16Z"
+    }
+  },
+  "replaced": {
+    "id": 9,
+    "coordinates": [
+      4.71,
+      50.89
+    ],
+    "properties": {
+      "name": "recorded-write-2",
+      "rating": 4,
+      "updated_at": "2026-11-09T05:31:16Z"
+    }
+  },
+  "patched": {
+    "resolved": {
+      "id": 9,
+      "coordinates": [
+        4.71,
+        50.89
+      ],
+      "properties": {
+        "name": "recorded-write-2",
+        "category": "bar",
+        "rating": 5,
+        "updated_at": "2026-11-09T05:31:16Z"
+      }
+    }
+  },
+  "removed": true,
+  "afterRemove": null,
+  "removedAgain": false,
+  "refused": {
+    "rejected": {
+      "status": 401,
+      "message": "Invalid response: 401 for POST http://localhost:7081/spike/collections/poi/items"
+    }
+  },
+  "events": [
+    "add 9",
+    "update 9",
+    "update 9",
+    "remove 9"
+  ]
+}

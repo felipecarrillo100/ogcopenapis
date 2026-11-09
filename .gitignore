@@ -13,3 +13,6 @@ test/browser/screenshots/
 
 # npm run test:package: the package as installed
 .package-check/
+
+# Research spikes of the write support: local only, their findings are in reports/
+spikes/

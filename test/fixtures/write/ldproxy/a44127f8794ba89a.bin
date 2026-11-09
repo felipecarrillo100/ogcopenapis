@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not Found</title>
+<meta name="description" content="">
+
+
+
+
+<link rel="shortcut icon" type="image/x-icon" href="/ogcapi-html/assets/favicon.ccbcb955.ico">
+
+<link href="/ogcapi-html/assets/common.332df911.css" rel="stylesheet">
+<link href="/ogcapi-html/assets/style-common.73bc3574.css" rel="stylesheet">
+
+
+
+
+
+
+
+
+</head>
+
+
+<body>
+<div class="container py-4">
+    <h2>HTTP Error 404: Not Found</h2>
+    <br>
+    <div>The requested feature does not exist.</div>
+    <br>
+    
+</div>
+</body>
+
+
+</html>
+
+
+
+

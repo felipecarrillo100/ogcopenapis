@@ -1,0 +1,37 @@
+name: ogcopenapis-write-geoserver
+services:
+  postgis:
+    image: postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6
+    # amd64 only, emulated on Apple Silicon
+    platform: linux/amd64
+    container_name: write-geoserver-postgis
+    environment:
+      POSTGRES_USER: gis
+      POSTGRES_PASSWORD: gis
+      POSTGRES_DB: gis
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gis -d gis"]
+      interval: 5s
+      retries: 20
+
+  geoserver:
+    image: docker.osgeo.org/geoserver:3.0.2@sha256:5a372d4988116e8f62c71ae5ff6eb8d433967697670fb1dec15379bf476721fe
+    container_name: write-geoserver-geoserver
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      INSTALL_EXTENSIONS: "true"
+      STABLE_EXTENSIONS: "ogcapi-features"
+      CORS_ENABLED: "true"
+      CORS_ALLOWED_ORIGINS: "*"
+      CORS_ALLOWED_METHODS: "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+      CORS_ALLOWED_HEADERS: "Origin,Accept,X-Requested-With,Content-Type,Authorization,Access-Control-Request-Method,Access-Control-Request-Headers"
+      CORS_ALLOW_CREDENTIALS: "false"
+      EXTRA_JAVA_OPTS: "-Xms256m -Xmx1g"
+    ports:
+      - "8085:8080"

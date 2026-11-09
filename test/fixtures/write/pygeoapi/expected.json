@@ -1,0 +1,66 @@
+{
+  "support": {
+    "conformance": {
+      "createReplaceDelete": true,
+      "update": false
+    },
+    "allow": {
+      "items": [
+        "HEAD",
+        "GET",
+        "POST"
+      ]
+    },
+    "suggested": [
+      "add"
+    ],
+    "issues": [],
+    "patch": false
+  },
+  "created": {
+    "id": 7,
+    "coordinates": [
+      4.7,
+      50.88
+    ],
+    "properties": {
+      "id": 7,
+      "name": "recorded-write",
+      "kind": "cafe",
+      "pop": 3
+    }
+  },
+  "replaced": {
+    "id": 7,
+    "coordinates": [
+      4.71,
+      50.89
+    ],
+    "properties": {
+      "id": 7,
+      "name": "recorded-write-2",
+      "kind": "bar",
+      "pop": 4
+    }
+  },
+  "patched": {
+    "rejected": {
+      "status": 405,
+      "message": "Invalid response: 405 for PATCH http://localhost:5002/collections/places/items/7"
+    }
+  },
+  "removed": true,
+  "afterRemove": null,
+  "removedAgain": false,
+  "refused": {
+    "rejected": {
+      "status": 403,
+      "message": "Invalid response: 403 for POST http://localhost:5002/collections/places/items"
+    }
+  },
+  "events": [
+    "add 7",
+    "update 7",
+    "remove 7"
+  ]
+}

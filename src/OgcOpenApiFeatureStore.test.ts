@@ -45,9 +45,14 @@ describe('OgcOpenApiFeatureStore errors', () => {
         vi.restoreAllMocks();
     });
 
-    it('get rejects when the server answers 404', async () => {
+    it('get resolves undefined when the server answers 404, as LuciadRIA 2026.1 expects', async () => {
         respond(404, '{"code":"NotFound"}');
-        await expect(createStore().get(7)).rejects.toThrow("Invalid response: 404");
+        expect(await createStore().get(7)).toBeUndefined();
+    });
+
+    it('get rejects when the server answers 500', async () => {
+        respond(500, "oops");
+        await expect(createStore().get(7)).rejects.toThrow("Invalid response: 500");
     });
 
     it('query rejects when the server answers 500', async () => {
@@ -102,9 +107,9 @@ describe('OgcOpenApiFeatureStore decoding', () => {
         expect([(feature.shape as any).x, (feature.shape as any).y]).toEqual([5, 52]);
     });
 
-    it('get resolves null when the response has no feature', async () => {
+    it('get resolves undefined when the response has no feature', async () => {
         respond(200, JSON.stringify({type: "FeatureCollection", features: []}));
-        expect(await createStore().get(1)).toBeNull();
+        expect(await createStore().get(1)).toBeUndefined();
     });
 
     it('query decodes a feature collection', async () => {

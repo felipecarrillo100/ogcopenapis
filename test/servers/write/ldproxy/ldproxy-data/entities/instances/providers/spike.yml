@@ -1,0 +1,69 @@
+# SQL feature provider on PostGIS. datasetChanges.mode CRUD is REQUIRED for the
+# CRUD building block; it applies to the whole provider (all types).
+id: spike
+providerType: FEATURE
+providerSubType: SQL
+nativeCrs:
+  code: 4326
+  forceAxisOrder: LON_LAT
+connectionInfo:
+  dialect: PGIS
+  host: postgis
+  database: spike
+  user: ldproxy
+  password: bGRwcm94eQ==   # base64("ldproxy")
+datasetChanges:
+  mode: CRUD
+sourcePathDefaults:
+  primaryKey: id
+  sortKey: id
+types:
+  poi:
+    sourcePath: /poi
+    type: OBJECT
+    properties:
+      id:
+        sourcePath: id
+        type: INTEGER
+        role: ID
+      name:
+        sourcePath: name
+        type: STRING
+      category:
+        sourcePath: category
+        type: STRING
+      rating:
+        sourcePath: rating
+        type: INTEGER
+      updated_at:
+        sourcePath: updated_at
+        type: DATETIME
+        isLastModified: true
+      geom:
+        sourcePath: geom
+        type: GEOMETRY
+        geometryType: POINT
+        role: PRIMARY_GEOMETRY
+  roads:
+    sourcePath: /roads
+    type: OBJECT
+    properties:
+      id:
+        sourcePath: id
+        type: INTEGER
+        role: ID
+      name:
+        sourcePath: name
+        type: STRING
+      lanes:
+        sourcePath: lanes
+        type: INTEGER
+      updated_at:
+        sourcePath: updated_at
+        type: DATETIME
+        isLastModified: true
+      geom:
+        sourcePath: geom
+        type: GEOMETRY
+        geometryType: LINE_STRING
+        role: PRIMARY_GEOMETRY

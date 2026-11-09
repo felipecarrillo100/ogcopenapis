@@ -1,5 +1,6 @@
 import {type FetchServerOptions, OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
 import {OgcOpenApiError} from "./OgcOpenApiError.js";
+import type {OgcOpenApiFeatureWriteOperation} from "./OgcOpenApiFeatureStore.js";
 const SCALE_DENOMINATOR_TOLERANCE = 1e-8;
 
 type RequestHeaders = {[headerName: string]: string;} | null
@@ -66,6 +67,27 @@ export interface OgcOpenApiQueryables {
   properties?: { [name: string]: { [keyword: string]: any } };
   [keyword: string]: any;
 }
+
+// The schema of the features of a collection (OGC API Features Part 5): a JSON Schema, as the server sends it
+export type OgcOpenApiSchema = OgcOpenApiQueryables;
+
+// What a server advertises about writing the features of a collection, see OgcOpenApiGetCapabilities.fetchWriteSupport
+export interface OgcOpenApiWriteSupport {
+  conformance: { createReplaceDelete: boolean, update: boolean };
+  allow: { items?: string[], item?: string[] };
+  suggested: OgcOpenApiFeatureWriteOperation[];
+  patch: boolean;
+  issues: string[];
+}
+
+// The conformance classes of OGC API Features Part 4, in the URIs they have had: draft 2 (ogcapi-features-4/1.0),
+// draft 3, also OGC API Common Part 5 (ogcapi-common-5/1.0), and ldproxy 4.8 (ogcapi-features-4/0.0)
+const WRITE_CONFORMANCE = {
+  createReplaceDelete: ["ogcapi-features-4/1.0", "ogcapi-features-4/0.0", "ogcapi-common-5/1.0"]
+      .map(part => "http://www.opengis.net/spec/" + part + "/conf/create-replace-delete"),
+  update: ["ogcapi-features-4/1.0", "ogcapi-features-4/0.0", "ogcapi-common-5/1.0"]
+      .map(part => "http://www.opengis.net/spec/" + part + "/conf/update"),
+};
 
 // The numbers OGC 2D TMS 2.0 requires of a tile matrix (tileMatrix.json), besides its id and pointOfOrigin
 const TILE_MATRIX_NUMBERS = ["scaleDenominator", "cellSize", "tileWidth", "tileHeight", "matrixWidth", "matrixHeight"];
@@ -564,7 +586,7 @@ export class OgcOpenApiGetCapabilities {
       options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
   ): Promise<OgcOpenApiQueryables | null> {
     if (capabilities === null) throw new OgcOpenApiError("No capabilities to fetch the queryables of " + collection.id);
-    const href = OgcOpenApiGetCapabilities.getQueryablesHref(capabilities, collection);
+    const href = OgcOpenApiGetCapabilities.getCollectionDocumentHref(capabilities, collection, "queryables");
     if (!href) return null;
     let response: Response;
     try {
@@ -588,20 +610,157 @@ export class OgcOpenApiGetCapabilities {
     return data;
   }
 
-  // The queryables link of the collection, in JSON. Some servers (ldproxy, PDOK) list it only in the collection
-  // document, not in /collections: then the path of the standard, /collections/{collectionId}/queryables, for a
-  // collection with features. Other collections have no queryables, '' then
-  private static getQueryablesHref(capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection) {
+  /**
+   * Fetches the schema of the features of a collection (OGC API Features Part 5): a JSON Schema, as the server sends
+   * it, with the type and format of each property, the geometry type (format geometry-point and others, with
+   * x-ogc-role primary-geometry) and readOnly properties. It describes every property, the queryables only those a
+   * filter can use. Resolves null for a collection without schema: a collection without features, a schema request
+   * that answers 404, or an answer that is not a JSON Schema (QGIS Server 4.2 answers its landing page). Rejects with
+   * an OgcOpenApiError with the status of any other answer, and with the error of the request when it fails.
+   */
+  public static async fetchSchema(
+      capabilities: OgcOpenApiCapabilitiesObject | null,
+      collection: OgcOpenApiCapabilitiesCollection,
+      options?: {credentials?: boolean, requestHeaders?: RequestHeaders}
+  ): Promise<OgcOpenApiSchema | null> {
+    if (capabilities === null) throw new OgcOpenApiError("No capabilities to fetch the schema of " + collection.id);
+    const href = OgcOpenApiGetCapabilities.getCollectionDocumentHref(capabilities, collection, "schema");
+    if (!href) return null;
+    let response: Response;
+    try {
+      response = await OgcOpenApiFetchTools.fetch(href, {
+        method: "GET",
+        credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
+        headers: {Accept: QUERYABLES_MEDIA_TYPES.join(", "), ...(options?.requestHeaders ? options.requestHeaders : {})}
+      }, capabilities.serverOptions, options?.requestHeaders);
+    } catch (e) {
+      throw OgcOpenApiGetCapabilities.toError(e, href);
+    }
+    if (response.status === 404) return null;
+    if (response.status !== 200) throw await OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status + " for " + href, href);
+    let data: any;
+    try {
+      data = await response.json();
+    } catch (e) {
+      return null;
+    }
+    const isSchema = data && typeof data === "object" && !Array.isArray(data) &&
+        ((data.properties && typeof data.properties === "object") || typeof data.$schema === "string" || data.type === "object");
+    return isSchema ? data : null;
+  }
+
+  /**
+   * What the server advertises about writing the features of a collection (OGC API Features Part 4): a hint, never a
+   * permission. Only the answer to a write tells whether this user may make it.
+   * - conformance: the server declares the create-replace-delete and update classes, in any of the URIs drafts and
+   *   servers use. They are for the whole server, not the collection or the user.
+   * - allow: the methods of the Allow header of OPTIONS on the items, and on the item of options.featureId when given
+   *   (some servers list PUT and DELETE only there). Sent with the credentials of the app: a server can answer per
+   *   user (QGIS Server). Left out when OPTIONS fails or its Allow cannot be read (not sent, or not exposed to the
+   *   browser).
+   * - suggested: the writeOperations to give the store, from the Allow header, only when the server declares
+   *   create-replace-delete. patch: it declares update, and PATCH is allowed or the Allow header is unknown.
+   * - issues: what does not agree, as found. They are reported, not corrected.
+   */
+  public static async fetchWriteSupport(
+      capabilities: OgcOpenApiCapabilitiesObject | null,
+      collection: OgcOpenApiCapabilitiesCollection,
+      options?: {credentials?: boolean, requestHeaders?: RequestHeaders, featureId?: string | number}
+  ): Promise<OgcOpenApiWriteSupport> {
+    if (capabilities === null) throw new OgcOpenApiError("No capabilities to tell the write support of " + collection.id);
+    const conformsTo = capabilities.conformsTo ? capabilities.conformsTo : [];
+    const declares = (classes: string[]) => conformsTo.some(uri => classes.some(c => isSameOgcUri(uri, c)));
+    const conformance = {
+      createReplaceDelete: declares(WRITE_CONFORMANCE.createReplaceDelete),
+      update: declares(WRITE_CONFORMANCE.update),
+    };
+    const issues: string[] = [];
+    const allow: { items?: string[], item?: string[] } = {};
+    const itemsHref = OgcOpenApiGetCapabilities.getItemsHref(collection);
+    if (itemsHref) {
+      const items = await OgcOpenApiGetCapabilities.fetchAllow(capabilities, itemsHref, options, issues);
+      if (items) allow.items = items;
+      if (typeof options?.featureId !== "undefined") {
+        const itemHref = OgcOpenApiFetchTools.appendPath(itemsHref, encodeURIComponent(String(options.featureId)));
+        const item = await OgcOpenApiGetCapabilities.fetchAllow(capabilities, itemHref, options, issues);
+        if (item) allow.item = item;
+      }
+    } else {
+      issues.push("The collection " + collection.id + " has no items link");
+    }
+    const allowed = (method: string, ...lists: (string[] | undefined)[]) => lists.some(list => list && list.indexOf(method) > -1);
+    const itemMethods = allow.item ? allow.item : allow.items;
+    const known = !!(allow.items || allow.item);
+    const writes = ["POST", "PUT", "DELETE"].filter(m => allowed(m, allow.items, allow.item));
+    if (conformance.createReplaceDelete && known && writes.length === 0) {
+      issues.push("The server declares create-replace-delete, but OPTIONS allows no write method");
+    }
+    if (!conformance.createReplaceDelete && writes.length > 0) {
+      issues.push("OPTIONS allows " + writes.join(", ") + ", but the server does not declare create-replace-delete");
+    }
+    if (conformance.update && known && !allowed("PATCH", allow.items, allow.item)) {
+      issues.push("The server declares update, but OPTIONS does not allow PATCH");
+    }
+    const suggested: OgcOpenApiFeatureWriteOperation[] = [];
+    if (conformance.createReplaceDelete) {
+      if (allowed("POST", allow.items)) suggested.push("add");
+      if (allowed("PUT", itemMethods)) suggested.push("put");
+      if (allowed("DELETE", itemMethods)) suggested.push("remove");
+    }
+    return {
+      conformance, allow, suggested, issues,
+      patch: conformance.update && (!known || allowed("PATCH", allow.items, allow.item)),
+    };
+  }
+
+  // The methods of the Allow header of OPTIONS on href, upper case. undefined, with an issue, when OPTIONS fails or
+  // has no Allow that can be read
+  private static async fetchAllow(capabilities: OgcOpenApiCapabilitiesObject, href: string,
+                                  options: {credentials?: boolean, requestHeaders?: RequestHeaders} | undefined, issues: string[]) {
+    let response: Response;
+    try {
+      response = await OgcOpenApiFetchTools.fetch(href, {
+        method: "OPTIONS",
+        credentials: OgcOpenApiFetchTools.toFetchCredentials(options?.credentials),
+        headers: {...(options?.requestHeaders ? options.requestHeaders : {})},
+      }, capabilities.serverOptions, options?.requestHeaders);
+    } catch (e) {
+      issues.push("OPTIONS " + href + " failed: " + (e && e.message ? e.message : String(e)));
+      return undefined;
+    }
+    if (response.status < 200 || response.status > 299) {
+      issues.push("OPTIONS " + href + " answered " + response.status);
+      return undefined;
+    }
+    const header = response.headers.get("Allow");
+    if (header === null) {
+      issues.push("OPTIONS " + href + " has no Allow header that can be read (not sent, or not exposed to the browser)");
+      return undefined;
+    }
+    return header.split(",").map(m => m.trim().toUpperCase()).filter(m => m !== "");
+  }
+
+  // The items of the collection, as the store writes them: without the query of the link, which chooses a
+  // representation to read (f, profile). '' for a collection without items
+  private static getItemsHref(collection: OgcOpenApiCapabilitiesCollection) {
+    const links = OgcOpenApiGetCapabilities.filterCollectionLinks(collection.links ? collection.links : [], CollectionLinkType.Items);
+    return links.length === 0 ? '' : links[0].href.split("?")[0];
+  }
+
+  // A document of the collection, schema or queryables: its link in JSON, or, as some servers (ldproxy, PDOK) list it
+  // only in the collection document, not in /collections, the path of the standard, /collections/{collectionId}/{name},
+  // for a collection with features. Other collections have none, '' then
+  private static getCollectionDocumentHref(capabilities: OgcOpenApiCapabilitiesObject, collection: OgcOpenApiCapabilitiesCollection, name: string) {
     const links = collection.links ? collection.links : [];
-    const queryables = links.filter(l => isRel(l, "queryables"));
-    const link = QUERYABLES_MEDIA_TYPES.map(type => queryables.find(l => l.type === type)).find(l => l) ||
-        queryables.find(l => !l.type);
+    const documents = links.filter(l => isRel(l, name));
+    const link = QUERYABLES_MEDIA_TYPES.map(type => documents.find(l => l.type === type)).find(l => l) ||
+        documents.find(l => !l.type);
     if (link) return link.href;
     if (OgcOpenApiGetCapabilities.filterCollectionLinks(links, CollectionLinkType.Items).length === 0) return '';
     // The self link keeps its query, such as f=json (PDOK)
     const self = links.find(l => l.rel === "self" && (!l.type || l.type === "application/json"));
     const collectionHref = self ? self.href : capabilities.baseUrl + "collections/" + encodeURIComponent(collection.id);
-    return OgcOpenApiFetchTools.appendPath(collectionHref, "queryables");
+    return OgcOpenApiFetchTools.appendPath(collectionHref, name);
   }
 
   /**

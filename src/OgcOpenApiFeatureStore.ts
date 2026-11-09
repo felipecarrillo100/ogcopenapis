@@ -13,6 +13,26 @@ import {GeoJsonCodec} from "@luciad/ria/model/codec/GeoJsonCodec.js";
 import {GMLCodec} from "@luciad/ria/model/codec/GMLCodec.js";
 import type {ProxifyFunction} from "./OgcOpenApiGetCapabilities.js";
 import {OgcOpenApiFetchTools} from "./OgcOpenApiFetchTools.js";
+import type {FeatureId} from "@luciad/ria/model/feature/Feature.js";
+import type {Shape} from "@luciad/ria/shape/Shape.js";
+import {createPoint} from "@luciad/ria/shape/ShapeFactory.js";
+import type {Transformation} from "@luciad/ria/transformation/Transformation.js";
+
+/**
+ * The write operations of LuciadRIA's Store that a store can be given (OGC API Features Part 4): add is a POST to the
+ * items, put a PUT and remove a DELETE of an item.
+ */
+export type OgcOpenApiFeatureWriteOperation = "add" | "put" | "remove";
+
+/**
+ * A partial update of a feature, sent as a JSON Merge Patch (RFC 7396, OGC API Features Part 4): the properties
+ * given replace those of the feature, a property set to null is removed, and geometry, when given, replaces the
+ * geometry (null removes it).
+ */
+export interface OgcOpenApiFeaturePatch {
+  properties?: { [name: string]: unknown };
+  geometry?: Shape | null;
+}
 
 export interface OgcOpenApiFeatureStoreConstructorOptions {
   swapAxes?: string[];
@@ -28,6 +48,10 @@ export interface OgcOpenApiFeatureStoreConstructorOptions {
   proxify?: ProxifyFunction
   // Called once for each query that succeeds, with what the response says about its size
   onQueryResult?: (result: OgcOpenApiFeatureQueryResult) => void;
+  // The write operations the store performs, none by default: the store is read-only. LuciadRIA asks once, when a
+  // layer is made, so they are fixed here. The server decides on each write: a write it refuses rejects with its
+  // status. OgcOpenApiGetCapabilities.fetchWriteSupport suggests them from what the server advertises
+  writeOperations?: OgcOpenApiFeatureWriteOperation[];
 }
 
 // What the response to a query says about its size (OGC API Features Part 1)
@@ -80,6 +104,10 @@ export interface OgcOpenApiFeatureStoreQueryOptions {
   wkhrRemark?: string;
 }
 
+const WRITE_OPERATIONS: OgcOpenApiFeatureWriteOperation[] = ["add", "put", "remove"];
+
+const CRS84_IDENTIFIER = "CRS:84";
+
 interface OgcOpenApiFeaturesCodecDecodeOptions extends CodecDecodeOptions {
   contentCrs?: string;
   contentLength?: number;
@@ -104,10 +132,13 @@ export class OgcOpenApiFeatureStore extends Store {
   private serverOptions: { proxy: (url: string, fetchOptions) => { fetchOptions: any; url: string }; hostname: string; complete: (url: string) => string };
   private swapAxes: string[] | undefined;
   private onQueryResult: ((result: OgcOpenApiFeatureQueryResult) => void) | undefined;
+  private writeOperations: OgcOpenApiFeatureWriteOperation[];
 
   constructor(options: OgcOpenApiFeatureStoreConstructorOptions) {
     super();
     // console.log(options);
+    this.writeOperations = Array.isArray(options.writeOperations) ?
+        WRITE_OPERATIONS.filter(operation => options.writeOperations.indexOf(operation) > -1) : [];
     this.swapAxes = options.swapAxes;
     this.onQueryResult = options.onQueryResult;
     this.useCrs84Bounds = typeof options.useCrs84Bounds !== "undefined" ? options.useCrs84Bounds : false;
@@ -154,16 +185,200 @@ export class OgcOpenApiFeatureStore extends Store {
   }
 
   isOperationSupported(methodName: StoreOperationName): boolean {
-    return methodName === "get" || methodName === "spatialQuery";
+    return methodName === "get" || methodName === "spatialQuery" ||
+        this.writeOperations.indexOf(methodName as OgcOpenApiFeatureWriteOperation) > -1;
   }
 
-  get(id: number | string, optionsInput?: any): Promise<Feature> {
+  // A feature the server does not have, a 404, resolves undefined, as LuciadRIA's Store expects. A store that writes
+  // asks the server again for each feature: a cache, such as the browser's for ldproxy's immutable items, could give
+  // a feature as it was before a write
+  get(id: FeatureId, optionsInput?: any): Promise<Feature | undefined> {
     const options = optionsInput ? { ...optionsInput } : {};
     options.query = (options.query ? options.query : {}) as OgcOpenApiFeatureStoreQueryOptions;
     options.query.f = options.query.f ? options.query.f : this.dataFormat;
     options.query.crs = options.query.crs ? options.query.crs : this.customCrs;
     const request = this.withQuery(this.featureUrl + encodeURIComponent(String(id)), {f: options.query.f, crs: options.query.crs});
-    return this.fetchFeatures(request, options.abortSignal).then(cursor => cursor && cursor.hasNext() ? cursor.next() : null);
+    const cache: RequestCache | undefined = this.writeOperations.length > 0 ? "no-cache" : undefined;
+    return this.fetchFeatures(request, options.abortSignal, undefined, {notFoundIsEmpty: true, cache})
+        .then(cursor => cursor && cursor.hasNext() ? cursor.next() : undefined);
+  }
+
+  /**
+   * Creates the feature on the server: a POST of it to the items, in GeoJSON. The server gives the feature its id, in
+   * the Location of its answer: the feature takes that id, the store emits "add", and the promise resolves it. Rejects
+   * with an OgcOpenApiError when the server answers anything but 201 or 200 with a Location, with its status.
+   */
+  add(feature: Feature, options?: any): Promise<FeatureId> {
+    return this.whenWritable("add").then(() => {
+      const url = this.writeUrl();
+      return this.send("POST", url, {
+        contentType: "application/geo+json",
+        content: JSON.stringify(this.encodeFeature(feature, false)),
+      }).then(async response => {
+        if (response.status !== 201 && response.status !== 200) throw await OgcOpenApiFeatureStore.failure(response, "POST", url);
+        const id = OgcOpenApiFeatureStore.idFromLocation(response.headers.get("Location"));
+        if (typeof id === "undefined") {
+          throw new OgcOpenApiError("No Location of the created feature in the answer " + response.status + " for POST " + url, {status: response.status, url});
+        }
+        feature.id = id;
+        this.emitStoreChangedEvent("add", feature, id);
+        return id;
+      });
+    });
+  }
+
+  /**
+   * Replaces the feature on the server: a PUT of it, in GeoJSON, to the item of its id. The id is also in the body,
+   * as Part 4 allows. The store emits "update", or "add" when the server answers 201 (it created the feature).
+   * Rejects with an OgcOpenApiError when the feature has no id, or with the status of any other answer than 200, 201
+   * or 204.
+   */
+  put(feature: Feature, options?: any): Promise<FeatureId> {
+    return this.whenWritable("put").then(() => {
+      const id = feature.id;
+      if (!OgcOpenApiFeatureStore.hasId(id)) throw new OgcOpenApiError("A feature without an id cannot be replaced");
+      const url = this.writeUrl(id);
+      return this.send("PUT", url, {
+        contentType: "application/geo+json",
+        content: JSON.stringify(this.encodeFeature(feature, true)),
+      }).then(async response => {
+        if (response.status !== 200 && response.status !== 201 && response.status !== 204) {
+          throw await OgcOpenApiFeatureStore.failure(response, "PUT", url);
+        }
+        this.emitStoreChangedEvent(response.status === 201 ? "add" : "update", feature, id);
+        return id;
+      });
+    });
+  }
+
+  /**
+   * Deletes the feature of id on the server. Resolves true and emits "remove" when the server answers 200 or 204,
+   * false when it has no such feature (404). Rejects with an OgcOpenApiError with the status of any other answer.
+   */
+  remove(id: FeatureId): Promise<boolean> {
+    return this.whenWritable("remove").then(() => {
+      const url = this.writeUrl(id);
+      return this.send("DELETE", url).then(async response => {
+        if (response.status === 404) return false;
+        if (response.status !== 200 && response.status !== 204) throw await OgcOpenApiFeatureStore.failure(response, "DELETE", url);
+        this.emitStoreChangedEvent("remove", undefined, id);
+        return true;
+      });
+    });
+  }
+
+  /**
+   * Updates part of the feature of id on the server: a PATCH with a JSON Merge Patch (RFC 7396), the update of OGC API
+   * Features Part 4. LuciadRIA does not call it: put replaces the whole feature. The store must have put among its
+   * write operations. Once the server accepts it, the store reads the feature again, emits "update" with it, and
+   * resolves the id. Servers that do not update features answer 405 or 400: it rejects with an OgcOpenApiError with
+   * that status, as for any other answer than 200 or 204.
+   */
+  patch(id: FeatureId, change: OgcOpenApiFeaturePatch): Promise<FeatureId> {
+    return this.whenWritable("put").then(() => {
+      const url = this.writeUrl(id);
+      const body: { properties?: { [name: string]: unknown }, geometry?: any } = {};
+      if (change && typeof change.properties !== "undefined") body.properties = change.properties;
+      if (change && typeof change.geometry !== "undefined") body.geometry = this.encodeGeometry(change.geometry);
+      return this.send("PATCH", url, {contentType: "application/merge-patch+json", content: JSON.stringify(body)})
+          .then(async response => {
+            if (response.status !== 200 && response.status !== 204) throw await OgcOpenApiFeatureStore.failure(response, "PATCH", url);
+            const feature = await this.get(id);
+            if (feature) this.emitStoreChangedEvent("update", feature, id);
+            return id;
+          });
+    });
+  }
+
+  // Rejects when the store was not given the operation
+  private whenWritable(operation: OgcOpenApiFeatureWriteOperation): Promise<void> {
+    return this.writeOperations.indexOf(operation) > -1 ? Promise.resolve() :
+        Promise.reject(new OgcOpenApiError("The store does not " + operation + " features: " + operation + " is not in its writeOperations"));
+  }
+
+  // The items, or the item of id, without the parameters of the items link: they choose a representation to read,
+  // such as f or profile, and a write targets the resource itself (ldproxy 4.8 refuses any query parameter on a write)
+  private writeUrl(id?: FeatureId) {
+    return typeof id === "undefined" ? this.baseUrl : this.featureUrl + encodeURIComponent(String(id));
+  }
+
+  // A write request, with the headers and credentials of the app, sent only to the server's own origin. Accept asks
+  // for application/problem+json, so that a refusal can tell why
+  private send(method: string, url: string, body?: { contentType: string, content: string }) {
+    const headers: { [name: string]: string } = {...this.requestHeaders, Accept: "application/problem+json, application/json;q=0.9, */*;q=0.1"};
+    if (body) headers["Content-Type"] = body.contentType;
+    const init: RequestInit = {method, credentials: OgcOpenApiFetchTools.toFetchCredentials(this.credentials), headers};
+    if (body) init.body = body.content;
+    return OgcOpenApiFetchTools.fetch(url, init, this.serverOptions, this.requestHeaders);
+  }
+
+  private static failure(response: Response, method: string, url: string) {
+    return OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status + " for " + method + " " + url, url);
+  }
+
+  // A GeoJSON feature in CRS84, the CRS of a write without Content-Crs. withId: the id of the feature, for a PUT
+  private encodeFeature(feature: Feature, withId: boolean) {
+    const encoded: { type: string, id?: FeatureId, geometry: any, properties: any } = {
+      type: "Feature",
+      geometry: this.encodeGeometry(feature.shape),
+      properties: feature.properties ? feature.properties : {},
+    };
+    if (withId) return {type: encoded.type, id: feature.id, geometry: encoded.geometry, properties: encoded.properties};
+    return encoded;
+  }
+
+  // The GeoJSON geometry of shape, its coordinates transformed to CRS84 when the shape is in another reference
+  private encodeGeometry(shape: Shape | null | undefined) {
+    if (!shape) return null;
+    const codec = this.codec instanceof GeoJsonCodec ? this.codec : (this.writeCodec ? this.writeCodec : (this.writeCodec = new GeoJsonCodec()));
+    const geometry = codec.encodeShape(shape);
+    const reference = shape.reference;
+    if (geometry && reference && reference.identifier !== CRS84_IDENTIFIER) {
+      OgcOpenApiFeatureStore.transformGeometry(geometry, createTransformation(reference, getReference(CRS84_IDENTIFIER)), reference);
+    }
+    return geometry;
+  }
+
+  private writeCodec: GeoJsonCodec | undefined;
+
+  private static transformGeometry(geometry: any, transformation: Transformation, reference: CoordinateReference) {
+    if (!geometry || typeof geometry !== "object") return;
+    if (Array.isArray(geometry.geometries)) {
+      geometry.geometries.forEach(g => OgcOpenApiFeatureStore.transformGeometry(g, transformation, reference));
+    }
+    if (Array.isArray(geometry.coordinates)) {
+      geometry.coordinates = OgcOpenApiFeatureStore.transformCoordinates(geometry.coordinates, transformation, reference);
+    }
+  }
+
+  // A position, or nested arrays of positions, transformed
+  private static transformCoordinates(coordinates: any[], transformation: Transformation, reference: CoordinateReference): any[] {
+    if (coordinates.length > 0 && typeof coordinates[0] === "number") {
+      const point = transformation.transform(createPoint(reference, coordinates.slice(0, 3)));
+      return coordinates.length > 2 ? [point.x, point.y, point.z] : [point.x, point.y];
+    }
+    return coordinates.map(c => Array.isArray(c) ? OgcOpenApiFeatureStore.transformCoordinates(c, transformation, reference) : c);
+  }
+
+  private static hasId(id: FeatureId | undefined | null) {
+    return (typeof id === "number" && isFinite(id)) || (typeof id === "string" && id !== "");
+  }
+
+  // The id at the end of the path of a Location, decoded. An integer, written as integers are, is a number, as a
+  // GeoJSON id decodes; any other id a string
+  private static idFromLocation(location: string | null): FeatureId | undefined {
+    if (!location) return undefined;
+    const path = location.split("#")[0].split("?")[0].replace(/\/+$/, "");
+    const segment = path.substring(path.lastIndexOf("/") + 1);
+    if (!segment) return undefined;
+    let id: string;
+    try {
+      id = decodeURIComponent(segment);
+    } catch (e) {
+      id = segment;
+    }
+    const n = Number(id);
+    return /^-?\d+$/.test(id) && Number.isSafeInteger(n) && String(n) === id ? n : id;
   }
 
   query(receivedQuery?: OgcOpenApiFeatureStoreQueryOptions, options?: QueryOptions): Cursor | Promise<Cursor> {
@@ -171,7 +386,7 @@ export class OgcOpenApiFeatureStore extends Store {
     query.f = query.f ? query.f : this.dataFormat;
     query.crs = query.crs ? query.crs : this.customCrs;
     query.limit = query.limit ? query.limit : undefined;
-    return this.fetchFeatures(this.withQuery(this.baseUrl, query), options?.abortSignal, query);
+    return this.fetchFeatures(this.withQuery(this.baseUrl, query), options?.abortSignal, query) as Promise<Cursor>;
   }
 
   // The parameters of the items link, then those of the request, which replace a link parameter of the same name.
@@ -189,7 +404,8 @@ export class OgcOpenApiFeatureStore extends Store {
   // Fetches and decodes features. The promise always settles: it rejects with the reason when the request,
   // the response or the decoding fails, and when LuciadRIA aborts the request through abortSignal.
   // A query is reported to onQueryResult once its features are decoded, unless it was aborted
-  private fetchFeatures(request: string, abortSignal?: AbortSignal, query?: OgcOpenApiFeatureStoreQueryOptions): Promise<Cursor> {
+  private fetchFeatures(request: string, abortSignal?: AbortSignal, query?: OgcOpenApiFeatureStoreQueryOptions,
+                        fetchOptions?: { notFoundIsEmpty?: boolean, cache?: RequestCache }): Promise<Cursor | null> {
     // Mod starta
     const itemsAccept =
       typeof this.requestHeaders.accept !== 'undefined'
@@ -201,12 +417,15 @@ export class OgcOpenApiFeatureStore extends Store {
     const accept = itemsAccept.join(';');
     // Mod end
     const headers = { ...this.requestHeaders, Accept: accept };
-    return OgcOpenApiFetchTools.fetch(request, {
+    const init: RequestInit = {
       method: 'GET',
       credentials: OgcOpenApiFetchTools.toFetchCredentials(this.credentials),
       headers,
       signal: abortSignal,
-    }, this.serverOptions).then(async (response) => {
+    };
+    if (fetchOptions && fetchOptions.cache) init.cache = fetchOptions.cache;
+    return OgcOpenApiFetchTools.fetch(request, init, this.serverOptions).then(async (response) => {
+      if (response.status === 404 && fetchOptions && fetchOptions.notFoundIsEmpty) return null;
       if (response.status !== 200) {
         throw await OgcOpenApiError.fromResponse(response, "Invalid response: " + response.status + " for " + request, request);
       }

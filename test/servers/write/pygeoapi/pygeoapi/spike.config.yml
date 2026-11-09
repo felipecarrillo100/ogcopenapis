@@ -1,0 +1,65 @@
+# SPIKE pygeoapi config: two PostGIS collections, one editable, one read-only
+server:
+  bind: {host: 0.0.0.0, port: 80}
+  url: ${PYGEOAPI_SERVER_URL:-http://localhost:5002}
+  mimetype: application/json; charset=UTF-8
+  encoding: utf-8
+  gzip: false
+  language: en-US
+  # pygeoapi's own CORS (flask-cors, origins '*', no credentials). Kept ON so
+  # its behaviour can be observed on the direct port; the proxy hides it.
+  cors: true
+  pretty_print: true
+  admin: false
+  limits: {default_items: 10, max_items: 50}
+  map:
+    url: https://tile.openstreetmap.org/{z}/{x}/{y}.png
+    attribution: '&copy; OpenStreetMap contributors'
+
+logging:
+  level: DEBUG
+
+metadata:
+  identification:
+    title: pygeoapi PostGIS transactions spike
+    description: Local spike to probe OGC API Features Part 4
+    keywords: [spike]
+    keywords_type: theme
+    terms_of_service: https://creativecommons.org/licenses/by/4.0/
+    url: http://localhost
+  license: {name: CC-BY 4.0, url: https://creativecommons.org/licenses/by/4.0/}
+  provider: {name: spike, url: http://localhost}
+  contact: {name: spike, position: dev, address: n/a, city: n/a, stateorprovince: n/a, postalcode: n/a, country: n/a, phone: n/a, fax: n/a, email: n/a, url: http://localhost, hours: n/a, instructions: n/a, role: pointOfContact}
+
+resources:
+  places:
+    type: collection
+    title: Places (editable)
+    description: Point features, editable via OGC API Features Part 4
+    keywords: [places]
+    extents:
+      spatial: {bbox: [2.5, 49.5, 6.4, 51.5], crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84}
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data: {host: postgis, port: 5432, dbname: spike, user: spike, password: spike, search_path: [public]}
+        id_field: id
+        table: places
+        geom_field: geom
+        editable: true
+
+  roads:
+    type: collection
+    title: Roads (read-only)
+    description: LineString features, NOT editable
+    keywords: [roads]
+    extents:
+      spatial: {bbox: [2.5, 49.5, 6.4, 51.5], crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84}
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data: {host: postgis, port: 5432, dbname: spike, user: spike, password: spike, search_path: [public]}
+        id_field: id
+        table: roads
+        geom_field: geom
+        editable: false

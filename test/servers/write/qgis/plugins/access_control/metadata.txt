@@ -1,0 +1,8 @@
+[general]
+name=Spike access control
+qgisMinimumVersion=3.0
+description=Per-user layer permissions for the OGC API write spike
+version=0.1
+author=spike
+email=spike@example.invalid
+server=True

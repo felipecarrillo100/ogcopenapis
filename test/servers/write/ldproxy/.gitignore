@@ -1,0 +1,5 @@
+# ldproxy runtime state written into the mounted data dir
+ldproxy-data/tmp/
+ldproxy-data/cache/
+ldproxy-data/logs/
+ldproxy-data/store/

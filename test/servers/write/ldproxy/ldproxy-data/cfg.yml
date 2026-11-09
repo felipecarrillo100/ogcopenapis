@@ -1,0 +1,20 @@
+# Global ldproxy configuration (xtraplatform 7.0.2 "auth" section).
+# ldproxy has no Basic auth / built-in user store for APIs: it only validates
+# bearer tokens. The JWT provider validates HS256 tokens signed with this key
+# (base64). scripts/token.py mints such tokens for the probes.
+server:
+  externalUrl: http://localhost:7081/
+
+auth:
+  providers:
+    spike-jwt:
+      type: JWT
+      signingKey: 'Z95Ka80dmouVVk0YZ/Qvh72SE/1Ynr7MZMT8Aiw+Tdk='
+      claims:
+        userName: sub
+        permissions: roles
+        scopes: scope
+        audience: aud
+
+logging:
+  level: INFO

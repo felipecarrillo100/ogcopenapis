@@ -1,0 +1,47 @@
+# OGC API service of the write tests. CRUD is enabled per collection: on for poi, off for roads (ldproxy 4.8.2 does
+# not enforce that off, see spikes/ldproxy-postgis/FINDINGS.md). Optimistic locking is off: the library does not lock
+# (the spike's configuration has it on for poi).
+# accessControl: anonymous ("public") may read; writing needs a bearer token
+# whose "roles" claim covers data:write (e.g. "write", "data:write",
+# "data:write::spike:poi").
+id: spike
+entityStorageVersion: 2
+serviceType: OGC_API
+label: ldproxy write tests
+enabled: true
+accessControl:
+  enabled: true
+  groups:
+    public: [read]
+  scopes: []
+api:
+  - buildingBlock: HTML
+    enabled: true
+  - buildingBlock: GEO_JSON
+    enabled: true
+  - buildingBlock: JSON_FG
+    enabled: true
+  - buildingBlock: SCHEMA
+    enabled: true
+  - buildingBlock: CRS
+    enabled: true
+collections:
+  poi:
+    id: poi
+    label: Points of interest (editable)
+    enabled: true
+    extent:
+      spatialComputed: true
+    api:
+      - buildingBlock: CRUD
+        enabled: true
+        optimisticLockingLastModified: false
+  roads:
+    id: roads
+    label: Roads (read-only)
+    enabled: true
+    extent:
+      spatialComputed: true
+    api:
+      - buildingBlock: CRUD
+        enabled: false

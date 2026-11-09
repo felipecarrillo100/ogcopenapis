@@ -1,0 +1,33 @@
+# Write test server: ldproxy 4.8.2 (interactive instruments) on its own PostGIS.
+# Images pinned by tag AND digest (spikes/ldproxy-postgis/FINDINGS.md "Versions").
+name: ogcopenapis-write-ldproxy
+
+services:
+  postgis:
+    # postgis/postgis publishes amd64 only; runs under emulation on Apple Silicon.
+    image: postgis/postgis:18-3.7@sha256:440bdd14e3edccfce04d080d8a1a0cbae5763fa16a1c4172bff83530828461de
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: spike
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"   # 5434 taken by another container on this machine
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spike"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  ldproxy:
+    image: iide/ldproxy:4.8.2@sha256:69bad0fb9f0cf4bb6f9142987d85f1461cddbbb3c989cbd806182bea42e89d9e
+    depends_on:
+      postgis:
+        condition: service_healthy
+    ports:
+      # 7080 on this machine is held by an unrelated ldproxy container, hence 7081.
+      - "7081:7080"
+    volumes:
+      - ./ldproxy-data:/data

@@ -8,6 +8,30 @@ Each pull request adds its changes under Unreleased. A release renames Unrelease
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-09
+
+### Added
+- Writing features with `OgcOpenApiFeatureStore` (OGC API Features Part 4, a draft): `add` (POST, the id of the
+  server from `Location`), `put` (PUT), `remove` (DELETE), and `patch`, a JSON Merge Patch (RFC 7396) that LuciadRIA
+  does not call. The store performs only the operations given in the new option `writeOperations`, and is read-only
+  without it, as before. Features are written in GeoJSON in CRS84. A refused write rejects with an `OgcOpenApiError`
+  with the status of the server.
+- `OgcOpenApiGetCapabilities.fetchWriteSupport`: what a server advertises about writing a collection, its Part 4
+  conformance classes and the `Allow` header of `OPTIONS`, with the `writeOperations` it suggests and what does not
+  agree. A hint, not a permission.
+- `OgcOpenApiGetCapabilities.fetchSchema`: the schema of the features of a collection (OGC API Features Part 5), with
+  the type of each property and the geometry type.
+- `OgcOpenApiError.body`: the text of an answer that is not `application/problem+json`, the first 4096 characters.
+- Write test servers in Docker (`test/servers/write`): ldproxy 4.8.2, pygeoapi 0.24.0, QGIS Server 4.2.3 and GeoServer
+  3.0.2, each with its own PostGIS, for `npm run test:live-write`, and a recorded write scenario replayed by
+  `npm run test`.
+
+### Changed
+- `OgcOpenApiFeatureStore.get` resolves `undefined`, not `null`, for a feature the server does not have, and also when
+  the server answers 404, which rejected until 1.5.0. LuciadRIA 2026.1's Store requires `undefined`.
+- The test recorder keys a request by its method and URL, and keeps the responses of a request made more than once in
+  order. The recordings of 1.5.0 replay unchanged.
+
 ## [1.5.0] - 2026-11-08
 
 ### Security

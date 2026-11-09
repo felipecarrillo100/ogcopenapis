@@ -4,7 +4,8 @@
 The ogcopenapis package provides OGC API functionalities to LuciadRIA applications.
 
 Implements
-* __OGC API - Features__, with the filters and queryables of Part 3
+* __OGC API - Features__, with the filters and queryables of Part 3, the schemas of Part 5, and writing features
+  (create, replace, update and delete) of Part 4, a draft
 * __OGC API - Maps__
 * __OGC API - Tiles__, map (raster) tiles and vector tiles, of collections and of the dataset
 * __OGC API - Styles__, for vector tiles
@@ -12,7 +13,7 @@ Implements
 The Main Components are:
 
 * __OgcOpenApiGetCapabilities__: a helper to retrieve the capabilities of a server such as available collections, available formats, tilesets and tile matrix sets, and the filter support and queryables for features
-* __OgcOpenApiFeatureStore__: a ready to use LuciadRIA store that retrieves features from an OGC API Features service
+* __OgcOpenApiFeatureStore__: a ready to use LuciadRIA store that retrieves features from an OGC API Features service, and writes them
 * __OgcOpenApiMapsModel__: a ready to use model that retrieves images from an OGC API Maps service
 * __OgcOpenApiTilesModel__: a ready to use model that retrieves map tiles from an OGC API Tiles service
 * __OgcOpenApiVectorTilesModel__: a ready to use model that retrieves vector tiles (Mapbox Vector Tiles) from an OGC API Tiles service
@@ -61,6 +62,17 @@ When a server changed, record its responses again:
 npm run test:record
 ```
 GNOSIS (https://maps.gnosis.earth/ogcapi/) is in the list but not tested: its `/collections` response is 9 MB, and its tiles need a login.
+
+The writes are tested on servers of their own, in Docker, each with its own PostGIS: ldproxy 4.8.2 and pygeoapi 0.24.0
+write, QGIS Server 4.2.3 tells per user what may be written, and GeoServer 3.0.2 is read-only (see
+[test/servers/write/README.md](test/servers/write/README.md)). `npm run test` replays the recorded write scenario of
+ldproxy and pygeoapi (`test/fixtures/write`). The live write tests need the servers running, they are not run in CI:
+```
+test/servers/write/up.sh
+npm run test:live-write
+npm run test:record-write   # records the write scenario again
+test/servers/write/down.sh
+```
 
 The package check builds and packs the package, and checks it as published: only `lib/`, the sources of its source
 maps, README, CHANGELOG, LICENSE and package.json are in it, nothing of LuciadRIA; `lib/` imports only its own modules and
@@ -203,7 +215,7 @@ function createFeatureLayer(collection: OgcOpenApiCapabilitiesCollection) {
 The store requests the features in view, and a query does not follow the `next` links of a response: a map layer
 shows the features of its view, up to `limit`, without paging. Paging belongs with a table of the features, it needs
 a UI to move through the pages. The store keeps the parameters of the items link, such as `profile` or an api key, and
-encodes the values of its own.
+encodes the values of its own. Its writes do not keep them, see [Writing features](#writing-features).
 
 `onQueryResult` tells what the response to each query says about its size, to show for example "3,460 match, 1,000
 shown":
@@ -270,6 +282,82 @@ if (queryables) {
   it requests the path of the standard, `/collections/{collectionId}/queryables`.
 * It resolves `null` for a collection without features, without a request, and when the server answers 404.
 * The geometry is a queryable too, with `"x-ogc-role": "primary-geometry"` and a `format` such as `geometry-point`.
+
+The queryables are the properties a filter can use, not always all the properties of the features. The schema of the
+collection (OGC API Features Part 5) describes them all: `fetchSchema` returns it the same way, with the `type` and
+`format` of each property, the geometry type (`format` `geometry-point` and others, with `"x-ogc-role":
+"primary-geometry"`), and `readOnly` properties. It resolves `null` when the collection has no schema: a 404
+(GeoServer 3.0), or an answer that is not a JSON Schema (QGIS Server 4.2 answers its landing page). The queryables are no
+substitute for it, for a form that edits features for example: a replace built from them would remove the other
+properties.
+
+#### Writing features
+The store writes features too (OGC API Features Part 4, Create, Replace, Update and Delete, a draft standard): give it
+the write operations it may perform in `writeOperations`. It is read-only without them:
+```typescript
+const store = new OgcOpenApiFeatureStore({
+    // ...the options above
+    writeOperations: ["add", "put", "remove"],
+    // The login of the user, see below
+    requestHeaders: {Authorization: "Bearer " + token},
+});
+const layer = new FeatureLayer(new FeatureModel(store), {editable: true});
+```
+* `add(feature)` POSTs it to the items, in GeoJSON. The server gives it its id, in the `Location` of its answer: the
+  feature takes that id, the store emits `"add"` and the promise resolves the id.
+* `put(feature)` replaces it, a PUT to `items/{id}`, with the id in the body too. It emits `"update"`, or `"add"` when
+  the server answers 201.
+* `remove(id)` deletes it, a DELETE: it resolves `true` and emits `"remove"`, `false` when the server has no such
+  feature (404).
+* `patch(id, {properties, geometry})` updates part of it with a JSON Merge Patch (RFC 7396): a property set to `null`
+  is removed. LuciadRIA does not call it, its editing replaces the whole feature with `put`; an application can. It needs
+  `put` in `writeOperations`, and a server that declares the update class.
+* `get(id)` resolves `undefined` for a feature the server does not have (404), as LuciadRIA's Store requires, and a
+  store with write operations asks the server again for it each time (`cache: "no-cache"`): a browser could otherwise
+  give a feature as it was before a write (ldproxy marks its items as immutable).
+* Features are written in GeoJSON in CRS84, the CRS every server takes without `Content-Crs`: shapes in another
+  reference are transformed. Writes go to the items and item URLs without the parameters of the items link (`f`,
+  `profile`), which choose a representation to read.
+* LuciadRIA asks the store once, when a layer is made, which operations it supports: `writeOperations` fixes them. A
+  `FeatureLayer` is editable only when the store supports all of `add`, `put` and `remove`.
+
+Each write the server refuses rejects with an `OgcOpenApiError`: its `status`, its `url`, and the reason the server
+gives, `problem` for `application/problem+json` (the store asks for it) or `body`, the text of any other answer.
+Servers answer differently to the same refusal, so the store does not interpret the status: ldproxy 4.8 answers 401 to
+a user without the right to write as to one without login, QGIS Server 403 to both, pygeoapi 400 for a collection that
+is not editable, and GeoServer 3.0, whose OGC API Features is read-only, 500.
+
+Give the login of the user as an `Authorization` header in `requestHeaders`, not with `credentials: true`.
+`credentials: true` is the fetch mode `"include"`, which browsers refuse for servers that answer CORS with
+`Access-Control-Allow-Origin: *` (ldproxy 4.8, GeoServer 3.0) or without `Access-Control-Allow-Credentials` (pygeoapi),
+with no status to tell why. An `Authorization` header is sent in every mode, and only to the origin of the server.
+
+Whether this user may write is known only from the answer to a write. `fetchWriteSupport` tells what the server
+advertises, to choose `writeOperations`:
+```typescript
+const support = await OgcOpenApiGetCapabilities.fetchWriteSupport(capabilities, collection,
+    {requestHeaders: {Authorization: "Bearer " + token}, featureId: 1});
+// {conformance: {createReplaceDelete: true, update: true}, allow: {items: ["HEAD", "POST", "GET", "OPTIONS"],
+//  item: [...]}, suggested: ["add", "put", "remove"], patch: true, issues: []}
+const store = new OgcOpenApiFeatureStore({/* ... */ writeOperations: support.suggested});
+```
+* `conformance`: the server declares the create-replace-delete and update classes of Part 4, in any of the URIs its
+  drafts and servers use (`ogcapi-features-4/1.0`, `ogcapi-common-5/1.0`, `ogcapi-features-4/0.0` of ldproxy 4.8).
+  They are for the whole server, not for a collection or a user.
+* `allow`: the `Allow` header of `OPTIONS` on the items, and on the item of `featureId` when given (pygeoapi lists PUT
+  and DELETE only there). Sent with the login of the user: QGIS Server answers per user. Left out when `OPTIONS` fails
+  or its `Allow` cannot be read: not sent, or not exposed to the browser (ldproxy 4.8).
+* `suggested`: `add`, `put` and `remove` as `Allow` lists them, only when the server declares create-replace-delete.
+  `patch`: it declares update, and `Allow`, when known, lists PATCH.
+* `issues`: what does not agree, as found, such as GeoServer 3.0, whose `Allow` lists every method while it declares
+  no write class and refuses every write, or QGIS Server 4.2, which writes without declaring the class.
+
+It is a hint, not a permission: only ldproxy, pygeoapi and QGIS Server were tested, and on two of them `Allow` is the
+same for every user.
+
+Not supported: batch writes and transactions (OGC API Features Part 11, a proposal), and optimistic locking (`ETag`
+and `If-Match`, `Last-Modified` and `If-Unmodified-Since`): two users who replace the same feature both succeed, the
+last one wins.
 
 ### Maps
 OgcOpenApiMapsModel extends WMSTileSetModel, use it with a RasterTileSetLayer. It requests the map as tiles, in the

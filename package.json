@@ -1,6 +1,6 @@
 {
   "name": "ogcopenapis",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "OGC API Features, Maps, Tiles and Styles for LuciadRIA",
   "type": "module",
   "exports": {
@@ -28,7 +28,9 @@
     "build": "npm run clean && npm run build:lib",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
+    "test:live-write": "vitest run --config vitest.live-write.config.ts",
     "test:record": "vitest run --config vitest.record.config.ts",
+    "test:record-write": "vitest run --config vitest.record-write.config.ts",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:package": "npm run build && node test/package/checkPackage.mjs",
     "prepublishOnly": "npm run test && npm run test:package",
